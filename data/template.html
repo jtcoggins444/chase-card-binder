@@ -73,6 +73,10 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .chip:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .set{margin-top:22px}
 .set h2{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font:700 1.1rem var(--f-display);margin:0 0 8px}
+.set>h2{position:sticky;top:var(--fh,0px);z-index:4;background:var(--bg);padding:6px 0;margin-bottom:2px;box-shadow:0 1px 0 var(--line)}
+.setval{flex-basis:100%;display:flex;flex-wrap:wrap;gap:2px 14px;font:500 .8rem var(--f-mono);color:var(--muted);padding-left:22px}
+.setval em{font:700 .68rem var(--f-body);font-style:normal;letter-spacing:.05em;text-transform:uppercase;margin-right:4px}
+.setval span:first-child{color:var(--own)}.setval span:last-child{color:var(--ink)}
 .set h2 small{font:400 .8rem var(--f-body);color:var(--muted)}
 .set h2 .prog{margin-left:auto;font:500 .8rem var(--f-mono);color:var(--muted)}
 .sethd{all:unset;box-sizing:border-box;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;width:100%;cursor:pointer;border-radius:6px}
@@ -367,7 +371,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <select id="era" aria-label="Era"><option value="">All eras</option></select>
     <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="wanted">Wanted</option><option value="missing">Missing</option></select>
     <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
-    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="move">Biggest movers, 7 days</option></select>
+    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="move">Biggest movers, 7 days</option></select>
   </div>
   <div class="backup">
     <button id="colAll" type="button">Collapse all sets</button>
@@ -590,17 +594,20 @@ function render(){
   const ids=[...groups.keys()].sort((a,b)=>S[b][2].localeCompare(S[a][2])||b.localeCompare(a));
   if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!C.some(c=>state[c[0]]==='wanted')?'Your Want list is empty. Find cards in All Cards and tap Want to add them here.':'No cards match these filters.';document.getElementById('binder').innerHTML='<p class="empty">'+no+'</p>';return}
   let h='';
-  if(f.sort==='price'||f.sort==='move'){
+  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
-    const all=[].concat(...groups.values()).sort(f.sort==='move'?(a,b)=>mv(b)-mv(a):(a,b)=>(b[5]??-1)-(a[5]??-1));
-    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='move'?'by 7-day price change':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
+    const all=[].concat(...groups.values()).sort(f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
+    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
     document.getElementById('binder').innerHTML=h;return;
   }
   for(const id of ids){
     const s=S[id],cards=groups.get(id);
-    const own=C.filter(c=>c[2]===id&&keep(c)&&state[c[0]]==='owned').length,tot=C.filter(c=>c[2]===id&&keep(c)).length;
+    const inSet=C.filter(c=>c[2]===id&&keep(c)),owned=inSet.filter(c=>state[c[0]]==='owned');
+    const own=owned.length,tot=inSet.length,sum=a=>a.reduce((x,c)=>x+(c[5]||0),0);
+    const vOwn=sum(owned),vAll=sum(inSet),vNot=vAll-vOwn;
+    const vals=`<span class="setval"><span><em>Owned</em> ${money(vOwn)}</span><span><em>Unowned</em> ${money(vNot)}</span><span><em>Set</em> ${money(vAll)}</span></span>`;
     const open=!!f.q.trim()||!collapsed.has(id);
-    h+=`<section class="set${open?'':' closed'}" data-set="${id}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(s[0])}<small>${esc(s[1])} · ${s[2].slice(0,7).replace('/','-')} · ${cards.length} card${cards.length===1?'':'s'}</small><span class="prog">${own}/${tot} owned</span></button></h2><div class="list"${open?'':' hidden'}>`;
+    h+=`<section class="set${open?'':' closed'}" data-set="${id}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(s[0])}<small>${esc(s[1])} · ${s[2].slice(0,7).replace('/','-')} · ${cards.length} card${cards.length===1?'':'s'}</small><span class="prog">${own}/${tot} owned</span>${vals}</button></h2><div class="list"${open?'':' hidden'}>`;
     for(const c of cards)h+=row(c,false);
     h+='</div></section>';
   }
@@ -656,6 +663,7 @@ document.addEventListener('click',e=>{const d=document.getElementById('rarDD');i
 document.getElementById('rarDD').addEventListener('keydown',e=>{if(e.key==='Escape'){const d=e.currentTarget;d.open=false;d.querySelector('summary').focus()}});
 syncRar();
 refresh();
+{const fb=document.querySelector('.filters');const setFh=()=>document.documentElement.style.setProperty('--fh',(fb?fb.offsetHeight:0)+'px');setFh();if(window.ResizeObserver&&fb)new ResizeObserver(setFh).observe(fb);window.addEventListener('resize',setFh)}
 const binder=document.getElementById('binder'),lb=document.getElementById('lb');
 const byId=Object.fromEntries(C.map(c=>[c[0],c]));
 ['buyScope','buyCond','buyMin','buyMax'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
@@ -680,6 +688,22 @@ const HEROES=[
   {k:'entei',cap:'Entei',main:'bw5-103',sides:['swsh12pt5gg-GG36','sm35-74'],fx:'embers',meta:'#6b2a10'},
   {k:'reshiram',cap:'Reshiram',main:'rsv10pt5-173',sides:['bw11-114','rsv10pt5-166'],fx:'swirl',meta:'#6c7a8e'},
   {k:'dragonite',cap:'Dragonite',main:'swsh7-192',sides:['me2pt5-290','sm11-248'],fx:'clouds',meta:'#c56d18'}];
+// Mixed-type headers: each time one comes up, it picks a random card from a random few of these Pok\u00e9mon.
+const MIXES=[
+  {k:'mix-fire',cap:'Fire types',mix:['arcanine','charizard','entei','reshiram'],css:'charizard',pal:'charizard',fx:'embers',meta:'#9c1d0e'},
+  {k:'mix-water',cap:'Water types',mix:['suicune','kyogre'],css:'kyogre',fx:'bubbles',meta:'#0a3a74'},
+  {k:'mix-electric',cap:'Electric types',mix:['zeraora','raikou','zekrom'],css:'zeraora',pal:'zeraora',fx:'bolt',meta:'#1b2c66'},
+  {k:'mix-dragon',cap:'Dragon types',mix:['rayquaza','dragonite','zekrom','reshiram'],css:'rayquaza',pal:'rayquaza',fx:'aurora',meta:'#0d5333'}];
+// rotation order: a mixed header after every three single-Pok\u00e9mon ones
+MIXES.forEach((m,i)=>HEROES.splice(3+i*4,0,m));
+function pickMix(m){
+  const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+  const pools=shuffle(m.mix).map(k=>{const h=HEROES.find(x=>x.k===k);return shuffle([h.main,...h.sides].filter(id=>byId[id]))});
+  const out=[];
+  for(let round=0;out.length<3&&round<3;round++)for(const p of pools){if(out.length<3&&p[round]&&!out.includes(p[round]))out.push(p[round])}
+  out.sort((a,b)=>(byId[b][5]||0)-(byId[a][5]||0));   // priciest card in front
+  return {main:out[0],sides:out.slice(1)};
+}
 const HPAL={
   arcanine:{g:['rgba(255,224,140,.55)','rgba(255,128,40,.25)','rgba(255,90,20,0)'],a:['rgba(255,245,200,.85)','rgba(255,190,80,.55)','rgba(255,110,30,.28)','rgba(200,50,10,0)'],sh:'rgba(255,150,40,.8)'},
   reshiram:{g:['rgba(255,255,255,.6)','rgba(150,205,255,.3)','rgba(120,170,255,0)'],a:['rgba(255,255,255,.9)','rgba(170,220,255,.6)','rgba(255,160,80,.3)','rgba(120,170,255,0)'],sh:'rgba(140,200,255,.9)'},
@@ -695,7 +719,7 @@ let HERO=HEROES[0];
 (function(){let i=-1;try{const q=new URLSearchParams(location.search).get('hero');i=HEROES.findIndex(h=>h.k===q);
   if(i<0){const last=HEROES.findIndex(h=>h.k===localStorage.getItem('binder-hero'));i=(last+1)%HEROES.length}
   localStorage.setItem('binder-hero',HEROES[i].k)}catch(e){i=Math.floor(Math.random()*HEROES.length)}
-  HERO=HEROES[Math.max(0,i)];const hero=document.getElementById('hero');if(hero)hero.dataset.hero=HERO.k;
+  HERO=HEROES[Math.max(0,i)];if(HERO.mix)HERO=Object.assign({},HERO,pickMix(HERO));const hero=document.getElementById('hero');if(hero)hero.dataset.hero=HERO.css||HERO.k;
   const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=HERO.meta})();
 (function(){const hc=document.getElementById('heroCards');if(!hc)return;
   const fav=byId[HERO.main];const others=HERO.sides.map(id=>byId[id]).filter(Boolean);
@@ -782,7 +806,7 @@ let HERO=HEROES[0];
       for(const q of P.slice(16,34)){const a=Math.max(0,Math.sin(t*0.004+q.p*3)),x=q.x*w,y=q.y*h,s=3+q.s*6;if(a<.05)continue;
         ctx.fillStyle=`rgba(255,250,220,${a*.9})`;ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x+s*.25,y-s*.25);ctx.lineTo(x+s,y);ctx.lineTo(x+s*.25,y+s*.25);ctx.lineTo(x,y+s);ctx.lineTo(x-s*.25,y+s*.25);ctx.lineTo(x-s,y);ctx.lineTo(x-s*.25,y-s*.25);ctx.closePath();ctx.fill()}}
   };
-  const fx=FX[HERO.fx]||FX.swirl,pal=HPAL[HERO.k];
+  const fx=FX[HERO.fx]||FX.swirl,pal=HPAL[HERO.pal||HERO.k];
   function draw(t){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.globalCompositeOperation='source-over';
     fx(t,w*0.62,h*0.52,Math.max(w,h)*0.75,pal);ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0}
   size();draw(still?4000:0);window.addEventListener('resize',()=>{size();draw(performance.now())});
