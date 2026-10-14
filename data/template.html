@@ -53,6 +53,20 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .prange{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)}
 .prange input{width:6.2rem}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
+.rdd{position:relative}
+.rdd summary{list-style:none;cursor:pointer;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 30px 8px 10px;position:relative;white-space:nowrap;max-width:15rem;overflow:hidden;text-overflow:ellipsis}
+.rdd summary::-webkit-details-marker{display:none}
+.rdd summary::after{content:"";position:absolute;right:11px;top:50%;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg)}
+.rdd[open] summary::after{transform:translateY(-25%) rotate(-135deg)}
+.rdd.on summary{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
+.rdd summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rpanel{position:absolute;z-index:20;top:calc(100% + 6px);left:0;width:max-content;max-width:min(88vw,300px);max-height:min(60vh,440px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgb(0 0 0 / .18);padding:8px}
+.rpanel label{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:.92rem}
+.rpanel label:hover{background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.rpanel label small{color:var(--muted)}
+.rpanel input{width:17px;height:17px;accent-color:var(--accent);margin:0}
+.rtop{display:flex;gap:6px;padding:2px 2px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.rtop button{flex:1;font:700 .78rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:7px;padding:6px 8px;cursor:pointer}
 .chip{font:700 .78rem var(--f-body);letter-spacing:.04em;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;padding:6px 11px;cursor:pointer}
 .chip[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 14%,var(--panel));border-color:var(--accent);color:var(--ink)}
 .chip[aria-pressed="true"]::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:1px}
@@ -279,23 +293,27 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
   </section>
   <div class="filters">
     <input id="q" type="search" placeholder="Search Pokémon or set" aria-label="Search cards">
-    <div class="chips" id="rarChips">
-      <button class="chip" data-r="SIR" aria-pressed="true">SIR</button>
-      <button class="chip" data-r="IR" aria-pressed="true">IR</button>
-      <button class="chip" data-r="FA" aria-pressed="true">Full Art</button>
-      <button class="chip" data-r="VINT" aria-pressed="true">Vintage</button>
-      <button class="chip" data-r="VALT" aria-pressed="true">VMAX Alt Art</button>
-      <button class="chip" data-r="VREG" aria-pressed="true">VMAX/VSTAR</button>
-      <button class="chip" data-r="RAIN" aria-pressed="true">Rainbow</button>
-      <button class="chip" data-r="GOLD" aria-pressed="true">Gold &amp; Secret</button>
-      <button class="chip" data-r="HR" aria-pressed="true">Gold ex</button>
-      <button class="chip" data-r="SHINY" aria-pressed="true">Shiny Vault</button>
-      <button class="chip" data-r="GG" aria-pressed="true">Galarian Gallery</button>
-      <button class="chip" data-r="TG" aria-pressed="true">Trainer Gallery</button>
-      <button class="chip" data-r="BWR" aria-pressed="true" title="Black White Rare">BWR</button>
-      <button class="chip" data-r="MHR" aria-pressed="true" title="Mega Hyper Rare">Mega Hyper</button>
-      <button class="chip" data-r="MAR" aria-pressed="true" title="Mega Attack Rare">Mega Attack</button>
-    </div>
+    <details class="rdd" id="rarDD">
+      <summary id="rarSum" aria-label="Card types">All card types</summary>
+      <div class="rpanel" id="rarChips">
+        <div class="rtop"><button type="button" data-all="1">Select all</button><button type="button" data-all="0">Clear all</button></div>
+        <label><input type="checkbox" value="SIR" checked> SIR</label>
+        <label><input type="checkbox" value="IR" checked> IR</label>
+        <label><input type="checkbox" value="FA" checked> Full Art</label>
+        <label><input type="checkbox" value="VINT" checked> Vintage</label>
+        <label><input type="checkbox" value="VALT" checked> VMAX Alt Art</label>
+        <label><input type="checkbox" value="VREG" checked> VMAX/VSTAR</label>
+        <label><input type="checkbox" value="RAIN" checked> Rainbow</label>
+        <label><input type="checkbox" value="GOLD" checked> Gold &amp; Secret</label>
+        <label><input type="checkbox" value="HR" checked> Gold ex</label>
+        <label><input type="checkbox" value="SHINY" checked> Shiny Vault</label>
+        <label><input type="checkbox" value="GG" checked> Galarian Gallery</label>
+        <label><input type="checkbox" value="TG" checked> Trainer Gallery</label>
+        <label><input type="checkbox" value="BWR" checked> BWR <small>(Black White Rare)</small></label>
+        <label><input type="checkbox" value="MHR" checked> Mega Hyper <small>(Mega Hyper Rare)</small></label>
+        <label><input type="checkbox" value="MAR" checked> Mega Attack <small>(Mega Attack Rare)</small></label>
+      </div>
+    </details>
     <select id="era" aria-label="Era"><option value="">All eras</option></select>
     <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="wanted">Wanted</option><option value="missing">Missing</option></select>
     <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
@@ -469,7 +487,7 @@ let collapsed=new Set();try{collapsed=new Set(JSON.parse(localStorage.getItem('b
 function saveCollapsed(){try{localStorage.setItem('binder-collapsed',JSON.stringify([...collapsed]))}catch(e){}}
 try{const p=JSON.parse(localStorage.getItem('binder-filters')||'null');if(p){f.era=p.era||'';f.status=p.status||'';f.sort=p.sort||'set';f.pmin=p.pmin??null;f.pmax=p.pmax??null;const off=p.x||(p.r?['IR','SIR','FA'].filter(k=>!p.r.includes(k)):[]);f.r=new Set(KINDS.filter(k=>!off.includes(k)));if(!f.r.size)f.r=new Set(KINDS)}}catch(e){}
 eraSel.value=f.era;document.getElementById('status').value=f.status;document.getElementById('sort').value=f.sort;
-document.querySelectorAll('#rarChips .chip').forEach(b=>b.setAttribute('aria-pressed',f.r.has(b.dataset.r)));
+
 function keep(c){if(!f.r.has(c[4]))return false;if(f.pmin==null&&f.pmax==null)return true;const p=c[5];if(p==null)return false;return (f.pmin==null||p>=f.pmin)&&(f.pmax==null||p<=f.pmax)}
 function saveFilters(){try{localStorage.setItem('binder-filters',JSON.stringify({era:f.era,status:f.status,sort:f.sort,pmin:f.pmin,pmax:f.pmax,x:KINDS.filter(k=>!f.r.has(k))}))}catch(e){}}
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
@@ -563,12 +581,16 @@ document.getElementById('colAll').addEventListener('click',()=>setAll(true));
 document.getElementById('expAll').addEventListener('click',()=>setAll(false));
 function syncColBtns(){const on=f.sort==='set';document.getElementById('colAll').hidden=!on;document.getElementById('expAll').hidden=!on}
 syncColBtns();
-document.getElementById('rarChips').addEventListener('click',e=>{
-  const b=e.target.closest('.chip');if(!b)return;const r=b.dataset.r;
-  if(f.r.has(r)&&f.r.size>1)f.r.delete(r);else f.r.add(r);
-  document.querySelectorAll('#rarChips .chip').forEach(x=>x.setAttribute('aria-pressed',f.r.has(x.dataset.r)));
-  saveFilters();refresh();
-});
+const RSHORT={};document.querySelectorAll('#rarChips input').forEach(i=>RSHORT[i.value]=i.parentNode.firstChild.nextSibling.textContent.trim());
+function syncRar(){document.querySelectorAll('#rarChips input').forEach(i=>i.checked=f.r.has(i.value));const n=f.r.size,sum=document.getElementById('rarSum');
+  sum.textContent=n===KINDS.length?'All card types':n===0?'No card types':n<=2?KINDS.filter(k=>f.r.has(k)).map(k=>RSHORT[k]).join(', '):n+' card types';
+  document.getElementById('rarDD').classList.toggle('on',n!==KINDS.length)}
+document.getElementById('rarChips').addEventListener('change',e=>{const i=e.target;if(!i.matches('input'))return;if(i.checked)f.r.add(i.value);else f.r.delete(i.value);syncRar();saveFilters();refresh()});
+document.getElementById('rarChips').addEventListener('click',e=>{const b=e.target.closest('button[data-all]');if(!b)return;f.r=b.dataset.all==='1'?new Set(KINDS):new Set();syncRar();saveFilters();refresh()});
+document.getElementById('rarDD').addEventListener('toggle',e=>{const d=e.currentTarget,pn=document.getElementById('rarChips');pn.style.left='0px';if(!d.open)return;const r=pn.getBoundingClientRect(),over=r.right-(document.documentElement.clientWidth-12);if(over>0)pn.style.left=(-Math.min(over,d.getBoundingClientRect().left-12))+'px'});
+document.addEventListener('click',e=>{const d=document.getElementById('rarDD');if(d.open&&!d.contains(e.target))d.open=false});
+document.getElementById('rarDD').addEventListener('keydown',e=>{if(e.key==='Escape'){const d=e.currentTarget;d.open=false;d.querySelector('summary').focus()}});
+syncRar();
 refresh();
 const binder=document.getElementById('binder'),lb=document.getElementById('lb');
 const byId=Object.fromEntries(C.map(c=>[c[0],c]));
