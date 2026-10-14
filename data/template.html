@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chase Card Binder</title>
+<meta name="theme-color" content="#c4501a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Binder">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Familjen+Grotesk:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+/* Layout: sticky filter bar over a binder of set "pages", each a list of card pockets */
+:root{
+  --bg:#fbf6ef; --panel:#ffffff; --ink:#2a1d15; --muted:#7a6352; --line:#ecdcc8;
+  --accent:#c4501a; --accent-ink:#ffffff;
+  --ir:#a86a10; --ir-bg:#fbefd6; --sir:#b0236e; --sir-bg:#fbe3ef; --fa:#2c6b8f; --fa-bg:#e0eef6;
+  --own:#1f7a4a; --own-bg:#dcf2e5; --want:#8a4b00; --want-bg:#fde9cf;
+  --flame:#e4611b; --flame-deep:#8f2a0b; --mane:#f6e2b6; --stripe:#1e140f;
+  --f-display:"Bricolage Grotesque","Familjen Grotesk",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17110e; --panel:#221915; --ink:#f6e6cc; --muted:#c0a68b; --line:#3a2b22;
+  --accent:#ff8a3d; --accent-ink:#1a0f0a;
+  --ir:#e8b54f; --ir-bg:#3b2c14; --sir:#f17ab4; --sir-bg:#3d1b2d; --fa:#7cc0e6; --fa-bg:#16303f;
+  --own:#6bd59a; --own-bg:#173826; --want:#f5b25c; --want-bg:#3d2810; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17110e; --panel:#221915; --ink:#f6e6cc; --muted:#c0a68b; --line:#3a2b22;
+  --accent:#ff8a3d; --accent-ink:#1a0f0a;
+  --ir:#e8b54f; --ir-bg:#3b2c14; --sir:#f17ab4; --sir-bg:#3d1b2d; --fa:#7cc0e6; --fa-bg:#16303f;
+  --own:#6bd59a; --own-bg:#173826; --want:#f5b25c; --want-bg:#3d2810; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body)}
+.wrap{max-width:860px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 16px;max-width:62ch}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.stat b{display:block;font:500 1.15rem var(--f-mono);font-variant-numeric:tabular-nums}
+.stat span{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.bar{height:4px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--own)}
+.filters{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters input,.filters select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+#q{flex:1 1 200px}
+.prange{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)}
+.prange input{width:6.2rem}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:700 .78rem var(--f-body);letter-spacing:.04em;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;padding:6px 11px;cursor:pointer}
+.chip[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 14%,var(--panel));border-color:var(--accent);color:var(--ink)}
+.chip[aria-pressed="true"]::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:1px}
+.chip:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.set{margin-top:22px}
+.set h2{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font:700 1.1rem var(--f-display);margin:0 0 8px}
+.set h2 small{font:400 .8rem var(--f-body);color:var(--muted)}
+.set h2 .prog{margin-left:auto;font:500 .8rem var(--f-mono);color:var(--muted)}
+.sethd{all:unset;box-sizing:border-box;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;width:100%;cursor:pointer;border-radius:6px}
+.sethd:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.sethd:hover .chev{color:var(--ink)}
+.chev{display:inline-block;width:1em;color:var(--muted);font-size:.75em}
+.chev::before{content:"\25BC"}
+.sethd[aria-expanded="false"] .chev::before{content:"\25B6"}
+.set.closed h2{margin-bottom:0}
+.colbtns{display:contents}
+.list{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:grid;grid-template-columns:48px minmax(0,1fr) 6rem auto;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row.owned{background:color-mix(in srgb,var(--own-bg) 55%,transparent)}
+.no{font:500 .8rem var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.nm{min-width:0}
+.nm a{color:var(--ink);text-decoration:none;font-weight:700;overflow-wrap:anywhere}
+.nm a:hover{text-decoration:underline}
+.tag{display:inline-block;font:700 .66rem var(--f-body);letter-spacing:.06em;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+.t-IR{color:var(--ir);background:var(--ir-bg)} .t-SIR{color:var(--sir);background:var(--sir-bg)} .t-VINT{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel))} .t-FA{color:var(--fa);background:var(--fa-bg)} .t-BWR{color:var(--ink);background:var(--line)} .t-VALT{color:var(--sir);background:var(--sir-bg)} .t-VREG{color:var(--fa);background:var(--fa-bg)} .t-RAIN{color:var(--accent);background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)} .t-GOLD,.t-HR{color:var(--want);background:var(--want-bg)} .t-SHINY{color:var(--fa);background:var(--fa-bg)} .t-GG,.t-TG{color:var(--ir);background:var(--ir-bg)} .t-MHR,.t-MAR{color:var(--want);background:var(--want-bg)}
+.acts{display:flex;gap:6px}
+.pr{font:500 .86rem var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.pr.na{color:var(--muted)}
+.setn{display:block;font-size:.76rem;color:var(--muted)}
+.acts button{font:700 .74rem var(--f-body);border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:5px 9px;cursor:pointer}
+.acts button.on-own{background:var(--own-bg);color:var(--own);border-color:var(--own)}
+.acts button.on-want{background:var(--want-bg);color:var(--want);border-color:var(--want)}
+.empty{color:var(--muted);padding:32px 0;text-align:center}
+.foot{color:var(--muted);font-size:.8rem;margin-top:28px;max-width:70ch}
+.save{font-size:.78rem;color:var(--muted)}
+.th{all:unset;cursor:zoom-in;display:block;width:48px;aspect-ratio:245/342;border-radius:3px;overflow:hidden;background:var(--line)}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.th.noimg{cursor:default}
+.no{display:block;margin-top:2px}
+.acts{flex-wrap:wrap;align-items:center}
+.paid{display:flex;align-items:center;gap:4px;font-size:.74rem;color:var(--muted)}
+.usemkt{font:700 .72rem var(--f-body);border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:4px 8px;cursor:pointer}
+.usemkt:hover{border-color:var(--own);color:var(--own)}
+.row.owned .acts,.row.wanted .acts{grid-column:2 / -1;justify-content:flex-start}
+.paid select{font:500 .78rem var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 4px;max-width:10rem}
+.paid input{width:5.4rem;font:500 .8rem var(--f-mono);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.delta{display:block;font:500 .72rem var(--f-mono)}
+.up{color:var(--own)} .down{color:var(--sir)}
+.stat b.up{color:var(--own)} .stat b.down{color:var(--sir)}
+dialog.lb{border:0;border-radius:14px;padding:0;background:var(--panel);color:var(--ink);max-width:min(94vw,820px);width:100%;max-height:92vh}
+.dv{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:20px;padding:18px}
+.dv>img{width:100%}
+.dvb{min-width:0;display:flex;flex-direction:column;gap:14px}
+.dvhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.dvprice{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.dvprice .lab{flex-basis:100%}
+.dvprice b{font:500 1.6rem var(--f-mono);font-variant-numeric:tabular-nums}
+.dvchg{font:500 .82rem var(--f-mono);color:var(--muted)}
+.lab{font-size:.7rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.hero{position:relative;display:flex;gap:18px;align-items:center;justify-content:space-between;overflow:hidden;border-radius:18px;padding:22px 24px 40px;margin-bottom:14px;color:#fff6e8;
+  background:linear-gradient(100deg,var(--flame-deep) 0%,#b8400f 45%,var(--flame) 100%);box-shadow:inset 0 -7px 0 var(--mane)}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(118deg,transparent 0 26px,var(--stripe) 26px 34px,transparent 34px 60px);opacity:.55;
+  -webkit-mask-image:linear-gradient(90deg,transparent 20%,#000 50%,transparent 80%);mask-image:linear-gradient(90deg,transparent 20%,#000 50%,transparent 80%)}
+.herotext{position:relative;min-width:0;max-width:62ch}
+.hero h1{color:#fff;font-family:var(--f-display);font-weight:800;letter-spacing:-.01em;font-size:clamp(1.8rem,4.5vw,2.6rem);text-shadow:0 2px 0 rgb(0 0 0 / .18)}
+.hero .sub{color:#ffe9cc;margin-bottom:0;text-shadow:0 1px 2px rgb(60 15 0 / .55)}
+.hero .sub .save{color:#ffd7a8}
+.swirl{position:absolute;top:0;right:0;height:100%;width:min(520px,70%);pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 30%);mask-image:linear-gradient(90deg,transparent,#000 30%)}
+.herocards{position:relative;display:flex;align-items:center;flex:none;padding:6px 22px 0 0}
+.herocards button{all:unset;cursor:zoom-in;aspect-ratio:245/342;border-radius:6px;overflow:hidden;background:rgb(0 0 0 / .3);box-shadow:0 8px 20px rgb(0 0 0 / .45);transition:transform .2s}
+.herocards .side{width:78px}
+.herocards .main{width:118px;z-index:2;margin-inline:-18px;box-shadow:0 10px 28px rgb(0 0 0 / .55),0 0 0 2px #ffd27a,0 0 26px 6px rgb(255 170 60 / .55)}
+.herocards .side.l{transform:rotate(-11deg) translateY(10px)}
+.herocards .side.r{transform:rotate(11deg) translateY(10px)}
+.herocards button:hover,.herocards button:focus-visible{z-index:3;outline:2px solid #fff;outline-offset:2px}
+.herocards .main:hover,.herocards .main:focus-visible{transform:translateY(-6px) scale(1.03)}
+.herocards .side.l:hover,.herocards .side.l:focus-visible{transform:rotate(-6deg) translateY(-2px)}
+.herocards .side.r:hover,.herocards .side.r:focus-visible{transform:rotate(6deg) translateY(-2px)}
+.herocards img{width:100%;height:100%;object-fit:cover;display:block}
+.herocap{position:absolute;left:50%;bottom:-26px;text-shadow:0 1px 2px rgb(0 0 0 / .5);transform:translateX(-50%);white-space:nowrap;font:700 .7rem var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:#ffe9cc}
+@media (max-width:640px){.hero{flex-direction:column;align-items:flex-start;padding:18px 16px 44px}.hero::before{display:none}.herocards{align-self:center;padding:0}.herocards .side{width:62px}.herocards .main{width:94px}.swirl{width:100%;height:46%;top:auto;bottom:0;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}}
+@media (prefers-reduced-motion:reduce){.herocards button{transition:none}}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-block:4px 16px}
+.tabs button{font:700 .95rem var(--f-display);background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:8px 14px;margin-bottom:-1px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs{overflow-x:auto;scrollbar-width:none}
+.tabs button{white-space:nowrap}
+.tabs{gap:0}
+@media (max-width:480px){.tabs button{padding:8px 8px;font-size:.86rem}}
+.tabn{font:500 .72rem var(--f-mono);color:var(--muted);margin-left:2px}
+.viewintro{margin:0 0 12px;color:var(--muted);font-size:.88rem}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mvctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mvctl select,.mvctl input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
+.mvrng{display:flex;flex-wrap:wrap;margin:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px}
+.mvrng button{font:700 .78rem var(--f-body);border:0;background:transparent;color:var(--muted);border-radius:6px;padding:5px 10px;cursor:pointer}
+.mvrng button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.mvsec{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.mvhd{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.mvhd h2{font:700 1.15rem var(--f-display);margin:0}
+.mvsum{margin:0;color:var(--muted);font-size:.85rem}
+.mvsum b{font-family:var(--f-mono);font-weight:500}
+.mvgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:10px}
+.mvgrid h3{font:700 .72rem var(--f-body);letter-spacing:.07em;text-transform:uppercase;margin:0 0 4px}
+.mvl{list-style:none;margin:0;padding:0}
+.mvl li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.mvl li:first-child{border-top:0}
+.mvl .th{width:34px}
+.mvl .nm{font-size:.86rem}
+.mvl .nm b{display:block;overflow-wrap:anywhere}
+.mvl .nm small{display:block;color:var(--muted);font-size:.74rem}
+.mvl .ch{text-align:right;font:500 .82rem var(--f-mono);font-variant-numeric:tabular-nums}
+.mvl .ch small{display:block;color:var(--muted);font-size:.72rem}
+.mvl li.mvset{grid-template-columns:minmax(0,1fr) auto;cursor:pointer}
+.mvl li.mvset:hover b{text-decoration:underline}
+.mvl li.none{display:block;color:var(--muted);font-size:.85rem}
+@media (max-width:640px){.mvgrid{grid-template-columns:1fr}}
+.buy{margin-block:4px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:12px 14px}
+.buyt{font:700 1.1rem var(--f-display)}
+.buy .sethd small{font:400 .8rem var(--f-body);color:var(--muted)}
+.buyctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.buyctl select,.buyctl input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
+.buylist{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:0}
+.buylist li{display:grid;grid-template-columns:1.6rem 40px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.buylist li:first-child{border-top:0}
+.buylist .rk{font:500 .8rem var(--f-mono);color:var(--muted);text-align:right}
+.buylist .th{width:40px}
+.why{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.why span{font:700 .68rem var(--f-body);border-radius:4px;padding:2px 6px;background:var(--own-bg);color:var(--own)}
+.why span.lst{background:var(--fa-bg);color:var(--fa)}
+.buylist .pr b{display:block}
+.buylist .pr .avg{display:block;color:var(--muted);font-size:.72rem}
+@media (max-width:560px){.buylist li{grid-template-columns:40px minmax(0,1fr) auto}.buylist .rk{display:none}}
+.chartbox{border:1px solid var(--line);border-radius:10px;padding:10px}
+.rng{display:flex;gap:4px;margin-bottom:6px}
+.lb .rng button{font:700 .72rem var(--f-body);border:1px solid transparent;background:transparent;color:var(--muted);border-radius:6px;padding:3px 8px;cursor:pointer}
+.lb .rng button[aria-pressed="true"]{background:var(--bg);border-color:var(--line);color:var(--ink)}
+.plot{position:relative}
+#dvChart{display:block;width:100%;height:170px;touch-action:none}
+.tip{position:absolute;top:0;pointer-events:none;background:var(--ink);color:var(--panel);font:500 .74rem var(--f-mono);padding:4px 7px;border-radius:6px;white-space:nowrap;transform:translateX(-50%)}
+.note{margin:6px 0 0;font-size:.76rem;color:var(--muted)}
+.sec{display:flex;flex-direction:column;gap:6px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(7rem,1fr));gap:8px}
+.kv div{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
+.kv div>span{display:block;font-size:.7rem;color:var(--muted)}
+.kv b{font:500 .9rem var(--f-mono);font-variant-numeric:tabular-nums}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.links a{font:700 .78rem var(--f-body);color:var(--accent);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none}
+.links a:hover{border-color:var(--accent)}
+.mv{display:block;font:500 .7rem var(--f-mono);color:var(--muted)}
+.mv.up{color:var(--own)} .mv.down{color:var(--sir)}
+@media (max-width:640px){.dv{grid-template-columns:1fr;padding:14px}.dv>img{max-width:220px;margin:0 auto}.kv{grid-template-columns:repeat(2,minmax(0,1fr))}}
+dialog.lb::backdrop{background:rgb(0 0 0 / .7)}
+.dv>img{height:auto;border-radius:10px;display:block;aspect-ratio:733/1024;background:var(--line)}
+.lb h3{font:700 1.25rem var(--f-display);margin:0 0 2px;text-wrap:balance}
+.lb p{margin:0;color:var(--muted);font-size:.85rem}
+.lb button{font:700 .8rem var(--f-body);border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer}
+.backup{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.backup button,.filebtn{font:700 .8rem var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer}
+.backup button:hover,.filebtn:hover{border-color:var(--accent)}
+.syncbtn{display:inline-flex;align-items:center;gap:7px;margin-top:10px;font:700 .8rem var(--f-body);color:#fff;background:rgb(255 255 255 / .14);border:1px solid rgb(255 255 255 / .4);border-radius:999px;padding:6px 13px;cursor:pointer;position:relative;z-index:2}
+.syncbtn:hover{background:rgb(255 255 255 / .24)}
+.syncbtn .dot{width:8px;height:8px;border-radius:50%;background:#ffd7a8}
+.syncbtn[data-s="ok"] .dot{background:#5fe08a}
+.syncbtn[data-s="busy"] .dot{background:#ffd23d}
+.syncbtn[data-s="off"] .dot{background:#ff9a5a}
+.syncbtn[data-s="out"]{background:#fff;color:#a63c10;border-color:#fff}
+.syncbtn[data-s="out"] .dot{background:#c4501a}
+dialog.sd{border:0;border-radius:14px;padding:22px;background:var(--panel);color:var(--ink);width:min(92vw,400px);box-sizing:border-box}
+dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
+.sd h2{font:800 1.3rem var(--f-display,inherit);margin:0 30px 8px 0}
+.sd form{position:relative;margin:0}
+.sd label{display:block;font-weight:700;font-size:.85rem;margin-top:12px}
+.sd input{display:block;width:100%;box-sizing:border-box;margin-top:4px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+.sdp{margin:0;font-size:.9rem;color:var(--muted)}.sdp strong{color:var(--ink)}
+.sdm{margin-top:8px;font-size:.8rem}
+.sderr{color:#c0392b;font-size:.85rem;min-height:1.2em;margin:10px 0 0}
+.sdrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sd button{font:700 .9rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:9px 14px;cursor:pointer}
+.sd button.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.sd button.lnk{border:0;background:none;padding:6px 0;margin-top:6px;color:var(--accent);font-weight:500}
+.sd button.sdx{position:absolute;top:-10px;right:-8px;border:0;background:none;font-size:1.5rem;line-height:1;padding:6px 10px;color:var(--muted)}
+.sd button:disabled{opacity:.6;cursor:default}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:48px minmax(0,1fr) auto}.acts{grid-column:2 / 4}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="herotext">
+            <h1>Chase Card Binder</h1>
+  <p class="sub">Your chase-card checklist: every English IR, SIR, full art, VMAX and VSTAR, gallery card, shiny, gold and other chase rarity from Black &amp; White to today, with daily TCGplayer prices. Tap a picture for its price chart, or a name to open it on TCGplayer. <span class="save" id="saveState"></span></p>
+      <button id="syncBtn" type="button" class="syncbtn" hidden><span class="dot" aria-hidden="true"></span><span id="syncTxt">Sign in to sync</span></button>
+    </div>
+    <canvas class="swirl" id="heroSwirl" aria-hidden="true"></canvas>
+    <div class="herocards" id="heroCards" aria-label="Arcanine cards in the checklist"></div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" id="tabBtnOwned" data-tab="owned" aria-selected="true">My Binder <span class="tabn" id="nOwned"></span></button>
+    <button type="button" role="tab" id="tabBtnWant" data-tab="want" aria-selected="false">Want List <span class="tabn" id="nWant"></span></button>
+    <button type="button" role="tab" id="tabBtnAll" data-tab="all" aria-selected="false">All Cards</button>
+    <button type="button" role="tab" id="tabBtnMovers" data-tab="movers" aria-selected="false">Movers</button>
+  </nav>
+  <div id="tabBinder" role="tabpanel">
+  <p class="viewintro" id="viewIntro"></p>
+  <div class="stats" id="stats"></div>
+  <section class="buy" id="buy">
+    <div class="buyhd">
+      <button class="sethd" type="button" id="buyToggle" aria-expanded="true"><span class="chev" aria-hidden="true"></span><span class="buyt">Buy list</span><small id="buySub"></small></button>
+    </div>
+    <div id="buyBody">
+      <div class="buyctl">
+        <select id="buyScope" aria-label="Which cards"><option value="want">My Want list</option><option value="missing" selected>Cards I don't own</option><option value="all">All cards</option></select>
+        <select id="buyCond" aria-label="Condition you buy"><option value="NM">Near Mint only</option><option value="LP" selected>Near Mint or Lightly Played</option><option value="any">Any condition</option></select>
+        <span class="prange">Price<input id="buyMin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Buy list minimum price">to<input id="buyMax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Buy list maximum price"></span>
+      </div>
+      <ol class="buylist" id="buyList"></ol>
+      <p class="note" id="buyNote"></p>
+    </div>
+  </section>
+  <div class="filters">
+    <input id="q" type="search" placeholder="Search Pokémon or set" aria-label="Search cards">
+    <div class="chips" id="rarChips">
+      <button class="chip" data-r="SIR" aria-pressed="true">SIR</button>
+      <button class="chip" data-r="IR" aria-pressed="true">IR</button>
+      <button class="chip" data-r="FA" aria-pressed="true">Full Art</button>
+      <button class="chip" data-r="VINT" aria-pressed="true">Vintage</button>
+      <button class="chip" data-r="VALT" aria-pressed="true">VMAX Alt Art</button>
+      <button class="chip" data-r="VREG" aria-pressed="true">VMAX/VSTAR</button>
+      <button class="chip" data-r="RAIN" aria-pressed="true">Rainbow</button>
+      <button class="chip" data-r="GOLD" aria-pressed="true">Gold &amp; Secret</button>
+      <button class="chip" data-r="HR" aria-pressed="true">Gold ex</button>
+      <button class="chip" data-r="SHINY" aria-pressed="true">Shiny Vault</button>
+      <button class="chip" data-r="GG" aria-pressed="true">Galarian Gallery</button>
+      <button class="chip" data-r="TG" aria-pressed="true">Trainer Gallery</button>
+      <button class="chip" data-r="BWR" aria-pressed="true" title="Black White Rare">BWR</button>
+      <button class="chip" data-r="MHR" aria-pressed="true" title="Mega Hyper Rare">Mega Hyper</button>
+      <button class="chip" data-r="MAR" aria-pressed="true" title="Mega Attack Rare">Mega Attack</button>
+    </div>
+    <select id="era" aria-label="Era"><option value="">All eras</option></select>
+    <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="wanted">Wanted</option><option value="missing">Missing</option></select>
+    <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
+    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="move">Biggest movers, 7 days</option></select>
+  </div>
+  <div class="backup">
+    <button id="colAll" type="button">Collapse all sets</button>
+    <button id="expAll" type="button">Expand all sets</button>
+    <button id="exportBtn" type="button">Back up checklist</button>
+    <label class="filebtn" for="importFile">Restore from backup</label>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+    <span id="backupMsg" class="save" role="status"></span>
+  </div>
+  <div id="binder"></div>
+  </div>
+  <div id="tabMovers" role="tabpanel" aria-labelledby="tabBtnMovers" hidden>
+    <div class="mvctl">
+      <div class="rng mvrng" id="mvRng" role="group" aria-label="Period"><button type="button" data-d="1" aria-pressed="true">1 day</button><button type="button" data-d="7" aria-pressed="false">7 days</button><button type="button" data-d="30" aria-pressed="false">30 days</button><button type="button" data-d="91" aria-pressed="false">3 mo</button><button type="button" data-d="182" aria-pressed="false">6 mo</button><button type="button" data-d="365" aria-pressed="false">1 yr</button><button type="button" data-d="730" aria-pressed="false">2 yr</button><button type="button" data-d="0" aria-pressed="false">All time</button></div>
+      <select id="mvMetric" aria-label="Rank by"><option value="pct">Rank by % change</option><option value="abs">Rank by $ change</option></select>
+      <span class="prange">Skip cards under<input id="mvMin" type="number" inputmode="decimal" min="0" step="any" placeholder="$5" aria-label="Skip cards under this price"></span>
+    </div>
+    <p class="note" id="mvNote"></p>
+    <section class="mvsec">
+      <div class="mvhd"><h2>Your cards</h2><p class="mvsum" id="mvMineSum"></p></div>
+      <div class="mvgrid"><div><h3 class="up">Biggest winners</h3><ol class="mvl" id="mvMineUp"></ol></div><div><h3 class="down">Biggest losers</h3><ol class="mvl" id="mvMineDown"></ol></div></div>
+    </section>
+    <section class="mvsec">
+      <div class="mvhd"><h2>Whole market</h2><p class="mvsum" id="mvAllSum"></p></div>
+      <div class="mvgrid"><div><h3 class="up">Biggest winners</h3><ol class="mvl" id="mvAllUp"></ol></div><div><h3 class="down">Biggest losers</h3><ol class="mvl" id="mvAllDown"></ol></div></div>
+    </section>
+    <section class="mvsec">
+      <div class="mvhd"><h2>Sets</h2><p class="mvsum">Change in the combined market value of each set's cards in this binder. Tap a set to see its cards.</p></div>
+      <div class="mvgrid"><div><h3 class="up">Best sets</h3><ol class="mvl" id="mvSetUp"></ol></div><div><h3 class="down">Worst sets</h3><ol class="mvl" id="mvSetDown"></ol></div></div>
+    </section>
+  </div>
+  <dialog class="sd" id="syncDlg" aria-labelledby="sdTitle">
+    <form id="sdForm" method="dialog" novalidate>
+      <h2 id="sdTitle">Sync your binder</h2>
+      <div id="sdOut">
+        <p class="sdp">Sign in on each device with the same email and password. Your Owned and Want marks, paid prices and conditions stay in step everywhere.</p>
+        <label>Email<input id="sdEmail" type="email" autocomplete="username" required></label>
+        <label>Password<input id="sdPass" type="password" autocomplete="current-password" minlength="6" required></label>
+        <p class="sderr" id="sdErr" role="alert"></p>
+        <div class="sdrow"><button type="submit" class="pri" id="sdIn" value="in">Sign in</button><button type="submit" id="sdNew" value="new">Create account</button></div>
+        <button type="button" class="lnk" id="sdReset">Forgot password?</button>
+      </div>
+      <div id="sdInOk" hidden>
+        <p class="sdp">Signed in as <strong id="sdWho"></strong>. Changes you make here show up on your other devices within a few seconds.</p>
+        <p class="sdp sdm" id="sdWhen"></p>
+        <div class="sdrow"><button type="button" id="sdOutBtn">Sign out</button></div>
+      </div>
+      <button type="button" class="sdx" id="sdClose" aria-label="Close">×</button>
+    </form>
+  </dialog>
+  <dialog class="lb" id="lb" aria-labelledby="lbName"><div class="dv">
+    <img id="lbImg" alt="">
+    <div class="dvb">
+      <div class="dvhead"><div><h3 id="lbName"></h3><p id="lbMeta"></p></div><button id="lbClose" type="button" aria-label="Close">Close</button></div>
+      <div class="dvprice"><span class="lab">TCGplayer market</span><b id="dvMkt"></b><span id="dvChg" class="dvchg"></span></div>
+      <div class="chartbox">
+        <div class="rng" id="dvRng" role="group" aria-label="Chart range"><button data-r="30" type="button">1M</button><button data-r="90" type="button">3M</button><button data-r="182" type="button">6M</button><button data-r="365" type="button">1Y</button><button data-r="730" type="button">2Y</button><button data-r="0" type="button" aria-pressed="true">All</button></div>
+        <div class="plot" id="dvPlot"><svg id="dvChart" role="img" aria-label="Market price history"></svg><div class="tip" id="dvTip" hidden></div></div>
+        <p class="note" id="dvNote"></p>
+      </div>
+      <div class="sec"><span class="lab">Today's listings on TCGplayer</span><div class="kv" id="dvList"></div></div>
+      <div class="sec" id="dvMineWrap" hidden><span class="lab">Your copy</span><div class="kv" id="dvMine"></div></div>
+      <div class="sec"><span class="lab">Recent sales and graded prices</span><div class="links" id="dvLinks"></div></div>
+    </div>
+  </div></dialog>
+  <p class="foot">Card list: the open Pokémon TCG card database (pokemon-tcg-data). Prices: TCGplayer market price for the near-mint holofoil, via TCGCSV, updated __PDATE__. Price history is your own, recorded daily since October 11, 2026. Prices move daily; check the TCGplayer link before buying or selling. Card pictures load from the Pokémon TCG API and Scrydex image servers, so they need an internet connection. "Full Art" here means cards printed as Ultra Rare / Rare Ultra (full-art EX, GX, V and ex, plus Sword &amp; Shield alt arts). Black White Rares are the top chase cards in Black Bolt and White Flare; Mega Hyper Rares are the gold Mega ex cards; Mega Attack Rares are from Ascended Heroes. VMAX/VSTAR covers every version printed in main sets, plus Shining Fates' Shiny Vault and Celebrations; Trainer Gallery covers Brilliant Stars through Silver Tempest. Rainbow covers Sun &amp; Moon GX rainbows; Gold &amp; Secret covers the secret-rare Pokémon from Black &amp; White through Sword &amp; Shield. Trainer cards, promo cards and 30th Celebration aren't included.</p>
+</div>
+<script type="application/json" id="data">__DATA__</script>
+<script type="application/json" id="hist">__HIST__</script>
+<script>
+const DATA=JSON.parse(document.getElementById('data').textContent);
+const S=DATA.sets, C=DATA.cards; // card: [id,name,setId,number,kind,market,productId,imgHost]
+const H=(()=>{const R=JSON.parse(document.getElementById('hist').textContent);if(!R.days)return R;
+  const dates=R.days.map(x=>x.d),m={};
+  R.pids.forEach((p,j)=>{let any=false;const a=R.days.map(x=>{const v=x.v[j];if(v!=null)any=true;return v==null?null:v});if(any)m[p]=a});
+  return {dates,m,latest:R.latest||{},updated:R.updated};})(); // {dates,m:{pid:[market by date]},latest:{pid:[low,mid,high,market,directLow]}}
+const DT=H.dates.map(d=>new Date(d+'T12:00:00'));
+function series(c){const a=c[6]&&H.m[c[6]];if(!a)return[];const o=[];a.forEach((v,i)=>{if(v!=null)o.push([DT[i],v])});return o}
+C.forEach(c=>{const s=series(c);c[5]=s.length?s[s.length-1][1]:null});
+function winStats(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=last[0]-days*864e5;const w=s.filter(p=>p[0]>=cut&&p!==last);if(!w.length)return null;const vs=w.map(p=>p[1]);return {n:w.length,avg:vs.reduce((a,b)=>a+b,0)/vs.length,hi:Math.max(...vs),lo:Math.min(...vs),cur:last[1]}}
+function buySignals(c){
+  const out={score:0,why:[]};const cur=c[5];if(cur==null)return out;
+  const w30=winStats(c,30),w90=winStats(c,90);
+  if(w30&&w30.n>=6){
+    const d=(w30.avg-cur)/w30.avg;if(d>=0.08){out.score+=d;out.why.push(['drop',`${Math.round(d*100)}% below 30-day average`])}
+    const fh=(w30.hi-cur)/w30.hi;if(fh>=0.15&&fh>d+0.05){out.score+=fh*0.5;out.why.push(['drop',`${Math.round(fh*100)}% off 30-day high`])}
+  }
+  if(w90&&w90.n>=20&&cur<=w90.lo*1.02){out.score+=0.05;out.why.push(['drop','At its 90-day low'])}
+  const L=c[6]&&H.latest[c[6]];
+  if(buyCond()==='any'&&L&&L[0]!=null&&L[0]>0&&!(L[1]!=null&&L[0]<0.6*L[1])){const ld=(cur-L[0])/cur;if(ld>=0.12&&ld<=0.4){out.score+=ld*0.6;out.why.push(['lst',`Listing at ${usd.format(L[0])}, ${Math.round(ld*100)}% under market`])}}
+  return out}
+function renderBuy(){
+  const list=document.getElementById('buyList');if(!list)return;
+  const scope=document.getElementById('buyScope').value,mn=parseFloat(document.getElementById('buyMin').value),mx=parseFloat(document.getElementById('buyMax').value);
+  const lo=isNaN(mn)?5:mn,hi=isNaN(mx)?Infinity:mx;
+  const picks=[];
+  for(const c of C){
+    if(!f.r.has(c[4]))continue;if(f.era&&S[c[2]][1]!==f.era)continue;
+    const st=state[c[0]];if(scope==='want'&&st!=='wanted')continue;if(scope==='missing'&&st==='owned')continue;
+    if(c[5]==null||c[5]<lo||c[5]>hi)continue;
+    const sg=buySignals(c);if(sg.score>=0.08)picks.push([c,sg]);
+  }
+  picks.sort((a,b)=>b[1].score-a[1].score);
+  const top=picks.slice(0,15),days=H.dates.length;
+  document.getElementById('buySub').textContent=` · ${top.length?top.length+' picks':'no picks'} · prices ${DT[DT.length-1].toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+  list.innerHTML=top.map(([c,sg],i)=>{const s=S[c[2]];const w30=winStats(c,30);
+    return `<li data-id="${c[0]}"><span class="rk">${i+1}</span><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a><span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">${esc(s[0])} · #${esc(c[3])}</span><span class="why">${sg.why.map(([k,t])=>`<span class="${k}">${t}</span>`).join('')}</span></span><span class="pr"><b>${money(c[5])}</b>${w30&&w30.n>=6?`<span class="avg">30-day avg ${money(w30.avg)}</span>`:''}</span></li>`}).join('');
+  if(!top.length)list.innerHTML=`<li class="empty" style="display:block">${scope==='want'?'Nothing on your Want list is a deal right now. Mark cards Want to watch them here.':'No deals match these settings today.'}</li>`;
+  const note=document.getElementById('buyNote');
+  note.textContent=(days<8?`Price-drop picks need about a week of daily history (tracking started ${DT[0].toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}), so the list will be short until then. `:'')+'Picks are cards at least 8% below their 30-day average, at least 15% off their 30-day high, or at a 90-day low. Prices are TCGplayer market prices from recent sales. Links open TCGplayer showing only the conditions you picked'+(buyCond()==='any'?'. With Any condition, cheap listings 12–40% under market are also shown; the feed does not say their condition, so many are played copies.':'.')+' Cards under the minimum price (default $5) are skipped.';
+}
+function chgSpan(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=days?last[0]-days*864e5+12*36e5:-Infinity;let base=null;for(const p of s){if(p[0]<=cut&&p!==last)base=p;else if(p[0]>cut)break}
+  if(!base)base=s[0];if(base===last||!base[1])return null;return {from:base[1],to:last[1],abs:last[1]-base[1],pct:(last[1]-base[1])/base[1]*100,since:base[0]}}
+function renderMovers(){
+  const panel=document.getElementById('tabMovers');if(!panel||panel.hidden)return;
+  const days=+(document.querySelector('#mvRng button[aria-pressed="true"]')||{dataset:{d:1}}).dataset.d;const plabel={1:'1 day',7:'7 days',30:'30 days',91:'3 months',182:'6 months',365:'1 year',730:'2 years'}[days];
+  const metric=document.getElementById('mvMetric').value,mn=parseFloat(document.getElementById('mvMin').value),min=isNaN(mn)?5:mn;
+  const key=x=>metric==='abs'?x.ch.abs:x.ch.pct;
+  const fd=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const all=[];for(const c of C){const ch=chgSpan(c,days);if(ch)all.push({c,ch})}
+  const since=all.length?new Date(Math.min(...all.map(x=>+x.ch.since))):null;
+  const chip=(ch)=>`<span class="${ch.abs>=0?'up':'down'}">${pct(ch.pct)}</span><small>${sgn(ch.abs)}</small>`;
+  const item=x=>{const s=S[x.c[2]];return `<li data-id="${x.c[0]}"><button class="th" type="button" aria-label="View ${esc(x.c[1])}"><img loading="lazy" src="${img(x.c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(x.c[1])}</b><small>${esc(s[0])} · #${esc(x.c[3])} · ${money(x.ch.from)} → ${money(x.ch.to)}</small></span><span class="ch">${chip(x.ch)}</span></li>`};
+  const fill=(id,list,empty)=>{document.getElementById(id).innerHTML=list.length?list.map(item).join(''):`<li class="none">${empty}</li>`};
+  const top=(list,dir)=>list.filter(x=>dir>0?x.ch.abs>0:x.ch.abs<0).sort((a,b)=>dir>0?key(b)-key(a):key(a)-key(b)).slice(0,5);
+  const mine=all.filter(x=>state[x.c[0]]==='owned');
+  const nOwned=C.filter(c=>state[c[0]]==='owned').length;
+  fill('mvMineUp',top(mine,1),nOwned?'None of your cards went up in this period.':'Mark cards as Owned in the Binder tab to see your movers here.');
+  fill('mvMineDown',top(mine,-1),nOwned?'None of your cards went down in this period.':'');
+  const sf=mine.reduce((a,x)=>a+x.ch.from,0),st=mine.reduce((a,x)=>a+x.ch.to,0);
+  document.getElementById('mvMineSum').innerHTML=mine.length?`Your collection: <b class="${st>=sf?'up':'down'}">${sgn(st-sf)} (${pct((st-sf)/sf*100)})</b>, now ${usd0.format(st)} across ${mine.length} priced card${mine.length===1?'':'s'}`:'';
+  const mk=all.filter(x=>x.ch.to>=min);
+  fill('mvAllUp',top(mk,1),'No cards went up in this period.');fill('mvAllDown',top(mk,-1),'No cards went down in this period.');
+  const ups=mk.filter(x=>x.ch.abs>0).length,downs=mk.filter(x=>x.ch.abs<0).length;
+  document.getElementById('mvAllSum').textContent=`${ups} cards up, ${downs} down, ${mk.length-ups-downs} unchanged (cards at ${usd0.format(min)} or more)`;
+  const bySet={};for(const x of all){const k=x.c[2];(bySet[k]??={from:0,to:0,n:0});bySet[k].from+=x.ch.from;bySet[k].to+=x.ch.to;bySet[k].n++}
+  const sets=Object.entries(bySet).filter(([k,v])=>v.n>=3&&v.from>0).map(([k,v])=>({k,...v,abs:v.to-v.from,pct:(v.to-v.from)/v.from*100}));
+  const skey=x=>metric==='abs'?x.abs:x.pct;
+  const sItem=x=>`<li class="mvset" data-set="${x.k}" tabindex="0"><span class="nm"><b>${esc(S[x.k][0])}</b><small>${x.n} cards · ${usd0.format(x.from)} → ${usd0.format(x.to)}</small></span><span class="ch"><span class="${x.abs>=0?'up':'down'}">${pct(x.pct)}</span><small>${Math.abs(x.abs)<10?sgn(x.abs):sgn(x.abs).replace(/\.\d\d$/,'')}</small></span></li>`;
+  const sUp=sets.filter(x=>x.abs>0).sort((a,b)=>skey(b)-skey(a)).slice(0,5),sDn=sets.filter(x=>x.abs<0).sort((a,b)=>skey(a)-skey(b)).slice(0,5);
+  document.getElementById('mvSetUp').innerHTML=sUp.length?sUp.map(sItem).join(''):'<li class="none">No sets went up in this period.</li>';
+  document.getElementById('mvSetDown').innerHTML=sDn.length?sDn.map(sItem).join(''):'<li class="none">No sets went down in this period.</li>';
+  const note=document.getElementById('mvNote');
+  if(!all.length){note.textContent='Movers need at least two days of prices.';return}
+  const last=DT[DT.length-1];
+  if(!days){note.textContent=`Comparing TCGplayer market prices on ${fd(last)} with ${fd(since)}, the first day tracked.`;return}
+  const wanted=new Date(last-days*864e5);
+  note.textContent=`Comparing TCGplayer market prices on ${fd(last)} with ${since&&since>wanted?fd(since)+' (the earliest day tracked, so this covers less than '+plabel+')':days===1?'the previous day':fd(wanted)}.`;
+}
+function chgOver(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=last[0]-days*864e5;let base=s[0];for(const p of s){if(p[0]<=cut)base=p;else break}if(base===last||!base[1])return null;return (last[1]-base[1])/base[1]*100}
+const LABEL={IR:'IR',SIR:'SIR',FA:'Full Art',VINT:'Vintage Holo',VALT:'VMAX Alt Art',VREG:'VMAX/VSTAR',RAIN:'Rainbow Rare',GOLD:'Gold/Secret Rare',HR:'Gold Hyper Rare',SHINY:'Shiny Vault',GG:'Galarian Gallery',TG:'Trainer Gallery',BWR:'Black White Rare',MHR:'Mega Hyper Rare',MAR:'Mega Attack Rare'};
+const KINDS=Object.keys(LABEL);
+let state={}; // id -> 'owned'|'wanted'
+const LS='binder-state-v1';
+try{state=JSON.parse(localStorage.getItem(LS)||'{}')||{}}catch(e){state={}}
+let paid={};try{paid=JSON.parse(localStorage.getItem('binder-paid-v1')||'{}')||{}}catch(e){paid={}}
+let cond={};try{cond=JSON.parse(localStorage.getItem('binder-cond-v1')||'{}')||{}}catch(e){cond={}}
+const CONDS=[['NM','Near Mint'],['LP','Lightly Played'],['MP','Moderately Played'],['HP','Heavily Played'],['DMG','Damaged'],['GR','Graded']];
+const CONDQ={NM:'Near+Mint',LP:'Near+Mint|Lightly+Played',MP:'Near+Mint|Lightly+Played|Moderately+Played',HP:'Near+Mint|Lightly+Played|Moderately+Played|Heavily+Played'};
+function buyCond(){const el=document.getElementById('buyCond');return el?el.value:'LP'}
+function cache(fromSync){try{localStorage.setItem(LS,JSON.stringify(state));localStorage.setItem('binder-paid-v1',JSON.stringify(paid));localStorage.setItem('binder-cond-v1',JSON.stringify(cond))}catch(e){}if(!fromSync&&typeof window.binderChanged==='function')window.binderChanged()}
+const eras=[...new Set(Object.values(S).map(s=>s[1]))];
+const eraSel=document.getElementById('era');
+eras.reverse().forEach(e=>{const o=document.createElement('option');o.value=e;o.textContent=e;eraSel.appendChild(o)});
+const f={q:'',r:new Set(KINDS),era:'',status:'',sort:'set'};
+let collapsed=new Set();try{collapsed=new Set(JSON.parse(localStorage.getItem('binder-collapsed')||'[]'))}catch(e){}
+function saveCollapsed(){try{localStorage.setItem('binder-collapsed',JSON.stringify([...collapsed]))}catch(e){}}
+try{const p=JSON.parse(localStorage.getItem('binder-filters')||'null');if(p){f.era=p.era||'';f.status=p.status||'';f.sort=p.sort||'set';f.pmin=p.pmin??null;f.pmax=p.pmax??null;const off=p.x||(p.r?['IR','SIR','FA'].filter(k=>!p.r.includes(k)):[]);f.r=new Set(KINDS.filter(k=>!off.includes(k)));if(!f.r.size)f.r=new Set(KINDS)}}catch(e){}
+eraSel.value=f.era;document.getElementById('status').value=f.status;document.getElementById('sort').value=f.sort;
+document.querySelectorAll('#rarChips .chip').forEach(b=>b.setAttribute('aria-pressed',f.r.has(b.dataset.r)));
+function keep(c){if(!f.r.has(c[4]))return false;if(f.pmin==null&&f.pmax==null)return true;const p=c[5];if(p==null)return false;return (f.pmin==null||p>=f.pmin)&&(f.pmax==null||p<=f.pmax)}
+function saveFilters(){try{localStorage.setItem('binder-filters',JSON.stringify({era:f.era,status:f.status,sort:f.sort,pmin:f.pmin,pmax:f.pmax,x:KINDS.filter(k=>!f.r.has(k))}))}catch(e){}}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function link(c){const s=S[c[2]];const q=CONDQ[(state[c[0]]==='wanted'&&cond[c[0]])||buyCond()];return c[6]?'https://www.tcgplayer.com/product/'+c[6]+'?Language=English'+(q?'&Condition='+q:''):'https://www.tcgplayer.com/search/pokemon/product?q='+encodeURIComponent(c[1]+' '+s[0]+' '+c[3])}
+const usd=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+const usd0=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+function money(v){return v==null?'—':usd.format(v)}
+function img(c,large){const i=c[0].lastIndexOf('-'),sid=c[0].slice(0,i),n=c[0].slice(i+1);
+  return c[7]==='s'?'https://images.scrydex.com/pokemon/'+c[0]+(large?'/large':'/small'):'https://images.pokemontcg.io/'+sid+'/'+n+(large?'_hires.png':'.png')}
+function pct(v){return (v>=0?'+':'\u2212')+Math.abs(v).toFixed(1)+'%'}
+function mvTxt(c){const v=chgOver(c,7);return v==null||Math.abs(v)<0.05?'':`<span class="mv ${v>=0?'up':'down'}" title="Change over the last 7 days">${v>=0?'\u25B2':'\u25BC'} ${Math.abs(v).toFixed(1)}% 7d</span>`}
+function sgn(v){return (v>=0?'+':'\u2212')+usd.format(Math.abs(v))}
+function renderStats(){
+  let n=0,own=0,ov=0,mv=0,wv=0,pd=0,pv=0;
+  C.forEach(c=>{if(!keep(c))return;n++;const p=c[5]||0,st=state[c[0]];if(st==='owned'){own++;ov+=p;if(paid[c[0]]!=null){pd+=paid[c[0]];pv+=p}}else{mv+=p;if(st==='wanted')wv+=p}});
+  const g=pv-pd;
+  const t=(lab,val,bar,cls)=>`<div class="stat"><span>${lab}</span><b${cls?` class="${cls}"`:''}>${val}</b>${bar==null?'':`<div class="bar"><i style="width:${bar}%"></i></div>`}</div>`;
+  document.getElementById('stats').innerHTML=t('Owned',own+' / '+n,n?own/n*100:0)+t('Owned value',usd0.format(ov))+t('Total paid',usd0.format(pd))+t('Gain / loss',pd?sgn(g).replace(/\.\d\d$/,''):'—',null,pd?(g>=0?'up':'down'):'')+t('Wanted value',usd0.format(wv))+t('Cost to complete',usd0.format(mv));
+}
+function render(){
+  const q=f.q.trim().toLowerCase();
+  const groups=new Map();
+  for(const c of C){
+    const s=S[c[2]];
+    if(!keep(c))continue;
+    if(f.era&&s[1]!==f.era)continue;
+    const st=state[c[0]]||'';
+    const fs=viewStatus();
+    if(fs==='owned'&&st!=='owned')continue;
+    if(fs==='wanted'&&st!=='wanted')continue;
+    if(fs==='missing'&&st==='owned')continue;
+    if(q&&!c[1].toLowerCase().includes(q)&&!s[0].toLowerCase().includes(q))continue;
+    if(!groups.has(c[2]))groups.set(c[2],[]);
+    groups.get(c[2]).push(c);
+  }
+  const ids=[...groups.keys()].sort((a,b)=>S[b][2].localeCompare(S[a][2])||b.localeCompare(a));
+  if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!C.some(c=>state[c[0]]==='wanted')?'Your Want list is empty. Find cards in All Cards and tap Want to add them here.':'No cards match these filters.';document.getElementById('binder').innerHTML='<p class="empty">'+no+'</p>';return}
+  let h='';
+  if(f.sort==='price'||f.sort==='move'){
+    const mv=c=>Math.abs(chgOver(c,7)??0);
+    const all=[].concat(...groups.values()).sort(f.sort==='move'?(a,b)=>mv(b)-mv(a):(a,b)=>(b[5]??-1)-(a[5]??-1));
+    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='move'?'by 7-day price change':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
+    document.getElementById('binder').innerHTML=h;return;
+  }
+  for(const id of ids){
+    const s=S[id],cards=groups.get(id);
+    const own=C.filter(c=>c[2]===id&&keep(c)&&state[c[0]]==='owned').length,tot=C.filter(c=>c[2]===id&&keep(c)).length;
+    const open=!!f.q.trim()||!collapsed.has(id);
+    h+=`<section class="set${open?'':' closed'}" data-set="${id}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(s[0])}<small>${esc(s[1])} · ${s[2].slice(0,7).replace('/','-')} · ${cards.length} card${cards.length===1?'':'s'}</small><span class="prog">${own}/${tot} owned</span></button></h2><div class="list"${open?'':' hidden'}>`;
+    for(const c of cards)h+=row(c,false);
+    h+='</div></section>';
+  }
+  document.getElementById('binder').innerHTML=h;
+}
+function row(c,showSet){
+  const s=S[c[2]],st=state[c[0]]||'';
+  const pp=paid[c[0]],d=(st==='owned'&&pp!=null&&c[5]!=null)?c[5]-pp:null;
+  return `<div class="row ${st}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a><span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span></span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button><button data-a="wanted" class="${st==='wanted'?'on-want':''}" aria-pressed="${st==='wanted'}">Want</button>${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st?`<label class="paid">${st==='owned'?'Condition':'Want in'} <select class="cond" aria-label="${st==='owned'?'Condition of your copy':'Condition you want'} for ${esc(c[1])}">${st==='wanted'?`<option value="">${{NM:'Near Mint',LP:'NM or LP',any:'Any'}[buyCond()]||'Default'}</option>`:'<option value="">Not set</option>'}${(st==='owned'?CONDS:CONDS.slice(0,4)).map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${st==='wanted'&&k!=='NM'?n+' or better':n}</option>`).join('')}</select></label>`:''}</span></div>`;
+}
+let view='all';
+function viewStatus(){return view==='owned'?'owned':view==='want'?'wanted':f.status}
+function tabCounts(){let o=0,w=0;for(const c of C){const s=state[c[0]];if(s==='owned')o++;else if(s==='wanted')w++}const a=document.getElementById('nOwned'),b=document.getElementById('nWant');if(a)a.textContent=o;if(b)b.textContent=w}
+function refresh(){renderStats();render();renderBuy();renderMovers();tabCounts()}
+const saveEl=document.getElementById('saveState');
+async function setStatus(id,val){
+  if(val)state[id]=val;else delete state[id];
+  cache();refresh();
+}
+document.getElementById('binder').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-a]');if(!b)return;
+  const id=b.closest('.row').dataset.id;const cur=state[id];
+  setStatus(id,cur===b.dataset.a?null:b.dataset.a);
+});
+document.getElementById('q').addEventListener('input',e=>{f.q=e.target.value;render()});
+eraSel.addEventListener('change',e=>{f.era=e.target.value;saveFilters();render()});
+document.getElementById('status').addEventListener('change',e=>{f.status=e.target.value;saveFilters();render()});
+const pminEl=document.getElementById('pmin'),pmaxEl=document.getElementById('pmax');
+pminEl.value=f.pmin??'';pmaxEl.value=f.pmax??'';
+let pt=null;function onPrice(){clearTimeout(pt);pt=setTimeout(()=>{const a=pminEl.value.trim(),b=pmaxEl.value.trim();f.pmin=a===''||isNaN(+a)?null:+a;f.pmax=b===''||isNaN(+b)?null:+b;saveFilters();refresh()},250)}
+pminEl.addEventListener('input',onPrice);pmaxEl.addEventListener('input',onPrice);
+document.getElementById('sort').addEventListener('change',e=>{f.sort=e.target.value;saveFilters();render();syncColBtns()});
+document.getElementById('binder').addEventListener('click',e=>{
+  const hd=e.target.closest('.sethd');if(!hd)return;
+  const sec=hd.closest('.set'),id=sec.dataset.set;if(!id)return;
+  const open=hd.getAttribute('aria-expanded')!=='true';
+  hd.setAttribute('aria-expanded',open);sec.classList.toggle('closed',!open);sec.querySelector('.list').hidden=!open;
+  if(open)collapsed.delete(id);else collapsed.add(id);saveCollapsed();
+});
+function setAll(close){collapsed=new Set(close?Object.keys(S):[]);saveCollapsed();render()}
+document.getElementById('colAll').addEventListener('click',()=>setAll(true));
+document.getElementById('expAll').addEventListener('click',()=>setAll(false));
+function syncColBtns(){const on=f.sort==='set';document.getElementById('colAll').hidden=!on;document.getElementById('expAll').hidden=!on}
+syncColBtns();
+document.getElementById('rarChips').addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b)return;const r=b.dataset.r;
+  if(f.r.has(r)&&f.r.size>1)f.r.delete(r);else f.r.add(r);
+  document.querySelectorAll('#rarChips .chip').forEach(x=>x.setAttribute('aria-pressed',f.r.has(x.dataset.r)));
+  saveFilters();refresh();
+});
+refresh();
+const binder=document.getElementById('binder'),lb=document.getElementById('lb');
+const byId=Object.fromEntries(C.map(c=>[c[0],c]));
+['buyScope','buyCond','buyMin','buyMax'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
+  el.addEventListener(/Scope|Cond/.test(id)?'change':'input',()=>{try{localStorage.setItem('binder-'+id,el.value)}catch(e){};if(id==='buyCond')render();renderBuy()})});
+const buyBody=document.getElementById('buyBody'),buyTg=document.getElementById('buyToggle');
+function setBuyOpen(o){buyTg.setAttribute('aria-expanded',o);buyBody.hidden=!o;try{localStorage.setItem('binder-buyOpen',o?'1':'0')}catch(e){}}
+try{if(localStorage.getItem('binder-buyOpen')==='0')setBuyOpen(false)}catch(e){}
+buyTg.addEventListener('click',()=>setBuyOpen(buyTg.getAttribute('aria-expanded')!=='true'));
+document.getElementById('buyList').addEventListener('click',e=>{const th=e.target.closest('.th');if(!th)return;openDetail(byId[th.closest('li').dataset.id])});
+renderBuy();
+(function(){const hc=document.getElementById('heroCards');if(!hc)return;
+  const fav=byId['gym2-1'];const others=['sv1-224','swsh11tg-TG08'].map(id=>byId[id]).filter(Boolean);
+  const btn=(c,cls)=>c?`<button type="button" class="${cls}" data-id="${c[0]}" aria-label="View ${esc(c[1])}, ${esc(S[c[2]][0])}"><img src="${img(c,cls==='main')}" alt="" onerror="this.remove()"></button>`:'';
+  hc.innerHTML=btn(others[0],'side l')+btn(fav,'main')+btn(others[1],'side r')+(fav?'<span class="herocap">Blaine’s Arcanine</span>':'');
+  hc.addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(b)openDetail(byId[b.dataset.id])})})();
+(function(){const cv=document.getElementById('heroSwirl');if(!cv||!cv.getContext)return;const ctx=cv.getContext('2d');
+  const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;let w=0,h=0,dpr=1;
+  function size(){const r=cv.getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,2);w=r.width;h=r.height;cv.width=Math.max(1,w*dpr);cv.height=Math.max(1,h*dpr)}
+  function draw(t){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+    const cx=w*0.62,cy=h*0.52,R=Math.max(w,h)*0.75,rot=t*0.00012;
+    const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.55);glow.addColorStop(0,'rgba(255,224,140,.55)');glow.addColorStop(.45,'rgba(255,128,40,.25)');glow.addColorStop(1,'rgba(255,90,20,0)');
+    ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);ctx.globalCompositeOperation='lighter';
+    const arms=5,b=0.62;
+    for(let a=0;a<arms;a++){const base=a*2*Math.PI/arms+rot;
+      for(let k=0;k<2;k++){ctx.beginPath();let first=true;
+        for(let r=6;r<R;r+=3){const th=base+Math.log(r/6)/b+k*0.18;const x=cx+r*Math.cos(th),y=cy+r*Math.sin(th);if(first){ctx.moveTo(x,y);first=false}else ctx.lineTo(x,y)}
+        const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);g.addColorStop(0,'rgba(255,245,200,.85)');g.addColorStop(.25,'rgba(255,190,80,.55)');g.addColorStop(.6,'rgba(255,110,30,.28)');g.addColorStop(1,'rgba(200,50,10,0)');
+        ctx.strokeStyle=g;ctx.lineWidth=k?2:7;ctx.lineCap='round';ctx.shadowColor='rgba(255,150,40,.8)';ctx.shadowBlur=k?4:14;ctx.stroke()}}
+    ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0}
+  size();draw(0);window.addEventListener('resize',()=>{size();draw(performance.now())});
+  if(still)return;let on=true;document.addEventListener('visibilitychange',()=>{on=!document.hidden;if(on)requestAnimationFrame(loop)});
+  function loop(t){if(!on)return;draw(t);requestAnimationFrame(loop)}requestAnimationFrame(loop)})();
+function showTab(name){if(name==='binder')name='all';if(!['owned','want','all','movers'].includes(name))name='owned';
+  const mv=name==='movers';document.getElementById('tabBinder').hidden=mv;document.getElementById('tabMovers').hidden=!mv;
+  document.querySelectorAll('.tabs button[data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===name));
+  try{localStorage.setItem('binder-tab',name)}catch(e){};
+  if(mv){renderMovers();return}
+  view=name;document.getElementById('status').hidden=name!=='all';document.getElementById('buy').hidden=name==='owned';
+  document.getElementById('viewIntro').textContent={owned:'Cards you own. Track what you paid, condition and gain here.',want:'Cards you want. The Buy list shows which of these are on sale or dropping in price.',all:'Every card in the checklist. Search and filter, then tap Owned or Want to add cards to My Binder or your Want List.'}[name];
+  if(name==='want'){const sc=document.getElementById('buyScope');if(sc&&!localStorage.getItem('binder-buyScope'))sc.value='want'}
+  render();renderStats();renderBuy()}
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b)showTab(b.dataset.tab)});
+document.getElementById('mvRng').addEventListener('click',e=>{const b=e.target.closest('button[data-d]');if(!b)return;document.querySelectorAll('#mvRng button').forEach(x=>x.setAttribute('aria-pressed',x===b));try{localStorage.setItem('binder-mvDays',b.dataset.d)}catch(e){};renderMovers()});
+['mvMetric','mvMin'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
+  el.addEventListener(id==='mvMetric'?'change':'input',()=>{try{localStorage.setItem('binder-'+id,el.value)}catch(e){};renderMovers()})});
+try{const d=localStorage.getItem('binder-mvDays');if(d)document.querySelectorAll('#mvRng button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.d===d))}catch(e){}
+document.getElementById('tabMovers').addEventListener('click',e=>{
+  const th=e.target.closest('.th');if(th){openDetail(byId[th.closest('li').dataset.id]);return}
+  const st=e.target.closest('li.mvset');if(st){const q=document.getElementById('q');q.value=S[st.dataset.set][0];f.q=q.value;showTab('all');window.scrollTo({top:document.getElementById('binder').offsetTop-80})}});
+document.getElementById('tabMovers').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('li.mvset'))e.target.click()});
+{let tb='owned';try{tb=(location.hash||'').slice(1)||localStorage.getItem('binder-tab')||(C.some(c=>state[c[0]]==='owned')?'owned':'all')}catch(e){};showTab(tb)}
+binder.addEventListener('change',e=>{
+  const cs=e.target.closest('select.cond');if(cs){const id=cs.closest('.row').dataset.id;if(cs.value)cond[id]=cs.value;else delete cond[id];cache();const a=cs.closest('.row').querySelector('.nm a');if(a)a.href=link(byId[id]);return}
+  const inp=e.target.closest('.paid input');if(!inp)return;
+  const id=inp.closest('.row').dataset.id,v=inp.value.trim();
+  if(v===''||isNaN(+v)||+v<0)delete paid[id];else paid[id]=Math.round(+v*100)/100;
+  cache();renderStats();showDelta(inp.closest('.row'));
+});
+function showDelta(r){const id=r.dataset.id,c=byId[id],el=r.querySelector('.delta'),pp=paid[id];
+  const d=(pp!=null&&c[5]!=null)?c[5]-pp:null;el.className='delta '+(d==null?'':(d>=0?'up':'down'));el.textContent=d==null?'':sgn(d);}
+binder.addEventListener('click',e=>{
+  const u=e.target.closest('.usemkt');if(!u)return;
+  const r=u.closest('.row'),c=byId[r.dataset.id];if(c[5]==null)return;
+  paid[c[0]]=c[5];r.querySelector('.paid input').value=c[5];
+  cache();renderStats();showDelta(r);
+});
+binder.addEventListener('click',e=>{
+  const th=e.target.closest('.th');if(!th)return;
+  openDetail(byId[th.closest('.row').dataset.id]);
+});
+document.getElementById('lbClose').addEventListener('click',()=>lb.close());
+let cur=null,range=0;
+const fmtD=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const fmtDY=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+function q(c){const s=S[c[2]];return encodeURIComponent(c[1]+' '+c[3]+' '+s[0])}
+function openDetail(c){
+  cur=c;const s=S[c[2]],im=document.getElementById('lbImg');
+  im.src='';im.alt=c[1];im.src=img(c,true);
+  document.getElementById('lbName').textContent=c[1];
+  document.getElementById('lbMeta').textContent=s[0]+' · #'+c[3]+(s[3]?'/'+s[3]:'')+' · '+LABEL[c[4]];
+  document.getElementById('dvMkt').textContent=money(c[5]);
+  const parts=[[1,'1 day'],[7,'7 days'],[30,'30 days']].map(([n,l])=>{const v=chgOver(c,n);return v==null?null:`<span class="${v>=0?'up':'down'}">${pct(v)}</span> ${l}`}).filter(Boolean);
+  document.getElementById('dvChg').innerHTML=parts.join(' · ');
+  const L=c[6]&&H.latest[c[6]];
+  const kv=(a)=>a.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
+  document.getElementById('dvList').innerHTML=L?kv([['Lowest',money(L[0])],['Median',money(L[1])],['Highest',money(L[2])],['Direct low',money(L[4])]]):'<p class="note">TCGplayer has no listing data for this card.</p>';
+  const st=state[c[0]],pp=paid[c[0]],mine=document.getElementById('dvMineWrap');
+  mine.hidden=st!=='owned';
+  if(st==='owned'){const g=(pp!=null&&c[5]!=null)?c[5]-pp:null;document.getElementById('dvMine').innerHTML=kv([['Condition',(CONDS.find(x=>x[0]===cond[c[0]])||['','—'])[1]],['Paid',pp!=null?money(pp):'—'],['Market',money(c[5])],['Gain / loss',g==null?'—':`<span class="${g>=0?'up':'down'}">${sgn(g)}</span>`],['Return',g==null||!pp?'—':`<span class="${g>=0?'up':'down'}">${pct(g/pp*100)}</span>`]])}
+  document.getElementById('dvLinks').innerHTML=[
+    [link(c),'TCGplayer: price history and latest sales'],
+    ['https://www.pricecharting.com/search-products?type=prices&q='+q(c),'PriceCharting: PSA prices and sold listings'],
+    ['https://www.ebay.com/sch/i.html?LH_Sold=1&LH_Complete=1&_nkw='+q(c),'eBay: sold listings']
+  ].map(([u,t])=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join('');
+  if(lb.showModal)lb.showModal();else lb.setAttribute('open','');
+  drawChart();
+}
+document.getElementById('dvRng').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;range=+b.dataset.r;
+  document.querySelectorAll('#dvRng button').forEach(x=>x.setAttribute('aria-pressed',x===b));drawChart()});
+const svg=document.getElementById('dvChart'),tip=document.getElementById('dvTip'),NS='http://www.w3.org/2000/svg';
+let pts=[];
+function drawChart(){
+  const c=cur;if(!c)return;let s=series(c);
+  if(range&&s.length){const cut=s[s.length-1][0]-range*864e5;s=s.filter(p=>p[0]>=cut)}
+  const W=svg.clientWidth||600,Ht=170,pl=56,pr=14,pt=12,pb=24;
+  svg.setAttribute('viewBox',`0 0 ${W} ${Ht}`);svg.innerHTML='';tip.hidden=true;pts=[];
+  const note=document.getElementById('dvNote');
+  if(!s.length){note.textContent='No TCGplayer market price for this card yet.';return}
+  const first=series(c)[0][0];
+  note.textContent=s.length<14?`Your own tracking started ${fmtDY(first)}. A new point is added each day the price update runs, so this chart fills in over time.`:`Tracked daily since ${fmtDY(first)}.`;
+  let lo=Math.min(...s.map(p=>p[1])),hi=Math.max(...s.map(p=>p[1]));
+  if(hi-lo<hi*0.02){const m=(hi+lo)/2||1;lo=m*0.97;hi=m*1.03}
+  const pad=(hi-lo)*0.1;lo=Math.max(0,lo-pad);hi=hi+pad;
+  const t0=s[0][0].getTime(),t1=s[s.length-1][0].getTime(),span=Math.max(t1-t0,1);
+  const X=t=>s.length===1?(pl+W-pr)/2:pl+(t-t0)/span*(W-pl-pr),Y=v=>pt+(hi-v)/(hi-lo)*(Ht-pt-pb);
+  const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e};
+  const tickFmt=v=>hi>=100?usd0.format(v):usd.format(v);
+  for(let i=0;i<3;i++){const v=lo+(hi-lo)*i/2,y=Y(v);
+    el('line',{x1:pl,x2:W-pr,y1:y,y2:y,stroke:'var(--line)','stroke-width':1});
+    const tx=el('text',{x:pl-8,y:y+4,'text-anchor':'end','font-size':11,fill:'var(--muted)','font-family':'var(--f-mono)'});tx.textContent=tickFmt(v)}
+  const xl=(t,anchor,x)=>{const tx=el('text',{x,y:Ht-6,'text-anchor':anchor,'font-size':11,fill:'var(--muted)','font-family':'var(--f-body)'});tx.textContent=fmtD(t)};
+  xl(s[0][0],s.length===1?'middle':'start',X(t0));if(s.length>1)xl(s[s.length-1][0],'end',X(t1));
+  pts=s.map(p=>[X(p[0].getTime()),Y(p[1]),p]);
+  if(pts.length>1){
+    const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    el('path',{d:d+` L${pts[pts.length-1][0].toFixed(1)} ${Ht-pb} L${pts[0][0].toFixed(1)} ${Ht-pb} Z`,fill:'var(--accent)','fill-opacity':.12,stroke:'none'});
+    el('path',{d,fill:'none',stroke:'var(--accent)','stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'});
+  }
+  const lp=pts[pts.length-1];el('circle',{cx:lp[0],cy:lp[1],r:4.5,fill:'var(--accent)',stroke:'var(--panel)','stroke-width':2});
+  el('line',{id:'xh',x1:0,x2:0,y1:pt,y2:Ht-pb,stroke:'var(--muted)','stroke-width':1,'stroke-dasharray':'3 3',visibility:'hidden'});
+  el('circle',{id:'xd',r:4.5,fill:'var(--accent)',stroke:'var(--panel)','stroke-width':2,visibility:'hidden'});
+}
+function hover(e){if(!pts.length)return;const r=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal,x=(e.clientX-r.left)*vb.width/r.width;
+  let b=pts[0];for(const p of pts)if(Math.abs(p[0]-x)<Math.abs(b[0]-x))b=p;
+  const xh=svg.querySelector('#xh'),xd=svg.querySelector('#xd');
+  xh.setAttribute('x1',b[0]);xh.setAttribute('x2',b[0]);xh.setAttribute('visibility','visible');
+  xd.setAttribute('cx',b[0]);xd.setAttribute('cy',b[1]);xd.setAttribute('visibility','visible');
+  tip.textContent=fmtDY(b[2][0])+' · '+usd.format(b[2][1]);tip.hidden=false;
+  const px=b[0]*r.width/vb.width;tip.style.left=Math.min(Math.max(px,70),r.width-70)+'px'}
+svg.addEventListener('pointermove',hover);svg.addEventListener('pointerdown',hover);
+svg.addEventListener('pointerleave',()=>{tip.hidden=true;svg.querySelectorAll('#xh,#xd').forEach(n=>n.setAttribute('visibility','hidden'))});
+window.addEventListener('resize',()=>{if(lb.open)drawChart()});
+lb.addEventListener('click',e=>{if(e.target===lb)lb.close()});
+const bm=document.getElementById('backupMsg');
+document.getElementById('exportBtn').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify({app:'chase-card-binder',saved:new Date().toISOString(),state,paid,cond},null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='chase-card-binder-backup.json';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);bm.textContent='Backup saved to your downloads.';
+});
+document.getElementById('importFile').addEventListener('change',async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{const j=JSON.parse(await file.text());const s=j.state||j;const ok={},pk={};
+    for(const [k,v] of Object.entries(s))if(v==='owned'||v==='wanted')ok[k]=v;
+    for(const [k,v] of Object.entries(j.paid||{}))if(typeof v==='number'&&v>=0)pk[k]=v;
+    const ck={};for(const [k,v] of Object.entries(j.cond||{}))if(CONDS.some(x=>x[0]===v))ck[k]=v;
+    state=ok;paid=pk;cond=ck;cache();refresh();bm.textContent='Restored '+Object.keys(ok).length+' marked cards.';
+  }catch(err){bm.textContent='That file isn\u2019t a checklist backup. Choose the .json file from Back up.'}
+  e.target.value='';
+});
+saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a copy.';
+// Hooks for the sync module (web app only)
+window.binderStore={
+  get:()=>({state:{...state},paid:{...paid},cond:{...cond}}),
+  set:(s,p,c)=>{state={...s};paid={...p};cond={...c};cache(true);
+    const ae=document.activeElement;if(ae&&ae.matches&&ae.matches('input.paid,input[type=number]')&&ae.closest('.row')){renderStats();tabCounts();return}
+    refresh()},
+  msg:t=>{saveEl.textContent=t}
+};
+
+</script>
+<script>if(location.protocol==='https:'||location.hostname==='localhost'){const s=document.createElement('script');s.type='module';s.src='sync.js';document.body.appendChild(s)}</script>
+</body>
+</html>
