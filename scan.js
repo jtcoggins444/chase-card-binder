@@ -21,7 +21,7 @@
       if (!r.ok) throw new Error('index ' + r.status);
       const j = await r.json();
       const list = [];
-      for (const [id, b] of Object.entries(j.f || {})) if (byId[id]) list.push({ c: byId[id], f: SF().norm(SF().fromB64(b)) });
+      for (const [id, b] of Object.entries(j.f || {})) if (byId[id]) list.push(Array.isArray(b) ? { c: byId[id], f: SF().norm(SF().fromB64(b[0])), l: SF().unpackLum(SF().fromB64(b[1])) } : { c: byId[id], f: SF().norm(SF().fromB64(b)), l: null });
       index = list; return list;
     })();
     indexP.catch(() => { indexP = null; });
@@ -29,11 +29,17 @@
   }
 
   // ---------- matching ----------
-  function pixels(src, maxW) {
+  const LUMW = 1.5;   // weight of the fine brightness detail in the final ranking
+  function pixels(src, maxW, angle, cx, cy) {
     const sw = src.videoWidth || src.naturalWidth || src.width, sh = src.videoHeight || src.naturalHeight || src.height;
     const k = Math.min(1, maxW / sw), w = Math.round(sw * k), h = Math.round(sh * k);
     const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(src, 0, 0, w, h);
+    const g = c.getContext('2d', { willReadFrequently: true });
+    if (angle) {   // straighten a tilted card: rotate the picture around the card's centre
+      g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
+      g.translate(cx * k, cy * k); g.rotate(angle * Math.PI / 180); g.translate(-cx * k, -cy * k);
+    }
+    g.drawImage(src, 0, 0, w, h);
     return { px: g.getImageData(0, 0, w, h).data, w, h, k };
   }
   // Card-shaped boxes to try around a guess [x, y, w, h], to forgive a card that isn't lined up exactly.
@@ -47,48 +53,61 @@
     }
     return out;
   }
-  function rank(img, boxes) {
-    const feats = boxes.map(b => SF().norm(SF().feature(img.px, img.w, img.h, b)));
+  // tries: [{img, box}] - every way of cutting the card out of the picture that we want to compare
+  function featsOf(tries) { return tries.map(t => SF().norm(SF().feature(t.img.px, t.img.w, t.img.h, t.box))); }
+  function search(src, guesses) {
+    // guesses are card boxes in the source picture's own pixels
+    const sw = src.videoWidth || src.naturalWidth || src.width;
+    const k = Math.min(1, 900 / sw);
+    const g0 = guesses[0], cx = g0[0] + g0[2] / 2, cy = g0[1] + g0[3] / 2;
+    const imgs = { 0: pixels(src, 900) };
+    let tries = [];
+    for (const g of guesses) for (const b of boxesAround(g.map(v => v * k), imgs[0].w, imgs[0].h, [0.94, 1, 1.06], [-0.05, 0, 0.05])) tries.push({ img: imgs[0], box: b, a: 0 });
+    for (const a of [-5, 5]) {   // the card may be tilted a little in the photo
+      imgs[a] = pixels(src, 900, a, cx, cy);
+      for (const g of guesses) for (const b of boxesAround(g.map(v => v * k), imgs[a].w, imgs[a].h, [0.96, 1.04], [-0.03, 0.03])) tries.push({ img: imgs[a], box: b, a });
+    }
+    let feats = featsOf(tries);
     const scored = index.map(e => {
       let best = Infinity, bi = 0;
       for (let i = 0; i < feats.length; i++) { const d = SF().dist(feats[i], e.f); if (d < best) { best = d; bi = i; } }
-      return { c: e.c, d: best, box: boxes[bi] };
+      return { e, d: best, t: tries[bi] };
     });
     scored.sort((a, b) => a.d - b.d);
-    return scored;
-  }
-  function search(img, guesses, wide) {
-    let boxes = [];
-    for (const g of guesses) boxes.push(...boxesAround(g, img.w, img.h, wide ? [0.94, 1, 1.06] : [0.96, 1, 1.04], wide ? [-0.05, 0, 0.05] : [-0.03, 0, 0.03]));
-    let scored = rank(img, boxes);
-    // refine: look more closely around the box that matched best
-    const fine = boxesAround(scored[0].box, img.w, img.h, [0.97, 1, 1.03], [-0.015, 0, 0.015]);
-    const short = scored.slice(0, 60).map(x => x.c[0]);
-    const saved = index;
-    const allB = fine.concat(boxes);
-    const feats = allB.map(b => SF().norm(SF().feature(img.px, img.w, img.h, b)));
-    index = saved;
-    // final ranking of the short list: ignore the worst-matching 30% of the artwork, so glare doesn't throw it off
-    const fin = short.map(id => {
-      const e = index.find(x => x.c[0] === id); let best = Infinity;
-      for (const f of feats) { const d = SF().distRobust(f, e.f, 0.7); if (d < best) best = d; }
-      return { c: e.c, d: best };
+    // look more closely around the best few cut-outs, then rank the short list ignoring the worst 30% (glare)
+    const fine = [];
+    const seen = new Set();
+    for (const s of scored.slice(0, 5)) {
+      const key = s.t.a + ':' + s.t.box.map(v => Math.round(v)).join(',');
+      if (seen.has(key)) continue; seen.add(key);
+      for (const b of boxesAround(s.t.box, s.t.img.w, s.t.img.h, [0.97, 1, 1.03], [-0.015, 0, 0.015])) fine.push({ img: s.t.img, box: b, a: s.t.a });
+    }
+    // final ranking of the short list: colour (ignoring the worst 30% of cells, for glare) plus fine brightness detail
+    const all = fine.concat(tries);
+    const ff = featsOf(fine).concat(feats);
+    const lf = all.map(t => SF().lumFeature(t.img.px, t.img.w, t.img.h, t.box));
+    const fin = scored.slice(0, 60).map(s => {
+      let best = Infinity;
+      for (let i = 0; i < ff.length; i++) { const d = SF().distRobust(ff[i], s.e.f, 0.7) + (s.e.l ? LUMW * 100 * (1 - SF().corr(lf[i], s.e.l)) : 0); if (d < best) best = d; }
+      return { c: s.e.c, d: best };
     });
     fin.sort((a, b) => a.d - b.d);
     return fin.slice(0, 8);
   }
-  function identify(src, guess) {
-    const img = pixels(src, 900);
-    return { top: search(img, [guess.map(v => v * img.k)], false) };
+  // Camera: the card should be in the outline, but may be smaller than it or a little off-centre.
+  function identify(src, frameB) {
+    const [x, y, w, h] = frameB, guesses = [];
+    for (const f of [1, 0.91, 0.82, 0.74, 0.66]) guesses.push([x + w * (1 - f) / 2, y + h * (1 - f) / 2, w * f, h * f]);
+    return { top: search(src, guesses) };
   }
   // A photo: the card is usually centred and fills much of the frame. Try a spread of sizes.
   function identifyPhoto(im) {
-    const img = pixels(im, 900), ar = 63 / 88, guesses = [];
+    const W = im.naturalWidth || im.width, H = im.naturalHeight || im.height, ar = 63 / 88, guesses = [];
     for (const f of [0.95, 0.85, 0.75, 0.65, 0.55]) {
-      let w = img.w * f, h = w / ar; if (h > img.h * 0.98) { h = img.h * 0.98; w = h * ar; }
-      guesses.push([(img.w - w) / 2, (img.h - h) / 2, w, h]);
+      let w = W * f, h = w / ar; if (h > H * 0.98) { h = H * 0.98; w = h * ar; }
+      guesses.push([(W - w) / 2, (H - h) / 2, w, h]);
     }
-    return { top: search(img, guesses, true) };
+    return { top: search(im, guesses) };
   }
 
   // ---------- camera ----------

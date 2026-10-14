@@ -41,40 +41,75 @@
     // texture: brightness differences between neighbouring cells (robust to colour casts)
     return f;
   }
-  // Stretch each colour channel of a fingerprint to a common range (10th to 90th percentile), so haze, glare,
-  // dim light and colour casts change it as little as possible.
+  // Turn a stored fingerprint into a comparison vector that survives real-world photos:
+  // brightness pattern stretched to a common range, plus colour *relative to the card's own average colour*,
+  // scaled by how colourful the card looks. A washed-out, tinted photo (toploader, warm lamp) and the bright
+  // official scan end up close together. Layout: [L x N, A x N, B x N].
+  const N = GW * GH;
   function norm(f) {
-    const n = GW * GH, o = new Float32Array(f.length), tmp = new Float32Array(n);
-    for (let ch = 0; ch < 3; ch++) {
-      for (let c = 0; c < n; c++) tmp[c] = f[c * 3 + ch];
-      const s = Array.from(tmp).sort((x, y) => x - y), lo = s[Math.floor(n * 0.1)], hi = s[Math.floor(n * 0.9)];
-      const k = 160 / Math.max(12, hi - lo);
-      for (let c = 0; c < n; c++) o[c * 3 + ch] = 40 + (f[c * 3 + ch] - lo) * k;
+    const v = new Float32Array(N * 3);
+    for (let c = 0; c < N; c++) {
+      const r = f[c * 3], g = f[c * 3 + 1], b = f[c * 3 + 2];
+      v[c] = (r + g + b) / 3; v[N + c] = r - g; v[2 * N + c] = (r + g) / 2 - b;
     }
-    return o;
+    const s = Array.from(v.subarray(0, N)).sort((x, y) => x - y), lo = s[Math.floor(N * 0.1)], hi = s[Math.floor(N * 0.9)], k = 100 / Math.max(8, hi - lo);
+    for (let c = 0; c < N; c++) v[c] = (v[c] - lo) * k;
+    let ma = 0, mb = 0; for (let c = 0; c < N; c++) { ma += v[N + c]; mb += v[2 * N + c]; } ma /= N; mb /= N;
+    let sd = 0; for (let c = 0; c < N; c++) sd += (v[N + c] - ma) ** 2 + (v[2 * N + c] - mb) ** 2;
+    const ks = 15 / (Math.sqrt(sd / N) || 1);
+    for (let c = 0; c < N; c++) { v[N + c] = (v[N + c] - ma) * ks; v[2 * N + c] = (v[2 * N + c] - mb) * ks; }
+    return v;
   }
-  // Difference between two fingerprints; each cell's contribution is capped so a few washed-out cells can't dominate.
-  function dist(a, b) {
-    const n = GW * GH; let s = 0;
-    for (let c = 0; c < n; c++) { const i = c * 3; const d = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); s += d < 60 ? d : 60; }
-    let t = 0, k = 0;
-    for (let y = 0; y < GH; y++) for (let x = 0; x < GW - 1; x++) {
-      const i = (y * GW + x) * 3, j = i + 3;
-      const d = Math.abs(((a[j] + a[j + 1] + a[j + 2]) - (a[i] + a[i + 1] + a[i + 2])) - ((b[j] + b[j + 1] + b[j + 2]) - (b[i] + b[i + 1] + b[i + 2])));
-      t += d < 90 ? d : 90; k++;
-    }
-    return s / (n * 3) + 0.5 * t / (k * 3);
+  const CAP = 80;
+  function cellDiff(p, q, c) { return Math.abs(p[c] - q[c]) + Math.abs(p[N + c] - q[N + c]) + Math.abs(p[2 * N + c] - q[2 * N + c]); }
+  function structure(p, q) {
+    let t = 0;
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW - 1; x++) { const i = y * GW + x; const d = Math.abs((p[i + 1] - p[i]) - (q[i + 1] - q[i])); t += d < CAP ? d : CAP; }
+    for (let y = 0; y < GH - 1; y++) for (let x = 0; x < GW; x++) { const i = y * GW + x; const d = Math.abs((p[i + GW] - p[i]) - (q[i + GW] - q[i])); t += d < CAP ? d : CAP; }
+    return t / N;
   }
-  // Like dist, but ignores the worst-matching part of the artwork (glare, a thumb, a sleeve reflection).
-  function distRobust(a, b, keep) {
-    const n = GW * GH, d = new Float32Array(n);
-    for (let c = 0; c < n; c++) { const i = c * 3; d[c] = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); }
+  // Difference between two comparison vectors; each cell's share is capped so a few washed-out cells can't dominate.
+  function dist(p, q) {
+    let s = 0;
+    for (let c = 0; c < N; c++) { const d = cellDiff(p, q, c); s += d < CAP ? d : CAP; }
+    return s / N + structure(p, q);
+  }
+  // Like dist, but ignores the worst-matching 30% of the artwork (glare, a thumb, a sleeve reflection).
+  function distRobust(p, q, keep) {
+    const d = new Float32Array(N);
+    for (let c = 0; c < N; c++) d[c] = cellDiff(p, q, c);
     d.sort();
-    const k = Math.round(n * (keep || 0.7)); let s = 0;
+    const k = Math.round(N * (keep || 0.7)); let s = 0;
     for (let c = 0; c < k; c++) s += d[c];
-    return s / (k * 3);
+    return s / k + structure(p, q);
   }
+  // Fine brightness detail of the artwork: LW x LH cells, each as standard deviations from the mean (so lighting
+  // and haze don't matter), stored as 4-bit steps. Compared by correlation: 1 = identical pattern.
+  const LW = 24, LH = 18, LN = LW * LH;
+  function lumFeature(px, W, H, box) {
+    const [bx, by, bw, bh] = box || [0, 0, W, H];
+    const cells = grid(px, W, H, bx + bw * AX0, by + bh * AY0, bx + bw * AX1, by + bh * AY1, LW, LH);
+    const v = new Float32Array(LN);
+    for (let c = 0; c < LN; c++) v[c] = 0.3 * cells[c * 3] + 0.59 * cells[c * 3 + 1] + 0.11 * cells[c * 3 + 2];
+    return zn(v);
+  }
+  function zn(v) {
+    let m = 0; for (const x of v) m += x; m /= v.length;
+    let sd = 0; for (const x of v) sd += (x - m) * (x - m); sd = Math.sqrt(sd / v.length) || 1;
+    const o = new Float32Array(v.length); for (let i = 0; i < v.length; i++) o[i] = (v[i] - m) / sd; return o;
+  }
+  function packLum(v) {   // 2 cells per byte, each -2..+2 standard deviations in 16 steps
+    const out = new Uint8Array(Math.ceil(v.length / 2));
+    for (let i = 0; i < v.length; i++) { const q = Math.max(0, Math.min(15, Math.round((v[i] + 2) * 3.75))); out[i >> 1] |= (i & 1) ? q : q << 4; }
+    return out;
+  }
+  function unpackLum(u) {
+    const v = new Float32Array(LN);
+    for (let i = 0; i < LN; i++) { const q = (i & 1) ? u[i >> 1] & 15 : u[i >> 1] >> 4; v[i] = q / 3.75 - 2; }
+    return zn(v);
+  }
+  function corr(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s / a.length; }
   const toB64 = u8 => { let s = ''; for (const v of u8) s += String.fromCharCode(v); return (typeof btoa === 'function' ? btoa(s) : Buffer.from(u8).toString('base64')); };
   const fromB64 = s => { const bin = typeof atob === 'function' ? atob(s) : Buffer.from(s, 'base64').toString('binary'); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
-  g.ScanFeat = { feature, norm, dist, distRobust, toB64, fromB64, GW, GH, VERSION: 1 };
+  g.ScanFeat = { feature, norm, dist, distRobust, lumFeature, packLum, unpackLum, corr, toB64, fromB64, GW, GH, VERSION: 2 };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

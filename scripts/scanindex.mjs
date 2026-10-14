@@ -35,7 +35,7 @@ async function one(c) {
       const r = await fetch(url(c), { headers: { 'User-Agent': 'ChaseCardBinder/1.0 (personal card scanner index)' }, signal: AbortSignal.timeout(30000) });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const { px, w, h } = decode(Buffer.from(await r.arrayBuffer()));
-      idx.f[c[0]] = SF.toB64(SF.feature(px, w, h));
+      idx.f[c[0]] = [SF.toB64(SF.feature(px, w, h)), SF.toB64(SF.packLum(SF.lumFeature(px, w, h)))];
       done++; return;
     } catch (e) { if (t === 2) failed.push(c[0] + ' (' + e.message + ')'); else await new Promise(r => setTimeout(r, 1500)); }
   }
