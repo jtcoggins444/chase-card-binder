@@ -84,7 +84,7 @@
     return s / k + structure(p, q);
   }
   // Fine brightness detail of the artwork: LW x LH cells, each as standard deviations from the mean (so lighting
-  // and haze don't matter), stored as 4-bit steps. Compared by correlation: 1 = identical pattern.
+  // and haze don't matter), stored one byte per cell. Compared by correlation: 1 = identical pattern.
   const LW = 24, LH = 18, LN = LW * LH;
   function lumFeature(px, W, H, box) {
     const [bx, by, bw, bh] = box || [0, 0, W, H];
@@ -98,18 +98,18 @@
     let sd = 0; for (const x of v) sd += (x - m) * (x - m); sd = Math.sqrt(sd / v.length) || 1;
     const o = new Float32Array(v.length); for (let i = 0; i < v.length; i++) o[i] = (v[i] - m) / sd; return o;
   }
-  function packLum(v) {   // 2 cells per byte, each -2..+2 standard deviations in 16 steps
-    const out = new Uint8Array(Math.ceil(v.length / 2));
-    for (let i = 0; i < v.length; i++) { const q = Math.max(0, Math.min(15, Math.round((v[i] + 2) * 3.75))); out[i >> 1] |= (i & 1) ? q : q << 4; }
+  function packLum(v) {   // one byte per cell: -3..+3 standard deviations
+    const out = new Uint8Array(v.length);
+    for (let i = 0; i < v.length; i++) out[i] = Math.max(0, Math.min(255, Math.round((v[i] + 3) * 42.5)));
     return out;
   }
   function unpackLum(u) {
     const v = new Float32Array(LN);
-    for (let i = 0; i < LN; i++) { const q = (i & 1) ? u[i >> 1] & 15 : u[i >> 1] >> 4; v[i] = q / 3.75 - 2; }
+    for (let i = 0; i < LN; i++) v[i] = u[i] / 42.5 - 3;
     return zn(v);
   }
   function corr(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s / a.length; }
   const toB64 = u8 => { let s = ''; for (const v of u8) s += String.fromCharCode(v); return (typeof btoa === 'function' ? btoa(s) : Buffer.from(u8).toString('base64')); };
   const fromB64 = s => { const bin = typeof atob === 'function' ? atob(s) : Buffer.from(s, 'base64').toString('binary'); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
-  g.ScanFeat = { feature, norm, dist, distRobust, lumFeature, packLum, unpackLum, corr, toB64, fromB64, GW, GH, VERSION: 2 };
+  g.ScanFeat = { feature, norm, dist, distRobust, lumFeature, packLum, unpackLum, corr, toB64, fromB64, GW, GH, VERSION: 3 };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
