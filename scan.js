@@ -29,7 +29,7 @@
   }
 
   // ---------- matching ----------
-  const LUMW = 1.5;   // weight of the fine brightness detail in the final ranking
+  const LUMW = window.__LUMW || 2.5;   // weight of the fine brightness detail in the final ranking
   function pixels(src, maxW, angle, cx, cy) {
     const sw = src.videoWidth || src.naturalWidth || src.width, sh = src.videoHeight || src.naturalHeight || src.height;
     const k = Math.min(1, maxW / sw), w = Math.round(sw * k), h = Math.round(sh * k);
