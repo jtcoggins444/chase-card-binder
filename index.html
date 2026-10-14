@@ -143,7 +143,6 @@ dialog.lb{border:0;border-radius:14px;padding:0;background:var(--panel);color:va
 .hero[data-hero="dragonite"]{--h1:#6e3308;--h2:#c56d18;--h3:#f0aa52;--hm:#2f8f8a;--hs:#3f1c03;--hring:#fff0c8;--hglow:rgb(255 200 110 / .6);--hsub:#fff0dc;--hsave:#ffe6b0;--hshade:rgb(60 25 0 / .65)}
 .hero[data-hero="kyogre"]{--h1:#03122f;--h2:#0a3a74;--h3:#1c74b8;--hm:#e04646;--hs:#010a1c;--hring:#8fd8ff;--hglow:rgb(60 170 255 / .55);--hsub:#e0f0ff;--hsave:#ffb0b0;--hshade:rgb(0 10 30 / .7)}
 .hero[data-hero="reshiram"] .herocap,.hero[data-hero="dragonite"] .herocap{--hcap:#2a2016;text-shadow:0 1px 0 rgb(255 255 255 / .5)}
-.herocards.two{padding-right:40px}
 .hero[data-hero="meowth"]{--h1:#5e3f14;--h2:#9a7433;--h3:#d9b566;--hm:#fff3d6;--hs:#36250d;--hring:#fff0b0;--hglow:rgb(255 215 90 / .6);--hsub:#fff4dc;--hsave:#ffe9a8;--hshade:rgb(50 30 0 / .65)}
 .hero::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:repeating-linear-gradient(118deg,transparent 0 26px,var(--hs) 26px 34px,transparent 34px 60px);opacity:.55;
@@ -153,20 +152,20 @@ dialog.lb{border:0;border-radius:14px;padding:0;background:var(--panel);color:va
 .hero .sub{color:var(--hsub);margin-bottom:0;text-shadow:0 1px 2px var(--hshade)}
 .hero .sub .save{color:var(--hsave)}
 .swirl{position:absolute;top:0;right:0;height:100%;width:min(520px,70%);pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 30%);mask-image:linear-gradient(90deg,transparent,#000 30%)}
-.herocards{position:relative;display:flex;align-items:center;flex:none;padding:6px 22px 0 0}
-.herocards button{all:unset;cursor:zoom-in;aspect-ratio:245/342;border-radius:6px;overflow:hidden;background:rgb(0 0 0 / .3);box-shadow:0 8px 20px rgb(0 0 0 / .45);transition:transform .2s}
-.herocards .side{width:78px}
-.herocards .main{width:118px;z-index:2;margin-inline:-18px;box-shadow:0 10px 28px rgb(0 0 0 / .55),0 0 0 2px var(--hring),0 0 26px 6px var(--hglow)}
-.herocards .side.l{transform:rotate(-11deg) translateY(10px)}
-.herocards .side.r{transform:rotate(11deg) translateY(10px)}
-.herocards button:hover,.herocards button:focus-visible{z-index:3;outline:2px solid #fff;outline-offset:2px}
-.herocards .main:hover,.herocards .main:focus-visible{transform:translateY(-6px) scale(1.03)}
-.herocards .side.l:hover,.herocards .side.l:focus-visible{transform:rotate(-6deg) translateY(-2px)}
-.herocards .side.r:hover,.herocards .side.r:focus-visible{transform:rotate(6deg) translateY(-2px)}
+.herocards{--cw:118px;--sx:74px;position:relative;flex:none;width:calc(var(--cw) + 2*var(--sx) + 20px);height:calc(var(--cw)*1.396 + 22px);margin:6px 18px 0 0;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.herocards button{all:unset;position:absolute;left:50%;top:50%;width:var(--cw);margin-left:calc(var(--cw)/-2);margin-top:calc(var(--cw)*-.698);aspect-ratio:245/342;border-radius:6px;overflow:hidden;background:rgb(0 0 0 / .3);box-shadow:0 8px 20px rgb(0 0 0 / .45);cursor:pointer;transition:transform .38s cubic-bezier(.2,.8,.2,1),box-shadow .38s,filter .38s;-webkit-tap-highlight-color:transparent}
+.herocards .main{z-index:2;cursor:zoom-in;transform:translateY(-4px);box-shadow:0 10px 28px rgb(0 0 0 / .55),0 0 0 2px var(--hring),0 0 26px 6px var(--hglow)}
+.herocards .l{z-index:1;transform:translateX(calc(-1*var(--sx))) translateY(12px) rotate(-11deg) scale(.66);filter:brightness(.88)}
+.herocards .r{z-index:1;transform:translateX(var(--sx)) translateY(12px) rotate(11deg) scale(.66);filter:brightness(.88)}
+.herocards button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+@media (hover:hover){.herocards .main:hover{transform:translateY(-10px) scale(1.03)}
+.herocards .l:hover{transform:translateX(calc(-1*var(--sx) - 6px)) translateY(4px) rotate(-6deg) scale(.7);filter:none}
+.herocards .r:hover{transform:translateX(calc(var(--sx) + 6px)) translateY(4px) rotate(6deg) scale(.7);filter:none}}
+.herocards.drag button{transition:none}
 .herocards img{width:100%;height:100%;object-fit:cover;display:block}
-.herocap{position:absolute;left:50%;bottom:-26px;text-shadow:0 1px 2px rgb(0 0 0 / .5);transform:translateX(-50%);white-space:nowrap;font:700 .7rem var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--hcap,var(--hsub))}
+.herocap{position:absolute;left:50%;bottom:-20px;pointer-events:none;text-shadow:0 1px 2px rgb(0 0 0 / .5);transform:translateX(-50%);white-space:nowrap;font:700 .7rem var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--hcap,var(--hsub))}
 .hero[data-hero="meowth"] .herocap{--hcap:#3d2706;text-shadow:0 1px 0 rgb(255 240 200 / .6)}
-@media (max-width:640px){.hero{flex-direction:column;align-items:flex-start;padding:18px 16px 44px}.hero::before{display:none}.herocards{align-self:center;padding:0}.herocards .side{width:62px}.herocards .main{width:94px}.swirl{width:100%;height:46%;top:auto;bottom:0;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}}
+@media (max-width:640px){.hero{flex-direction:column;align-items:flex-start;padding:18px 16px 44px}.hero::before{display:none}.herocards{align-self:center;margin:4px 0 0;--cw:94px;--sx:60px}.swirl{width:100%;height:46%;top:auto;bottom:0;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}}
 @media (prefers-reduced-motion:reduce){.herocards button{transition:none}}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-block:4px 16px}
 .tabs button{font:700 .95rem var(--f-display);background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:8px 14px;margin-bottom:-1px;cursor:pointer}
@@ -282,7 +281,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <button id="syncBtn" type="button" class="syncbtn" hidden><span class="dot" aria-hidden="true"></span><span id="syncTxt">Sign in to sync</span></button>
     </div>
     <canvas class="swirl" id="heroSwirl" aria-hidden="true"></canvas>
-    <div class="herocards" id="heroCards" aria-label="Featured cards in the checklist"></div>
+    <div class="herocards" id="heroCards" aria-label="Featured cards. Swipe, or tap a side card, to bring it to the front."></div>
   </header>
   <nav class="tabs" role="tablist" aria-label="Views">
     <button type="button" role="tab" id="tabBtnOwned" data-tab="owned" aria-selected="true">My Binder <span class="tabn" id="nOwned"></span></button>
@@ -651,9 +650,24 @@ let HERO=HEROES[0];
   const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=HERO.meta})();
 (function(){const hc=document.getElementById('heroCards');if(!hc)return;
   const fav=byId[HERO.main];const others=HERO.sides.map(id=>byId[id]).filter(Boolean);
-  const btn=(c,cls)=>c?`<button type="button" class="${cls}" data-id="${c[0]}" aria-label="View ${esc(c[1])}, ${esc(S[c[2]][0])}"><img src="${img(c,cls==='main')}" alt="" onerror="this.remove()"></button>`:'';
-  hc.classList.toggle('two',others.length<2);hc.innerHTML=btn(others[0],'side l')+btn(fav,'main')+btn(others[1],'side r')+(fav?`<span class="herocap">${esc(HERO.cap)}</span>`:'');
-  hc.addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(b)openDetail(byId[b.dataset.id])})})();
+  const btn=(c,cls)=>c?`<button type="button" class="${cls}" data-id="${c[0]}"><img src="${img(c,true)}" alt="" draggable="false" onerror="this.remove()"></button>`:'';
+  const list=[fav,...others].filter(Boolean);if(!list.length)return;
+  hc.innerHTML=list.map(c=>btn(c,'')).join('')+`<span class="herocap">${esc(HERO.cap)}</span>`;
+  const bs=[...hc.querySelectorAll('button')];let front=0;
+  function place(){const n=bs.length;bs.forEach((b,i)=>{const d=(i-front+n)%n;const pos=d===0?'main':(d===1&&n>1?'r':'l');b.className=pos;
+    b.setAttribute('aria-label',(pos==='main'?'View ':'Bring to front: ')+b.dataset.name)})}
+  bs.forEach(b=>{const c=byId[b.dataset.id];b.dataset.name=c[1]+', '+S[c[2]][0]});
+  function turn(dir){front=(front+dir+bs.length)%bs.length;place()}
+  place();
+  let x0=null,dx=0,moved=false,wheelAcc=0,wheelT=0;
+  hc.addEventListener('pointerdown',e=>{if(e.button)return;x0=e.clientX;dx=0;moved=false});
+  hc.addEventListener('pointermove',e=>{if(x0===null)return;dx=e.clientX-x0;if(Math.abs(dx)>8)moved=true});
+  const end=()=>{if(x0===null)return;if(moved&&Math.abs(dx)>28)turn(dx<0?1:-1);x0=null};
+  hc.addEventListener('pointerup',end);hc.addEventListener('pointercancel',()=>{x0=null});hc.addEventListener('pointerleave',end);
+  hc.addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(!b)return;if(moved){moved=false;e.preventDefault();return}
+    if(b.className==='main')openDetail(byId[b.dataset.id]);else turn(b.className==='r'?1:-1)});
+  hc.addEventListener('wheel',e=>{if(Math.abs(e.deltaX)<=Math.abs(e.deltaY))return;e.preventDefault();const now=performance.now();if(now-wheelT<380)return;wheelAcc+=e.deltaX;if(Math.abs(wheelAcc)>30){turn(wheelAcc>0?1:-1);wheelAcc=0;wheelT=now}},{passive:false});
+  hc.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();turn(e.key==='ArrowRight'?1:-1);hc.querySelector('.main').focus()}})})();
 (function(){const cv=document.getElementById('heroSwirl');if(!cv||!cv.getContext)return;const ctx=cv.getContext('2d');
   const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;let w=0,h=0,dpr=1;
   function size(){const r=cv.getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,2);w=r.width;h=r.height;cv.width=Math.max(1,w*dpr);cv.height=Math.max(1,h*dpr)}
