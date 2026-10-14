@@ -511,6 +511,7 @@ const usd=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
 const usd0=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 function money(v){return v==null?'—':usd.format(v)}
 function img(c,large){const i=c[0].lastIndexOf('-'),sid=c[0].slice(0,i),n=c[0].slice(i+1);
+  if(c[7]==='t')return 'https://tcgplayer-cdn.tcgplayer.com/product/'+c[6]+(large?'_in_1000x1000.jpg':'_200w.jpg');
   return c[7]==='s'?'https://images.scrydex.com/pokemon/'+c[0]+(large?'/large':'/small'):'https://images.pokemontcg.io/'+sid+'/'+n+(large?'_hires.png':'.png')}
 function pct(v){return (v>=0?'+':'\u2212')+Math.abs(v).toFixed(1)+'%'}
 function mvTxt(c){const v=chgOver(c,7);return v==null||Math.abs(v)<0.05?'':`<span class="mv ${v>=0?'up':'down'}" title="Change over the last 7 days">${v>=0?'\u25B2':'\u25BC'} ${Math.abs(v).toFixed(1)}% 7d</span>`}

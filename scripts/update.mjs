@@ -37,6 +37,83 @@ function num(x) {
   return String(Math.round(x * 100) / 100);
 }
 
+// ---- New sets: add chase cards from sets released after the checklist was built ----
+const RARITY = {
+  'Illustration Rare': 'IR', 'Special Illustration Rare': 'SIR', 'Ultra Rare': 'FA', 'Hyper Rare': 'HR',
+  'Mega Hyper Rare': 'MHR', 'Black White Rare': 'BWR', 'Mega Attack Rare': 'MAR'
+};
+const SKIP_SET = /promo|collection|celebration|energies|trainer kit|battle academy|mcdonald|trick or trade|deck|bundle|placement|blister|first partner|miscellaneous|world championship|jumbo|code card/i;
+const SERIES = { ME: 'Mega Evolution', SV: 'Scarlet & Violet', SWSH: 'Sword & Shield', SM: 'Sun & Moon', XY: 'XY', BW: 'Black & White' };
+
+async function discoverSets(day) {
+  const cfgPath = join(Data, 'newsets.json');
+  const cfg = existsSync(cfgPath) ? JSON.parse(read(cfgPath)) : { after: 24688, ignore: [24722, 24837], sets: {}, log: [] };
+  cfg.sets = cfg.sets || {}; cfg.log = cfg.log || []; cfg.ignore = cfg.ignore || [];
+  const groupsFile = JSON.parse(read(join(Data, 'groups.json')));
+  const known = new Set(groupsFile.groups.map(Number));
+  const all = JSON.parse(await getText(`${Base}/tcgplayer/3/groups`, 3, 20)).results || [];
+  const cands = all.filter(g => (g.groupId > cfg.after || cfg.sets[g.groupId]) && !cfg.ignore.includes(g.groupId) && !SKIP_SET.test(g.name));
+  if (!cands.length) return;
+  const cardsPath = join(Data, 'cards.json'), pidsPath = join(Data, 'pids.json');
+  const cards = JSON.parse(read(cardsPath)), pids = JSON.parse(read(pidsPath));
+  const havePid = new Set(cards.cards.map(c => c[6]).filter(Boolean)), haveId = new Set(cards.cards.map(c => c[0]));
+  const latestSeries = Object.values(cards.sets).sort((a, b) => a[2].localeCompare(b[2])).pop()[1];
+  let added = 0;
+  for (const g of cands) {
+    let prods;
+    try { prods = JSON.parse(await getText(`${Base}/tcgplayer/3/${g.groupId}/products`, 2, 5)).results || []; }
+    catch (e) { log(`New-set check: could not read ${g.name}: ${e.message}`); continue; }
+    await sleep(150);
+    const sid = cfg.sets[g.groupId] || ('g' + g.groupId);
+    const fresh = [];
+    const denoms = {};
+    for (const p of prods) {
+      const ed = Object.fromEntries((p.extendedData || []).map(e => [e.name, e.value]));
+      const num = String(ed.Number || '');
+      const m = num.match(/^([A-Za-z]*)(\d+)\s*\/\s*0*(\d+)$/);
+      if (m) denoms[m[3]] = (denoms[m[3]] || 0) + 1;
+      const kind = RARITY[ed.Rarity];
+      if (!kind) {
+        // Flag rarities we don't know yet when they look like chase cards (a Pokémon numbered past the set)
+        if (ed.HP && ed.Rarity && /rare/i.test(ed.Rarity) && !/^(Rare|Double Rare|Rare Holo|Holo Rare)$/i.test(ed.Rarity) && m && Number(m[2]) > Number(m[3])) {
+          const note = `${day}: ${g.name} has "${ed.Rarity}" cards (e.g. ${p.name}) that the checklist doesn't recognize yet.`;
+          if (!cfg.log.includes(note) && !cfg.log.some(l => l.includes(`"${ed.Rarity}"`) && l.includes(g.name))) { cfg.log.push(note); log(note); }
+        }
+        continue;
+      }
+      if (!ed.HP) continue;                       // trainer and energy cards are left out of the checklist
+      if (havePid.has(p.productId)) continue;
+      const n = m ? (m[1] ? m[1] + m[2] : String(Number(m[2]))) : (num.split('/')[0] || String(p.productId));
+      let id = `${sid}-${n}`;
+      if (haveId.has(id)) id = `${sid}-${n}-${p.productId}`;
+      const name = String(p.name).replace(/\s+-\s+[A-Za-z]*\d+\s*\/\s*\d+.*$/, '').trim();
+      fresh.push([id, name, sid, n, kind, null, p.productId, 't']);
+      havePid.add(p.productId); haveId.add(id);
+    }
+    if (!fresh.length) continue;
+    if (!cards.sets[sid]) {
+      const pre = (String(g.name).match(/^([A-Z]+)\d*\w*:/) || [])[1];
+      const total = Number(Object.entries(denoms).sort((a, b) => b[1] - a[1])[0]?.[0] || 0);
+      cards.sets[sid] = [String(g.name).replace(/^[A-Z]+\d*\w*:\s*/, ''), SERIES[pre] || latestSeries, String(g.publishedOn || day).slice(0, 10).replace(/-/g, '/'), total];
+    }
+    cards.cards.push(...fresh);
+    for (const c of fresh) pids.push(c[6]);
+    if (!known.has(g.groupId)) { groupsFile.groups.push(g.groupId); known.add(g.groupId); }
+    cfg.sets[g.groupId] = sid;
+    const byKind = {}; fresh.forEach(c => byKind[c[4]] = (byKind[c[4]] || 0) + 1);
+    const note = `${day}: added ${fresh.length} cards from ${cards.sets[sid][0]} (${Object.entries(byKind).map(([k, v]) => v + ' ' + k).join(', ')}).`;
+    cfg.log.push(note); log(note);
+    added += fresh.length;
+  }
+  cfg.log = cfg.log.slice(-100);
+  if (added) {
+    write(cardsPath, JSON.stringify(cards));
+    write(pidsPath, JSON.stringify(pids));
+    write(join(Data, 'groups.json'), JSON.stringify(groupsFile));
+  }
+  write(cfgPath, JSON.stringify(cfg, null, 1));
+}
+
 function buildPage() {
   const files = readdirSync(DaysDir).filter(f => f.endsWith('.json')).sort();
   if (!files.length) throw new Error('No price files in data/days.');
@@ -66,6 +143,8 @@ async function main() {
   const day = updated.slice(0, 10);
   const dayFile = join(DaysDir, day + '.json');
   if (existsSync(dayFile)) { log(`Prices for ${day} are already saved; nothing new from TCGplayer yet.`); return; }
+
+  try { await discoverSets(day); } catch (e) { log('New-set check skipped: ' + e.message); }
 
   const pids = JSON.parse(read(join(Data, 'pids.json')));
   const index = new Map(pids.map((p, i) => [Number(p), i]));
