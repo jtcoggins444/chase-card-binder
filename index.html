@@ -128,20 +128,25 @@ dialog.lb{border:0;border-radius:14px;padding:0;background:var(--panel);color:va
 .dvprice b{font:500 1.6rem var(--f-mono);font-variant-numeric:tabular-nums}
 .dvchg{font:500 .82rem var(--f-mono);color:var(--muted)}
 .lab{font-size:.7rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.hero{position:relative;display:flex;gap:18px;align-items:center;justify-content:space-between;overflow:hidden;border-radius:18px;padding:22px 24px 40px;margin-bottom:14px;color:#fff6e8;
-  background:linear-gradient(100deg,var(--flame-deep) 0%,#b8400f 45%,var(--flame) 100%);box-shadow:inset 0 -7px 0 var(--mane)}
+.hero{--h1:#8f2a0b;--h2:#b8400f;--h3:#e4611b;--hm:#f6e2b6;--hs:#1e140f;--hring:#ffd27a;--hglow:rgb(255 170 60 / .55);--hsub:#ffe9cc;--hsave:#ffd7a8;--hshade:rgb(60 15 0 / .55);
+  position:relative;display:flex;gap:18px;align-items:center;justify-content:space-between;overflow:hidden;border-radius:18px;padding:22px 24px 40px;margin-bottom:14px;color:#fff6e8;
+  background:linear-gradient(100deg,var(--h1) 0%,var(--h2) 45%,var(--h3) 100%);box-shadow:inset 0 -7px 0 var(--hm);transition:background .3s}
+.hero[data-hero="charizard"]{--h1:#4a0a0a;--h2:#9c1d0e;--h3:#ee7418;--hm:#2f9a96;--hs:#250404;--hring:#ffb347;--hglow:rgb(255 120 30 / .6);--hsub:#ffe0c9;--hsave:#ffcf9e;--hshade:rgb(50 5 0 / .6)}
+.hero[data-hero="zeraora"]{--h1:#0a1230;--h2:#1b2c66;--h3:#2f53a8;--hm:#ffd23d;--hs:#05091a;--hring:#ffe14d;--hglow:rgb(255 220 60 / .55);--hsub:#e3ecff;--hsave:#ffe58a;--hshade:rgb(0 5 30 / .6)}
+.hero[data-hero="mewtwo"]{--h1:#24103d;--h2:#542a85;--h3:#9b72d0;--hm:#e8d9f5;--hs:#120622;--hring:#f0b8ff;--hglow:rgb(205 125 255 / .55);--hsub:#f1e6ff;--hsave:#f5c8ff;--hshade:rgb(20 0 40 / .6)}
+.hero[data-hero="meowth"]{--h1:#5e3f14;--h2:#9a7433;--h3:#d9b566;--hm:#fff3d6;--hs:#36250d;--hring:#fff0b0;--hglow:rgb(255 215 90 / .6);--hsub:#fff4dc;--hsave:#ffe9a8;--hshade:rgb(50 30 0 / .65)}
 .hero::before{content:"";position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(118deg,transparent 0 26px,var(--stripe) 26px 34px,transparent 34px 60px);opacity:.55;
+  background:repeating-linear-gradient(118deg,transparent 0 26px,var(--hs) 26px 34px,transparent 34px 60px);opacity:.55;
   -webkit-mask-image:linear-gradient(90deg,transparent 20%,#000 50%,transparent 80%);mask-image:linear-gradient(90deg,transparent 20%,#000 50%,transparent 80%)}
 .herotext{position:relative;min-width:0;max-width:62ch}
 .hero h1{color:#fff;font-family:var(--f-display);font-weight:800;letter-spacing:-.01em;font-size:clamp(1.8rem,4.5vw,2.6rem);text-shadow:0 2px 0 rgb(0 0 0 / .18)}
-.hero .sub{color:#ffe9cc;margin-bottom:0;text-shadow:0 1px 2px rgb(60 15 0 / .55)}
-.hero .sub .save{color:#ffd7a8}
+.hero .sub{color:var(--hsub);margin-bottom:0;text-shadow:0 1px 2px var(--hshade)}
+.hero .sub .save{color:var(--hsave)}
 .swirl{position:absolute;top:0;right:0;height:100%;width:min(520px,70%);pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 30%);mask-image:linear-gradient(90deg,transparent,#000 30%)}
 .herocards{position:relative;display:flex;align-items:center;flex:none;padding:6px 22px 0 0}
 .herocards button{all:unset;cursor:zoom-in;aspect-ratio:245/342;border-radius:6px;overflow:hidden;background:rgb(0 0 0 / .3);box-shadow:0 8px 20px rgb(0 0 0 / .45);transition:transform .2s}
 .herocards .side{width:78px}
-.herocards .main{width:118px;z-index:2;margin-inline:-18px;box-shadow:0 10px 28px rgb(0 0 0 / .55),0 0 0 2px #ffd27a,0 0 26px 6px rgb(255 170 60 / .55)}
+.herocards .main{width:118px;z-index:2;margin-inline:-18px;box-shadow:0 10px 28px rgb(0 0 0 / .55),0 0 0 2px var(--hring),0 0 26px 6px var(--hglow)}
 .herocards .side.l{transform:rotate(-11deg) translateY(10px)}
 .herocards .side.r{transform:rotate(11deg) translateY(10px)}
 .herocards button:hover,.herocards button:focus-visible{z-index:3;outline:2px solid #fff;outline-offset:2px}
@@ -149,7 +154,8 @@ dialog.lb{border:0;border-radius:14px;padding:0;background:var(--panel);color:va
 .herocards .side.l:hover,.herocards .side.l:focus-visible{transform:rotate(-6deg) translateY(-2px)}
 .herocards .side.r:hover,.herocards .side.r:focus-visible{transform:rotate(6deg) translateY(-2px)}
 .herocards img{width:100%;height:100%;object-fit:cover;display:block}
-.herocap{position:absolute;left:50%;bottom:-26px;text-shadow:0 1px 2px rgb(0 0 0 / .5);transform:translateX(-50%);white-space:nowrap;font:700 .7rem var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:#ffe9cc}
+.herocap{position:absolute;left:50%;bottom:-26px;text-shadow:0 1px 2px rgb(0 0 0 / .5);transform:translateX(-50%);white-space:nowrap;font:700 .7rem var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--hcap,var(--hsub))}
+.hero[data-hero="meowth"] .herocap{--hcap:#3d2706;text-shadow:0 1px 0 rgb(255 240 200 / .6)}
 @media (max-width:640px){.hero{flex-direction:column;align-items:flex-start;padding:18px 16px 44px}.hero::before{display:none}.herocards{align-self:center;padding:0}.herocards .side{width:62px}.herocards .main{width:94px}.swirl{width:100%;height:46%;top:auto;bottom:0;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}}
 @media (prefers-reduced-motion:reduce){.herocards button{transition:none}}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-block:4px 16px}
@@ -259,14 +265,14 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
 </head>
 <body>
 <div class="wrap">
-  <header class="hero">
+  <header class="hero" id="hero">
     <div class="herotext">
             <h1>Chase Card Binder</h1>
   <p class="sub">Your chase-card checklist: every English IR, SIR, full art, VMAX and VSTAR, gallery card, shiny, gold and other chase rarity from Black &amp; White to today, with daily TCGplayer prices. Tap a picture for its price chart, or a name to open it on TCGplayer. <span class="save" id="saveState"></span></p>
       <button id="syncBtn" type="button" class="syncbtn" hidden><span class="dot" aria-hidden="true"></span><span id="syncTxt">Sign in to sync</span></button>
     </div>
     <canvas class="swirl" id="heroSwirl" aria-hidden="true"></canvas>
-    <div class="herocards" id="heroCards" aria-label="Arcanine cards in the checklist"></div>
+    <div class="herocards" id="heroCards" aria-label="Featured cards in the checklist"></div>
   </header>
   <nav class="tabs" role="tablist" aria-label="Views">
     <button type="button" role="tab" id="tabBtnOwned" data-tab="owned" aria-selected="true">My Binder <span class="tabn" id="nOwned"></span></button>
@@ -602,26 +608,77 @@ try{if(localStorage.getItem('binder-buyOpen')==='0')setBuyOpen(false)}catch(e){}
 buyTg.addEventListener('click',()=>setBuyOpen(buyTg.getAttribute('aria-expanded')!=='true'));
 document.getElementById('buyList').addEventListener('click',e=>{const th=e.target.closest('.th');if(!th)return;openDetail(byId[th.closest('li').dataset.id])});
 renderBuy();
+const HEROES=[
+  {k:'arcanine',cap:'Blaine’s Arcanine',main:'gym2-1',sides:['sv1-224','swsh11tg-TG08'],fx:'swirl',meta:'#b8400f'},
+  {k:'zeraora',cap:'Zeraora',main:'swsh6-166',sides:['me5-114','sv7-151'],fx:'bolt',meta:'#1b2c66'},
+  {k:'charizard',cap:'Charizard',main:'sv3pt5-199',sides:['sm3-150','me2-125'],fx:'embers',meta:'#9c1d0e'},
+  {k:'mewtwo',cap:'Mewtwo',main:'sv10-231',sides:['sm35-78','swsh12pt5gg-GG44'],fx:'rings',meta:'#542a85'},
+  {k:'meowth',cap:'Meowth',main:'me3-121',sides:['sv10-203','me2-106'],fx:'coins',meta:'#9a7433'}];
+let HERO=HEROES[0];
+(function(){let i=-1;try{const q=new URLSearchParams(location.search).get('hero');i=HEROES.findIndex(h=>h.k===q);
+  if(i<0){const last=HEROES.findIndex(h=>h.k===localStorage.getItem('binder-hero'));i=(last+1)%HEROES.length}
+  localStorage.setItem('binder-hero',HEROES[i].k)}catch(e){i=Math.floor(Math.random()*HEROES.length)}
+  HERO=HEROES[Math.max(0,i)];const hero=document.getElementById('hero');if(hero)hero.dataset.hero=HERO.k;
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=HERO.meta})();
 (function(){const hc=document.getElementById('heroCards');if(!hc)return;
-  const fav=byId['gym2-1'];const others=['sv1-224','swsh11tg-TG08'].map(id=>byId[id]).filter(Boolean);
+  const fav=byId[HERO.main];const others=HERO.sides.map(id=>byId[id]).filter(Boolean);
   const btn=(c,cls)=>c?`<button type="button" class="${cls}" data-id="${c[0]}" aria-label="View ${esc(c[1])}, ${esc(S[c[2]][0])}"><img src="${img(c,cls==='main')}" alt="" onerror="this.remove()"></button>`:'';
-  hc.innerHTML=btn(others[0],'side l')+btn(fav,'main')+btn(others[1],'side r')+(fav?'<span class="herocap">Blaine’s Arcanine</span>':'');
+  hc.innerHTML=btn(others[0],'side l')+btn(fav,'main')+btn(others[1],'side r')+(fav?`<span class="herocap">${esc(HERO.cap)}</span>`:'');
   hc.addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(b)openDetail(byId[b.dataset.id])})})();
 (function(){const cv=document.getElementById('heroSwirl');if(!cv||!cv.getContext)return;const ctx=cv.getContext('2d');
   const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;let w=0,h=0,dpr=1;
   function size(){const r=cv.getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,2);w=r.width;h=r.height;cv.width=Math.max(1,w*dpr);cv.height=Math.max(1,h*dpr)}
-  function draw(t){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-    const cx=w*0.62,cy=h*0.52,R=Math.max(w,h)*0.75,rot=t*0.00012;
-    const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.55);glow.addColorStop(0,'rgba(255,224,140,.55)');glow.addColorStop(.45,'rgba(255,128,40,.25)');glow.addColorStop(1,'rgba(255,90,20,0)');
-    ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);ctx.globalCompositeOperation='lighter';
-    const arms=5,b=0.62;
+  const rnd=(s=>()=>(s=(s*16807)%2147483647)/2147483647)(7);
+  const P=Array.from({length:46},()=>({x:rnd(),y:rnd(),v:rnd(),s:rnd(),p:rnd()*6.28}));
+  function glow(cx,cy,R,stops){const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);stops.forEach(([o,c])=>g.addColorStop(o,c));ctx.fillStyle=g;ctx.fillRect(0,0,w,h)}
+  function spiral(cx,cy,R,rot,stops,shadow){ctx.globalCompositeOperation='lighter';const arms=5,b=0.62;
     for(let a=0;a<arms;a++){const base=a*2*Math.PI/arms+rot;
       for(let k=0;k<2;k++){ctx.beginPath();let first=true;
         for(let r=6;r<R;r+=3){const th=base+Math.log(r/6)/b+k*0.18;const x=cx+r*Math.cos(th),y=cy+r*Math.sin(th);if(first){ctx.moveTo(x,y);first=false}else ctx.lineTo(x,y)}
-        const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);g.addColorStop(0,'rgba(255,245,200,.85)');g.addColorStop(.25,'rgba(255,190,80,.55)');g.addColorStop(.6,'rgba(255,110,30,.28)');g.addColorStop(1,'rgba(200,50,10,0)');
-        ctx.strokeStyle=g;ctx.lineWidth=k?2:7;ctx.lineCap='round';ctx.shadowColor='rgba(255,150,40,.8)';ctx.shadowBlur=k?4:14;ctx.stroke()}}
-    ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0}
-  size();draw(0);window.addEventListener('resize',()=>{size();draw(performance.now())});
+        const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);stops.forEach(([o,c])=>g.addColorStop(o,c));
+        ctx.strokeStyle=g;ctx.lineWidth=k?2:7;ctx.lineCap='round';ctx.shadowColor=shadow;ctx.shadowBlur=k?4:14;ctx.stroke()}}
+    ctx.shadowBlur=0}
+  function bolt(x0,y0,ang,len,seed){const r=(s=>()=>(s=(s*16807)%2147483647)/2147483647)(seed);const pts=[[x0,y0]];let x=x0,y=y0,a=ang;
+    for(let d=0;d<len;){const st=10+r()*16;a=ang+(r()-.5)*1.1;x+=Math.cos(a)*st;y+=Math.sin(a)*st;d+=st;pts.push([x,y])}return pts}
+  function strokePts(pts,width,color,blur,shadow){ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.lineWidth=width;ctx.strokeStyle=color;ctx.shadowColor=shadow;ctx.shadowBlur=blur;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke()}
+  const FX={
+    swirl(t,cx,cy,R){glow(cx,cy,R*0.55,[[0,'rgba(255,224,140,.55)'],[.45,'rgba(255,128,40,.25)'],[1,'rgba(255,90,20,0)']]);
+      spiral(cx,cy,R,t*0.00012,[[0,'rgba(255,245,200,.85)'],[.25,'rgba(255,190,80,.55)'],[.6,'rgba(255,110,30,.28)'],[1,'rgba(200,50,10,0)']],'rgba(255,150,40,.8)')},
+    embers(t,cx,cy,R){glow(cx,cy,R*0.6,[[0,'rgba(255,200,110,.5)'],[.4,'rgba(255,90,30,.28)'],[1,'rgba(160,20,10,0)']]);
+      spiral(cx,cy,R,-t*0.00015,[[0,'rgba(255,235,190,.8)'],[.25,'rgba(255,150,60,.5)'],[.6,'rgba(230,60,20,.3)'],[1,'rgba(120,10,5,0)']],'rgba(255,90,20,.85)');
+      ctx.globalCompositeOperation='lighter';
+      for(const q of P){const sp=.02+q.v*.05,y=h+10-((t*sp*0.05+q.y*(h+40))%(h+40)),x=q.x*w+Math.sin(t*0.0012+q.p)*10,r=1.6+q.s*3,a=Math.max(0,Math.min(1,y/h));
+        const g=ctx.createRadialGradient(x,y,0,x,y,r*3);g.addColorStop(0,`rgba(255,230,160,${a})`);g.addColorStop(.4,`rgba(255,120,30,${a*.6})`);g.addColorStop(1,'rgba(255,60,0,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r*3,0,6.283);ctx.fill()}},
+    bolt(t,cx,cy,R){glow(cx,cy,R*0.6,[[0,'rgba(255,240,150,.45)'],[.35,'rgba(90,170,255,.22)'],[1,'rgba(30,60,160,0)']]);
+      ctx.globalCompositeOperation='lighter';
+      ctx.lineWidth=1.5;for(let i=0;i<3;i++){ctx.beginPath();ctx.strokeStyle=`rgba(140,200,255,${.18+.1*Math.sin(t*0.004+i)})`;ctx.arc(cx,cy,R*(.22+i*.14),t*0.0006*(i%2?1:-1)+i,t*0.0006*(i%2?1:-1)+i+2.2);ctx.stroke()}
+      const tick=Math.floor(t/140),n=4;
+      for(let i=0;i<n;i++){const seed=(tick*7919+i*104729)%2147483646+1;const on=((tick+i*3)%5)!==0;if(!on)continue;
+        const ang=i*(6.283/n)+(Math.floor(t/1200)%6)*0.5;const pts=bolt(cx,cy,ang,R*(.45+((seed%100)/100)*.35),seed);
+        strokePts(pts,7,'rgba(255,214,60,.35)',18,'rgba(255,214,60,.9)');strokePts(pts,2.4,'rgba(255,250,220,.95)',6,'rgba(160,220,255,.9)')}
+      ctx.shadowBlur=0},
+    rings(t,cx,cy,R){glow(cx,cy,R*0.6,[[0,'rgba(255,200,255,.45)'],[.4,'rgba(170,100,240,.25)'],[1,'rgba(80,30,140,0)']]);
+      ctx.globalCompositeOperation='lighter';const n=7;
+      for(let i=0;i<n;i++){const r=((t*0.035+i*R/n)%R),a=Math.pow(1-r/R,1.3);
+        ctx.beginPath();ctx.arc(cx,cy,r,0,6.283);ctx.lineWidth=6;ctx.strokeStyle=`rgba(200,120,255,${a*.35})`;ctx.shadowColor='rgba(220,140,255,.9)';ctx.shadowBlur=16;ctx.stroke();
+        ctx.beginPath();ctx.arc(cx,cy,r,0,6.283);ctx.lineWidth=1.6;ctx.strokeStyle=`rgba(255,220,255,${a*.8})`;ctx.shadowBlur=4;ctx.stroke()}
+      ctx.shadowBlur=0;
+      for(const q of P.slice(0,22)){const ang=q.p+t*0.0004*(q.v>.5?1:-1),rr=R*(.15+q.s*.6),x=cx+Math.cos(ang)*rr,y=cy+Math.sin(ang)*rr*.6,a=.4+.4*Math.sin(t*0.003+q.p);
+        ctx.fillStyle=`rgba(255,215,255,${a})`;ctx.beginPath();ctx.arc(x,y,1.2+q.v*1.6,0,6.283);ctx.fill()}},
+    coins(t,cx,cy,R){glow(cx,cy,R*0.6,[[0,'rgba(255,240,170,.55)'],[.4,'rgba(255,200,80,.25)'],[1,'rgba(160,110,20,0)']]);
+      for(const q of P.slice(0,16)){const sp=.6+q.v*.8,y=-30+((t*sp*0.03+q.y*(h+60))%(h+60)),x=q.x*w+Math.sin(t*0.001+q.p)*14,r=8+q.s*9,sx=Math.abs(Math.cos(t*0.003*(0.6+q.v)+q.p));
+        ctx.save();ctx.translate(x,y);ctx.scale(Math.max(.08,sx),1);
+        const g=ctx.createLinearGradient(-r,-r,r,r);g.addColorStop(0,'#fff3b0');g.addColorStop(.5,'#f2c23a');g.addColorStop(1,'#b8860b');
+        ctx.fillStyle=g;ctx.shadowColor='rgba(255,210,80,.7)';ctx.shadowBlur=10;ctx.beginPath();ctx.arc(0,0,r,0,6.283);ctx.fill();ctx.shadowBlur=0;
+        ctx.lineWidth=2;ctx.strokeStyle='rgba(140,95,10,.8)';ctx.beginPath();ctx.arc(0,0,r*.68,0,6.283);ctx.stroke();ctx.restore()}
+      ctx.globalCompositeOperation='lighter';
+      for(const q of P.slice(16,34)){const a=Math.max(0,Math.sin(t*0.004+q.p*3)),x=q.x*w,y=q.y*h,s=3+q.s*6;if(a<.05)continue;
+        ctx.fillStyle=`rgba(255,250,220,${a*.9})`;ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x+s*.25,y-s*.25);ctx.lineTo(x+s,y);ctx.lineTo(x+s*.25,y+s*.25);ctx.lineTo(x,y+s);ctx.lineTo(x-s*.25,y+s*.25);ctx.lineTo(x-s,y);ctx.lineTo(x-s*.25,y-s*.25);ctx.closePath();ctx.fill()}}
+  };
+  const fx=FX[HERO.fx]||FX.swirl;
+  function draw(t){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.globalCompositeOperation='source-over';
+    fx(t,w*0.62,h*0.52,Math.max(w,h)*0.75);ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0}
+  size();draw(still?4000:0);window.addEventListener('resize',()=>{size();draw(performance.now())});
   if(still)return;let on=true;document.addEventListener('visibilitychange',()=>{on=!document.hidden;if(on)requestAnimationFrame(loop)});
   function loop(t){if(!on)return;draw(t);requestAnimationFrame(loop)}requestAnimationFrame(loop)})();
 function showTab(name){if(name==='binder')name='all';if(!['owned','want','all','movers'].includes(name))name='owned';
