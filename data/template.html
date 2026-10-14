@@ -253,6 +253,41 @@ dialog.lb::backdrop{background:rgb(0 0 0 / .7)}
 .syncbtn[data-s="off"] .dot{background:#ff9a5a}
 .syncbtn[data-s="out"]{background:#fff;color:#a63c10;border-color:#fff}
 .syncbtn[data-s="out"] .dot{background:#c4501a}
+.scanfab{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));z-index:30;display:inline-flex;align-items:center;gap:8px;font:700 .95rem var(--f-body);color:var(--accent-ink);background:var(--accent);border:0;border-radius:999px;padding:13px 18px 13px 15px;box-shadow:0 6px 18px rgb(0 0 0 / .28);cursor:pointer}
+.scanfab:hover{filter:brightness(1.06)}
+dialog.scan{border:0;border-radius:16px;padding:0;background:var(--panel);color:var(--ink);width:min(96vw,480px);max-height:94vh;overflow:auto;box-sizing:border-box}
+dialog.scan::backdrop{background:rgb(0 0 0 / .75)}
+.scHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+.scHead h2{margin:0;font:800 1.25rem var(--f-display)}
+.scX{border:0;background:none;color:var(--muted);font-size:1.6rem;line-height:1;padding:4px 8px;cursor:pointer}
+.scCam{position:relative;margin:0 16px;aspect-ratio:3/4;max-height:58vh;border-radius:12px;overflow:hidden;background:#111}
+.scCam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scFrame{position:absolute;left:50%;top:50%;height:82%;aspect-ratio:63/88;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:12px;box-shadow:0 0 0 999px rgb(0 0 0 / .45)}
+.scNoCam{display:none;position:absolute;inset:0;margin:0;place-content:center;text-align:center;color:#ddd;padding:20px}
+.scCam[data-state="nocam"] .scNoCam{display:grid}.scCam[data-state="nocam"] .scFrame{display:none}
+.scBtns{display:flex;gap:8px;padding:12px 16px 0}
+.scBtns button,.scPick,.scManual button,.scAct button{font:700 .9rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:9px;padding:10px 14px;cursor:pointer;text-align:center}
+.scBtns .pri{flex:1;background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.scBtns button:disabled{opacity:.6}
+.scStatus{margin:10px 16px 0;font-size:.9rem;color:var(--muted);min-height:1.3em}
+.scStatus[data-kind="warn"]{color:#b4471b}.scStatus[data-kind="ok"]{color:var(--ink);font-weight:700}
+.scList{list-style:none;margin:8px 0 0;padding:0 16px;display:grid;gap:8px}
+.scRow{display:grid;grid-template-columns:64px 1fr;gap:10px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.scRow.best{border-color:var(--accent)}.scRow.done{border-color:var(--own)}
+.scImg{all:unset;cursor:zoom-in;width:64px;aspect-ratio:245/342;border-radius:5px;overflow:hidden;background:var(--line)}
+.scImg img{width:100%;height:100%;object-fit:cover;display:block}
+.scInfo{min-width:0;display:flex;flex-direction:column;gap:2px}
+.scInfo b{font-size:.95rem}.scInfo small{color:var(--muted);font-size:.78rem}
+.scPrice{font:500 .85rem var(--f-mono)}.scPrice em{font:700 .72rem var(--f-body);font-style:normal;color:var(--own);margin-left:6px}
+.scAct{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.scAct button{padding:7px 12px;font-size:.82rem}
+.scAct select{font:inherit;font-size:.82rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px}
+.scDone{font-weight:700;font-size:.8rem;color:var(--own)}
+.scMore{padding:10px 16px 0}.scMore summary{cursor:pointer;font-weight:700;font-size:.88rem;color:var(--accent)}.scMore .scList{padding:0;margin-top:8px}
+.wrap{padding-bottom:84px}
+.scManual{padding:12px 16px 16px;font-size:.85rem;color:var(--muted)}
+.scManual div{display:flex;gap:8px;margin-top:6px}
+.scManual input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
 dialog.sd{border:0;border-radius:14px;padding:22px;background:var(--panel);color:var(--ink);width:min(92vw,400px);box-sizing:border-box}
 dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
 .sd h2{font:800 1.3rem var(--f-display,inherit);margin:0 30px 8px 0}
@@ -364,6 +399,19 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <div class="mvgrid"><div><h3 class="up">Best sets</h3><ol class="mvl" id="mvSetUp"></ol></div><div><h3 class="down">Worst sets</h3><ol class="mvl" id="mvSetDown"></ol></div></div>
     </section>
   </div>
+  <button type="button" class="scanfab" id="scanFab" hidden aria-label="Scan a card"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><rect x="8.5" y="7" width="7" height="10" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Scan</span></button>
+  <dialog class="scan" id="scanDlg" aria-labelledby="scTitle">
+    <div class="scHead"><h2 id="scTitle">Scan a card</h2><button type="button" class="scX" id="scClose" aria-label="Close">×</button></div>
+    <div class="scCam" id="scCam" data-state="">
+      <video id="scVideo" playsinline muted autoplay></video>
+      <div class="scFrame" id="scFrame"></div>
+      <p class="scNoCam">Camera not available — use Choose a photo.</p>
+    </div>
+    <div class="scBtns"><button type="button" class="pri" id="scShot">Scan card</button><label class="scPick">Choose a photo<input id="scFile" type="file" accept="image/*" hidden></label></div>
+    <p class="scStatus" id="scStatus" role="status"></p>
+    <div id="scResults"></div>
+    <form class="scManual" id="scManual"><label for="scManIn">Or type the number printed on the card</label><div><input id="scManIn" placeholder="e.g. 114/084 or TG08/TG30" autocomplete="off" autocapitalize="characters"><button type="submit">Find</button></div></form>
+  </dialog>
   <dialog class="sd" id="syncDlg" aria-labelledby="sdTitle">
     <form id="sdForm" method="dialog" novalidate>
       <h2 id="sdTitle">Sync your binder</h2>
@@ -878,6 +926,7 @@ window.binderStore={
 };
 
 </script>
-<script>if(location.protocol==='https:'||location.hostname==='localhost'){const s=document.createElement('script');s.type='module';s.src='sync.js';document.body.appendChild(s)}</script>
+<script>if(location.protocol==='https:'||location.hostname==='localhost'){const fab=document.getElementById('scanFab');if(fab){fab.hidden=false;fab.addEventListener('click',()=>{if(window.binderScanOpen)return binderScanOpen();const s=document.createElement('script');s.src='scan.js';s.onload=()=>window.binderScanOpen&&binderScanOpen();document.body.appendChild(s)})}
+const s=document.createElement('script');s.type='module';s.src='sync.js';document.body.appendChild(s)}</script>
 </body>
 </html>
