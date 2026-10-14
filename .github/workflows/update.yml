@@ -27,11 +27,17 @@ jobs:
           node-version: '20'
       - name: Download prices and rebuild the page
         run: node scripts/update.mjs
+      - name: Update card scanner fingerprints
+        run: |
+          npm i --no-save --no-package-lock pngjs@7 jpeg-js@0.4 >/dev/null 2>&1
+          node scripts/scanindex.mjs
+        continue-on-error: true
       - name: Save to the repository
         run: |
           git config user.name "binder-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A data index.html
+          rm -rf node_modules
           if git diff --cached --quiet; then echo "No new prices."; exit 0; fi
           git commit -m "Prices for $(ls data/days | sort | tail -n1 | cut -c1-10)"
           git push

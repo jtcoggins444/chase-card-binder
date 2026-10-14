@@ -95,6 +95,7 @@ async function discoverSets(day) {
       const pre = (String(g.name).match(/^([A-Z]+)\d*\w*:/) || [])[1];
       const total = Number(Object.entries(denoms).sort((a, b) => b[1] - a[1])[0]?.[0] || 0);
       cards.sets[sid] = [String(g.name).replace(/^[A-Z]+\d*\w*:\s*/, ''), SERIES[pre] || latestSeries, String(g.publishedOn || day).slice(0, 10).replace(/-/g, '/'), total];
+      if (g.abbreviation) cards.sets[sid].push(String(g.abbreviation).toUpperCase());
     }
     cards.cards.push(...fresh);
     for (const c of fresh) pids.push(c[6]);
