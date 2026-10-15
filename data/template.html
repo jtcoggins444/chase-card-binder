@@ -880,11 +880,13 @@ document.getElementById('tabMovers').addEventListener('keydown',e=>{if(e.key==='
 {let tb='owned';try{tb=(location.hash||'').slice(1)||localStorage.getItem('binder-tab')||(C.some(c=>state[c[0]]==='owned')?'owned':'all')}catch(e){};showTab(tb)}
 binder.addEventListener('change',e=>{
   const cs=e.target.closest('select.cond');if(cs){const id=cs.closest('.row').dataset.id;if(cs.value)cond[id]=cs.value;else delete cond[id];cache();const a=cs.closest('.row').querySelector('.nm a');if(a)a.href=link(byId[id]);return}
-  const inp=e.target.closest('.paid input');if(!inp)return;
-  const id=inp.closest('.row').dataset.id,v=inp.value.trim();
-  if(v===''||isNaN(+v)||+v<0)delete paid[id];else paid[id]=Math.round(+v*100)/100;
-  cache();renderStats();showDelta(inp.closest('.row'));
+  const inp=e.target.closest('.paid input');if(!inp)return;savePaid(inp);
 });
+// Save the paid price as it's typed too (iPhone only fires "change" when you leave the box, and not at all if the app is closed first)
+function savePaid(inp){const id=inp.closest('.row').dataset.id,v=inp.value.trim().replace(/[$,]/g,'');
+  const before=paid[id];if(v===''||isNaN(+v)||+v<0)delete paid[id];else paid[id]=Math.round(+v*100)/100;
+  if(before===paid[id])return;cache();renderStats();showDelta(inp.closest('.row'))}
+{let pt2=null;binder.addEventListener('input',e=>{const inp=e.target.closest('.paid input');if(!inp)return;clearTimeout(pt2);pt2=setTimeout(()=>savePaid(inp),350)})}
 function showDelta(r){const id=r.dataset.id,c=byId[id],el=r.querySelector('.delta'),pp=paid[id];
   const d=(pp!=null&&c[5]!=null)?c[5]-pp:null;el.className='delta '+(d==null?'':(d>=0?'up':'down'));el.textContent=d==null?'':sgn(d);}
 binder.addEventListener('click',e=>{

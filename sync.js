@@ -107,6 +107,9 @@ async function start() {
   }
   function schedule() { if (!uid) return; clearTimeout(timer); timer = setTimeout(push, 800); status(); }
   window.binderChanged = schedule;
+  // send any waiting change right away when the app is closed or put in the background
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && timer) { clearTimeout(timer); push(); } });
+  window.addEventListener('pagehide', () => { if (timer) { clearTimeout(timer); push(); } });
   window.addEventListener('online', () => { status(); schedule(); });
   window.addEventListener('offline', status);
 
