@@ -109,6 +109,16 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .save{font-size:.78rem;color:var(--muted)}
 .th{all:unset;cursor:zoom-in;display:block;width:48px;aspect-ratio:245/342;border-radius:3px;overflow:hidden;background:var(--line)}
 .th img{width:100%;height:100%;object-fit:cover;display:block}
+.act{display:inline-block;font:700 .66rem var(--f-body);letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:1px;border:1px solid transparent}
+.act-hot{background:color-mix(in srgb,#e8590c 16%,var(--panel));color:#c2410c;border-color:color-mix(in srgb,#e8590c 40%,transparent)}
+.act-steady{background:color-mix(in srgb,#2f80c0 13%,var(--panel));color:#2a6ea8}
+.act-quiet{background:color-mix(in srgb,var(--muted) 14%,var(--panel));color:var(--muted)}
+.pr .act{display:block;width:max-content;margin:3px 0 0 auto}
+.dvact p{margin:6px 0 0;font-size:.9rem}.dvact .act{margin:0 6px 0 0}
+.actstrip{display:grid;grid-template-columns:repeat(30,1fr);gap:2px;margin-top:6px;max-width:360px}
+.actstrip i{display:block;aspect-ratio:1;border-radius:2px;background:var(--line)}
+.actstrip i.on{background:var(--accent)}.actstrip i.na{background:transparent;border:1px dashed var(--line)}
+.outlook b{font-weight:700}.o-up b{color:var(--own)}.o-down b{color:#b4235a}
 .row.etb .th{aspect-ratio:1;background:#fff}.row.etb .th img{object-fit:contain}
 .etbview #stats,.etbview #rarDD,.etbview #era,.etbview #status,.etbview .prange,.etbview #colAll,.etbview #expAll,.etbview #sort option[value=move]{display:none!important}
 .etbsum{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:10px 12px;margin:10px 0 4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:.9rem}
@@ -379,7 +389,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <select id="era" aria-label="Era"><option value="">All eras</option></select>
     <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="wanted">Wanted</option><option value="missing">Missing</option></select>
     <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
-    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="move">Biggest movers, 7 days</option></select>
+    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="active">Most active (sales)</option><option value="heat">Sales picking up</option><option value="move">Biggest movers, 7 days</option></select>
   </div>
   <div class="backup">
     <button id="colAll" type="button">Collapse all sets</button>
@@ -410,6 +420,10 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <section class="mvsec">
       <div class="mvhd"><h2>Sets</h2><p class="mvsum">Change in the combined market value of each set's cards in this binder. Tap a set to see its cards.</p></div>
       <div class="mvgrid"><div><h3 class="up">Best sets</h3><ol class="mvl" id="mvSetUp"></ol></div><div><h3 class="down">Worst sets</h3><ol class="mvl" id="mvSetDown"></ol></div></div>
+    </section>
+    <section class="mvsec">
+      <div class="mvhd"><h2>Sales activity</h2><p class="mvsum" id="mvActSum"></p></div>
+      <div class="mvgrid"><div><h3 class="up">Picking up</h3><ol class="mvl" id="mvHeat"></ol></div><div><h3 class="down">Slowing down</h3><ol class="mvl" id="mvCool"></ol></div></div>
     </section>
   </div>
   <button type="button" class="scanfab" id="scanFab" hidden aria-label="Scan a card"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><rect x="8.5" y="7" width="7" height="10" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Scan</span></button>
@@ -462,6 +476,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <div class="plot" id="dvPlot"><svg id="dvChart" role="img" aria-label="Market price history"></svg><div class="tip" id="dvTip" hidden></div></div>
         <p class="note" id="dvNote"></p>
       </div>
+      <div class="sec"><span class="lab">Sales activity</span><div id="dvAct" class="dvact"></div></div>
       <div class="sec"><span class="lab">Today's listings on TCGplayer</span><div class="kv" id="dvList"></div></div>
       <div class="sec" id="dvMineWrap" hidden><span class="lab">Your copy</span><div class="kv" id="dvMine"></div></div>
       <div class="sec"><span class="lab">Recent sales and graded prices</span><div class="links" id="dvLinks"></div></div>
@@ -546,6 +561,13 @@ function renderMovers(){
   const sUp=sets.filter(x=>x.abs>0).sort((a,b)=>skey(b)-skey(a)).slice(0,5),sDn=sets.filter(x=>x.abs<0).sort((a,b)=>skey(a)-skey(b)).slice(0,5);
   document.getElementById('mvSetUp').innerHTML=sUp.length?sUp.map(sItem).join(''):'<li class="none">No sets went up in this period.</li>';
   document.getElementById('mvSetDown').innerHTML=sDn.length?sDn.map(sItem).join(''):'<li class="none">No sets went down in this period.</li>';
+  {const pool=C.filter(c=>(c[5]??0)>=min).map(c=>({c,a:activity(c)})).filter(x=>x.a&&x.a.ready&&x.a.rp!=null);
+   const aItem=x=>{const s=S[x.c[2]],o=outlook(x.c);return `<li data-id="${x.c[0]}"><button class="th" type="button" aria-label="View ${esc(x.c[1])}"><img loading="lazy" src="${img(x.c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(x.c[1])}</b><small>${esc(s[0])} \u00b7 ${money(x.c[5])}${o?' \u00b7 '+o[1]:''}</small></span><span class="ch"><span class="${x.a.heat>=0?'up':'down'}">${Math.round(x.a.r7*100)}%</span><small>was ${Math.round(x.a.rp*100)}%</small></span></li>`};
+   const heat=pool.filter(x=>x.a.heat>=0.25).sort((a,b)=>b.a.heat-a.a.heat||(b.c[5]-a.c[5])).slice(0,6),cool=pool.filter(x=>x.a.heat<=-0.25).sort((a,b)=>a.a.heat-b.a.heat||(b.c[5]-a.c[5])).slice(0,6);
+   const ready=new Date(+DT[0]+15*864e5);
+   document.getElementById('mvHeat').innerHTML=pool.length?(heat.length?heat.map(aItem).join(''):'<li class="none">No cards picking up this week.</li>'):`<li class="none">Activity trends start ${ready.toLocaleDateString('en-US',{month:'short',day:'numeric'})}, after two weeks of daily prices.</li>`;
+   document.getElementById('mvCool').innerHTML=pool.length?(cool.length?cool.map(aItem).join(''):'<li class="none">No cards slowing down this week.</li>'):'';
+   document.getElementById('mvActSum').textContent='Share of days each card\u2019s market price moved (a sign of sales), this week vs the weeks before. Cards at '+usd0.format(min)+' or more.'}
   const note=document.getElementById('mvNote');
   if(!all.length){note.textContent='Movers need at least two days of prices.';return}
   const last=DT[DT.length-1];
@@ -553,6 +575,31 @@ function renderMovers(){
   const wanted=new Date(last-days*864e5);
   note.textContent=`Comparing TCGplayer market prices on ${fd(last)} with ${since&&since>wanted?fd(since)+' (the earliest day tracked, so this covers less than '+plabel+')':days===1?'the previous day':fd(wanted)}.`;
 }
+// Sales activity. The free TCGplayer feed has no sales counts, but the market price only changes when a card sells,
+// so "the price moved today" is a sign of at least one sale. Rates are the share of days the price moved.
+const ACT=new Map();
+function activity(c){
+  if(ACT.has(c[0]))return ACT.get(c[0]);
+  const a=c[6]&&H.m[c[6]];let r=null;
+  if(a){const mv=[];for(let i=1;i<a.length;i++){const p=a[i-1],q=a[i];mv.push(p==null||q==null?null:Math.abs(q-p)>=0.005)}
+    const rate=s=>{s=s.filter(x=>x!=null);return s.length?s.filter(Boolean).length/s.length:null};
+    const n=mv.filter(x=>x!=null).length;
+    r={n,ready:n>=6,mv:mv.slice(-30)};
+    if(r.ready){r.r7=rate(mv.slice(-7));r.r30=rate(mv.slice(-30));
+      const prior=mv.slice(-30,-7).filter(x=>x!=null);r.rp=prior.length>=7?rate(prior):null;
+      r.level=r.r30>=0.8?'hot':r.r30>=0.4?'steady':'quiet';
+      r.trend=r.rp==null?null:(r.r7-r.rp>=0.25?'up':r.rp-r.r7>=0.25?'down':'flat');
+      r.heat=r.rp==null?0:r.r7-r.rp}}
+  ACT.set(c[0],r);return r}
+const ACTL={hot:'Hot',steady:'Steady',quiet:'Quiet'};
+function actChip(c){const a=activity(c);if(!a||!a.ready)return '';
+  const tr=a.trend==='up'?' \u25B2':a.trend==='down'?' \u25BC':'';
+  return `<span class="act act-${a.level}" title="Sales activity: price moved on ${Math.round(a.r30*100)}% of recent days${a.trend==='up'?', picking up this week':a.trend==='down'?', slowing this week':''}">${ACTL[a.level]}${tr}</span>`}
+// What activity plus price direction suggests. A signal to watch, not a prediction.
+function outlook(c){const a=activity(c);if(!a||!a.ready||!a.trend)return null;const ch=chgOver(c,7)??0,up=ch>=2,down=ch<=-2;
+  if(a.trend==='up')return up?['up','Rising demand','More sales and a rising price: buyers are competing for it.']:down?['down','Sell-off','More sales at falling prices: sellers are cutting to move copies.']:['flat','Picking up','Sales are picking up while the price holds. Watch for a move.'];
+  if(a.trend==='down')return up?['flat','Rally fading','The price is up but sales are slowing; the rise may not hold.']:down?['down','Drying up','Fewer sales and a falling price: interest is fading.']:['flat','Cooling','Sales are slowing at a steady price.'];
+  return up?['up','Steady climb','Sales are steady and the price is rising.']:down?['down','Steady slide','Sales are steady and the price is slipping.']:['flat','Stable','Steady sales at a steady price.']}
 function chgOver(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=last[0]-days*864e5;let base=s[0];for(const p of s){if(p[0]<=cut)base=p;else break}if(base===last||!base[1])return null;return (last[1]-base[1])/base[1]*100}
 const LABEL={IR:'IR',SIR:'SIR',FA:'Full Art',VINT:'Vintage Holo',VALT:'VMAX Alt Art',VREG:'VMAX/VSTAR',RAIN:'Rainbow Rare',GOLD:'Gold/Secret Rare',HR:'Gold Hyper Rare',SHINY:'Shiny Vault',GG:'Galarian Gallery',TG:'Trainer Gallery',BWR:'Black White Rare',MHR:'Mega Hyper Rare',MAR:'Mega Attack Rare'};
 const KINDS=Object.keys(LABEL);
@@ -603,9 +650,9 @@ function renderEtb(){
   const vals=a=>{const o=owned(a),vo=sum(o),va=sum(a);return `<span class="setval"><span><em>Owned</em> ${money(vo)}</span><span><em>Unowned</em> ${money(va-vo)}</span><span><em>All</em> ${money(va)}</span></span>`};
   const bySet=(a,b)=>S[b[2]][2].localeCompare(S[a[2]][2])||a[1].localeCompare(b[1]);
   let h=`<div class="etbsum"><b>${owned(E).length} of ${E.length}</b> Elite Trainer Boxes owned ${vals(E)}</div>`;
-  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'){
+  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
-    list.sort(f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
+    list.sort(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
     el.innerHTML=h+'<section class="set"><h2>'+list.length+' boxes</h2><div class="list">'+list.map(c=>row(c,true)).join('')+'</div></section>';return;
   }
   const eras=new Map();for(const c of list.sort(bySet)){const e=S[c[2]][1];if(!eras.has(e))eras.set(e,[]);eras.get(e).push(c)}
@@ -641,10 +688,10 @@ function render(){
   const ids=[...groups.keys()].sort((a,b)=>S[b][2].localeCompare(S[a][2])||b.localeCompare(a));
   if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!C.some(c=>state[c[0]]==='wanted')?'Your Want list is empty. Find cards in All Cards and tap Want to add them here.':'No cards match these filters.';const ex=etbExtra();document.getElementById('binder').innerHTML=ex||'<p class="empty">'+no+'</p>';return}
   let h='';
-  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'){
+  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
-    const all=[].concat(...groups.values()).sort(f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
-    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
+    const all=[].concat(...groups.values()).sort(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
+    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='active'?'by sales activity, last 30 days':f.sort==='heat'?'by how much sales picked up this week':f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
     document.getElementById('binder').innerHTML=etbExtra()+h;return;
   }
   for(const id of ids){
@@ -663,7 +710,7 @@ function render(){
 function row(c,showSet){
   const s=S[c[2]],st=state[c[0]]||'';
   const pp=paid[c[0]],d=(st==='owned'&&pp!=null&&c[5]!=null)?c[5]-pp:null;
-  return `<div class="row ${st}${c[4]==='ETB'?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button><button data-a="wanted" class="${st==='wanted'?'on-want':''}" aria-pressed="${st==='wanted'}">Want</button>${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st?`<label class="paid">${st==='owned'?'Condition':'Want in'} <select class="cond" aria-label="${st==='owned'?'Condition of your copy':'Condition you want'} for ${esc(c[1])}">${st==='wanted'?`<option value="">${{NM:'Near Mint',LP:'NM or LP',any:'Any'}[buyCond()]||'Default'}</option>`:'<option value="">Not set</option>'}${(st==='owned'?CONDS:CONDS.slice(0,4)).map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${st==='wanted'&&k!=='NM'?n+' or better':n}</option>`).join('')}</select></label>`:''}</span></div>`;
+  return `<div class="row ${st}${c[4]==='ETB'?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}${actChip(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button><button data-a="wanted" class="${st==='wanted'?'on-want':''}" aria-pressed="${st==='wanted'}">Want</button>${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st?`<label class="paid">${st==='owned'?'Condition':'Want in'} <select class="cond" aria-label="${st==='owned'?'Condition of your copy':'Condition you want'} for ${esc(c[1])}">${st==='wanted'?`<option value="">${{NM:'Near Mint',LP:'NM or LP',any:'Any'}[buyCond()]||'Default'}</option>`:'<option value="">Not set</option>'}${(st==='owned'?CONDS:CONDS.slice(0,4)).map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${st==='wanted'&&k!=='NM'?n+' or better':n}</option>`).join('')}</select></label>`:''}</span></div>`;
 }
 let view='all';
 function viewStatus(){return view==='owned'?'owned':view==='want'?'wanted':f.status}
@@ -910,6 +957,14 @@ function openDetail(c){
   document.getElementById('lbName').textContent=c[1];
   document.getElementById('lbMeta').textContent=c[4]==='ETB'?s[0]+' · Elite Trainer Box · '+s[2].slice(0,4):s[0]+' · #'+c[3]+(s[3]?'/'+s[3]:'')+' · '+LABEL[c[4]];
   document.getElementById('dvMkt').textContent=money(c[5]);
+  {const a=activity(c),el=document.getElementById('dvAct');
+   if(!a||!a.n){el.innerHTML='<p class="note">No price history yet.</p>'}
+   else{const strip=a.mv.map(x=>`<i class="${x==null?'na':x?'on':''}"></i>`).join('');
+     const o=outlook(c);
+     el.innerHTML=`<div class="actstrip" aria-hidden="true">${strip}</div><p class="note">Each square is a day; filled means the market price moved, a sign it sold that day.</p>`+
+      (a.ready?`<p><b class="act act-${a.level}">${ACTL[a.level]}</b> Price moved on ${Math.round(a.r30*100)}% of the last ${Math.min(30,a.n)} days${a.rp!=null?`; ${Math.round(a.r7*100)}% this week vs ${Math.round(a.rp*100)}% before`:''}.</p>`+
+        (o?`<p class="outlook o-${o[0]}"><b>${o[1]}</b> \u00b7 ${o[2]}</p><p class="note">A signal from sales activity and price direction, not a guarantee.</p>`:`<p class="note">Trend and outlook start once there are two weeks of daily prices.</p>`)
+       :`<p class="note">Activity labels start after a week of daily prices (${a.n} of 6 days so far).</p>`)}}
   const parts=[[1,'1 day'],[7,'7 days'],[30,'30 days']].map(([n,l])=>{const v=chgOver(c,n);return v==null?null:`<span class="${v>=0?'up':'down'}">${pct(v)}</span> ${l}`}).filter(Boolean);
   document.getElementById('dvChg').innerHTML=parts.join(' · ');
   const L=c[6]&&H.latest[c[6]];
