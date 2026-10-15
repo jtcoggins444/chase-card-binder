@@ -601,6 +601,14 @@ function renderEtb(){
     h+=`<section class="set${open?'':' closed'}" data-set="${esc(key)}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(era)}<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${owned(a).length}/${a.length} owned</span>${vals(a)}</button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>'}
   el.innerHTML=h;
 }
+function etbExtra(){
+  if(view!=='owned'&&view!=='want')return '';
+  const want=view==='owned'?'owned':'wanted',q=f.q.trim().toLowerCase();
+  const a=E.filter(c=>state[c[0]]===want&&(!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q))).sort((x,y)=>S[y[2]][2].localeCompare(S[x[2]][2]));
+  if(!a.length)return '';
+  const v=a.reduce((x,c)=>x+(c[5]||0),0),key='etb:'+want,open=!!q||!collapsed.has(key);
+  return `<section class="set${open?'':' closed'}" data-set="${key}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>Elite Trainer Boxes<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${money(v)}</span></button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>';
+}
 function render(){
   if(view==='etb'){renderEtb();return}
   const q=f.q.trim().toLowerCase();
@@ -619,13 +627,13 @@ function render(){
     groups.get(c[2]).push(c);
   }
   const ids=[...groups.keys()].sort((a,b)=>S[b][2].localeCompare(S[a][2])||b.localeCompare(a));
-  if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!C.some(c=>state[c[0]]==='wanted')?'Your Want list is empty. Find cards in All Cards and tap Want to add them here.':'No cards match these filters.';document.getElementById('binder').innerHTML='<p class="empty">'+no+'</p>';return}
+  if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!C.some(c=>state[c[0]]==='wanted')?'Your Want list is empty. Find cards in All Cards and tap Want to add them here.':'No cards match these filters.';const ex=etbExtra();document.getElementById('binder').innerHTML=ex||'<p class="empty">'+no+'</p>';return}
   let h='';
   if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
     const all=[].concat(...groups.values()).sort(f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
     h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
-    document.getElementById('binder').innerHTML=h;return;
+    document.getElementById('binder').innerHTML=etbExtra()+h;return;
   }
   for(const id of ids){
     const s=S[id],cards=groups.get(id);
@@ -638,7 +646,7 @@ function render(){
     for(const c of cards)h+=row(c,false);
     h+='</div></section>';
   }
-  document.getElementById('binder').innerHTML=h;
+  document.getElementById('binder').innerHTML=etbExtra()+h;
 }
 function row(c,showSet){
   const s=S[c[2]],st=state[c[0]]||'';
@@ -647,7 +655,7 @@ function row(c,showSet){
 }
 let view='all';
 function viewStatus(){return view==='owned'?'owned':view==='want'?'wanted':f.status}
-function tabCounts(){{const n=document.getElementById('nEtb');if(n)n.textContent=E.filter(c=>state[c[0]]==='owned').length||''}let o=0,w=0;for(const c of C){const s=state[c[0]];if(s==='owned')o++;else if(s==='wanted')w++}const a=document.getElementById('nOwned'),b=document.getElementById('nWant');if(a)a.textContent=o;if(b)b.textContent=w}
+function tabCounts(){{const n=document.getElementById('nEtb');if(n)n.textContent=E.filter(c=>state[c[0]]==='owned').length||''}let o=0,w=0;for(const c of C.concat(E)){const s=state[c[0]];if(s==='owned')o++;else if(s==='wanted')w++}const a=document.getElementById('nOwned'),b=document.getElementById('nWant');if(a)a.textContent=o;if(b)b.textContent=w}
 function refresh(){renderStats();render();renderBuy();renderMovers();tabCounts()}
 const saveEl=document.getElementById('saveState');
 async function setStatus(id,val){
