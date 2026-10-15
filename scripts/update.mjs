@@ -58,7 +58,7 @@ async function discoverSets(day) {
   const cards = JSON.parse(read(cardsPath)), pids = JSON.parse(read(pidsPath));
   const havePid = new Set(cards.cards.map(c => c[6]).filter(Boolean)), haveId = new Set(cards.cards.map(c => c[0]));
   const latestSeries = Object.values(cards.sets).sort((a, b) => a[2].localeCompare(b[2])).pop()[1];
-  let added = 0;
+  let added = 0, etbAdded = 0;
   for (const g of cands) {
     let prods;
     try { prods = JSON.parse(await getText(`${Base}/tcgplayer/3/${g.groupId}/products`, 2, 5)).results || []; }
@@ -90,7 +90,20 @@ async function discoverSets(day) {
       fresh.push([id, name, sid, n, kind, null, p.productId, 't']);
       havePid.add(p.productId); haveId.add(id);
     }
+    // the set's Elite Trainer Boxes, for the ETB tab
+    cards.etbs = cards.etbs || [];
+    const haveEtb = new Set(cards.etbs.map(e => e[6]));
+    for (const p of prods) {
+      if (!/elite trainer box/i.test(p.name) || /case|display|\bset of\b|code card|sleeves?\b|deck box|binder|bundle of/i.test(p.name) || haveEtb.has(p.productId)) continue;
+      cards.etbs.push(['etb-' + p.productId, String(p.name).trim(), sid, '', 'ETB', null, p.productId, 't']);
+      pids.push(p.productId); etbAdded++;
+      if (!known.has(g.groupId)) { groupsFile.groups.push(g.groupId); known.add(g.groupId); }
+      if (!cards.sets[sid]) cards.sets[sid] = [String(g.name).replace(/^[A-Z]+\d*\w*:\s*/, ''), SERIES[(String(g.name).match(/^([A-Z]+)\d*\w*:/) || [])[1]] || latestSeries, String(g.publishedOn || day).slice(0, 10).replace(/-/g, '/'), 0];
+      cfg.sets[g.groupId] = sid;
+      const note = `${day}: added ${p.name}.`; cfg.log.push(note); log(note);
+    }
     if (!fresh.length) continue;
+    if (cards.sets[sid] && !cards.sets[sid][3]) delete cards.sets[sid];   // placeholder made for its ETB
     if (!cards.sets[sid]) {
       const pre = (String(g.name).match(/^([A-Z]+)\d*\w*:/) || [])[1];
       const total = Number(Object.entries(denoms).sort((a, b) => b[1] - a[1])[0]?.[0] || 0);
@@ -107,7 +120,7 @@ async function discoverSets(day) {
     added += fresh.length;
   }
   cfg.log = cfg.log.slice(-100);
-  if (added) {
+  if (added || etbAdded) {
     write(cardsPath, JSON.stringify(cards));
     write(pidsPath, JSON.stringify(pids));
     write(join(Data, 'groups.json'), JSON.stringify(groupsFile));

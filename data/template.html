@@ -109,6 +109,10 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .save{font-size:.78rem;color:var(--muted)}
 .th{all:unset;cursor:zoom-in;display:block;width:48px;aspect-ratio:245/342;border-radius:3px;overflow:hidden;background:var(--line)}
 .th img{width:100%;height:100%;object-fit:cover;display:block}
+.row.etb .th{aspect-ratio:1;background:#fff}.row.etb .th img{object-fit:contain}
+.etbview #stats,.etbview #rarDD,.etbview #era,.etbview #status,.etbview .prange,.etbview #colAll,.etbview #expAll,.etbview #sort option[value=move]{display:none!important}
+.etbsum{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:10px 12px;margin:10px 0 4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:.9rem}
+.etbsum .setval{flex-basis:auto;padding-left:0}
 .th:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .th.noimg{cursor:default}
 .no{display:block;margin-top:2px}
@@ -326,6 +330,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <button type="button" role="tab" id="tabBtnOwned" data-tab="owned" aria-selected="true">My Binder <span class="tabn" id="nOwned"></span></button>
     <button type="button" role="tab" id="tabBtnWant" data-tab="want" aria-selected="false">Want List <span class="tabn" id="nWant"></span></button>
     <button type="button" role="tab" id="tabBtnAll" data-tab="all" aria-selected="false">All Cards</button>
+    <button type="button" role="tab" id="tabBtnEtb" data-tab="etb" aria-selected="false">ETBs <span class="tabn" id="nEtb"></span></button>
     <button type="button" role="tab" id="tabBtnMovers" data-tab="movers" aria-selected="false">Movers</button>
   </nav>
   <div id="tabBinder" role="tabpanel">
@@ -464,6 +469,8 @@ const H=(()=>{const R=JSON.parse(document.getElementById('hist').textContent);if
 const DT=H.dates.map(d=>new Date(d+'T12:00:00'));
 function series(c){const a=c[6]&&H.m[c[6]];if(!a)return[];const o=[];a.forEach((v,i)=>{if(v!=null)o.push([DT[i],v])});return o}
 C.forEach(c=>{const s=series(c);c[5]=s.length?s[s.length-1][1]:null});
+const E=DATA.etbs||[];   // Elite Trainer Boxes: same shape as cards, kind 'ETB'
+E.forEach(c=>{const s=series(c);c[5]=s.length?s[s.length-1][1]:null});
 function winStats(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=last[0]-days*864e5;const w=s.filter(p=>p[0]>=cut&&p!==last);if(!w.length)return null;const vs=w.map(p=>p[1]);return {n:w.length,avg:vs.reduce((a,b)=>a+b,0)/vs.length,hi:Math.max(...vs),lo:Math.min(...vs),cur:last[1]}}
 function buySignals(c){
   const out={score:0,why:[]};const cur=c[5];if(cur==null)return out;
@@ -575,7 +582,27 @@ function renderStats(){
   const t=(lab,val,bar,cls)=>`<div class="stat"><span>${lab}</span><b${cls?` class="${cls}"`:''}>${val}</b>${bar==null?'':`<div class="bar"><i style="width:${bar}%"></i></div>`}</div>`;
   document.getElementById('stats').innerHTML=t('Owned',own+' / '+n,n?own/n*100:0)+t('Owned value',usd0.format(ov))+t('Total paid',usd0.format(pd))+t('Gain / loss',pd?sgn(g).replace(/\.\d\d$/,''):'—',null,pd?(g>=0?'up':'down'):'')+t('Wanted value',usd0.format(wv))+t('Cost to complete',usd0.format(mv));
 }
+function renderEtb(){
+  const q=f.q.trim().toLowerCase(),el=document.getElementById('binder');
+  let list=E.filter(c=>!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q)||S[c[2]][1].toLowerCase().includes(q));
+  if(!E.length){el.innerHTML='<p class="empty">The Elite Trainer Box list is being collected. Check back in a few minutes.</p>';return}
+  if(!list.length){el.innerHTML='<p class="empty">No Elite Trainer Boxes match your search.</p>';return}
+  const sum=a=>a.reduce((x,c)=>x+(c[5]||0),0),owned=a=>a.filter(c=>state[c[0]]==='owned');
+  const vals=a=>{const o=owned(a),vo=sum(o),va=sum(a);return `<span class="setval"><span><em>Owned</em> ${money(vo)}</span><span><em>Unowned</em> ${money(va-vo)}</span><span><em>All</em> ${money(va)}</span></span>`};
+  const bySet=(a,b)=>S[b[2]][2].localeCompare(S[a[2]][2])||a[1].localeCompare(b[1]);
+  let h=`<div class="etbsum"><b>${owned(E).length} of ${E.length}</b> Elite Trainer Boxes owned ${vals(E)}</div>`;
+  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'){
+    const mv=c=>Math.abs(chgOver(c,7)??0);
+    list.sort(f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
+    el.innerHTML=h+'<section class="set"><h2>'+list.length+' boxes</h2><div class="list">'+list.map(c=>row(c,true)).join('')+'</div></section>';return;
+  }
+  const eras=new Map();for(const c of list.sort(bySet)){const e=S[c[2]][1];if(!eras.has(e))eras.set(e,[]);eras.get(e).push(c)}
+  for(const [era,a] of eras){const key='etb:'+era,open=!!q||!collapsed.has(key);
+    h+=`<section class="set${open?'':' closed'}" data-set="${esc(key)}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(era)}<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${owned(a).length}/${a.length} owned</span>${vals(a)}</button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>'}
+  el.innerHTML=h;
+}
 function render(){
+  if(view==='etb'){renderEtb();return}
   const q=f.q.trim().toLowerCase();
   const groups=new Map();
   for(const c of C){
@@ -616,11 +643,11 @@ function render(){
 function row(c,showSet){
   const s=S[c[2]],st=state[c[0]]||'';
   const pp=paid[c[0]],d=(st==='owned'&&pp!=null&&c[5]!=null)?c[5]-pp:null;
-  return `<div class="row ${st}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a><span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span></span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button><button data-a="wanted" class="${st==='wanted'?'on-want':''}" aria-pressed="${st==='wanted'}">Want</button>${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st?`<label class="paid">${st==='owned'?'Condition':'Want in'} <select class="cond" aria-label="${st==='owned'?'Condition of your copy':'Condition you want'} for ${esc(c[1])}">${st==='wanted'?`<option value="">${{NM:'Near Mint',LP:'NM or LP',any:'Any'}[buyCond()]||'Default'}</option>`:'<option value="">Not set</option>'}${(st==='owned'?CONDS:CONDS.slice(0,4)).map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${st==='wanted'&&k!=='NM'?n+' or better':n}</option>`).join('')}</select></label>`:''}</span></div>`;
+  return `<div class="row ${st}${c[4]==='ETB'?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button><button data-a="wanted" class="${st==='wanted'?'on-want':''}" aria-pressed="${st==='wanted'}">Want</button>${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st?`<label class="paid">${st==='owned'?'Condition':'Want in'} <select class="cond" aria-label="${st==='owned'?'Condition of your copy':'Condition you want'} for ${esc(c[1])}">${st==='wanted'?`<option value="">${{NM:'Near Mint',LP:'NM or LP',any:'Any'}[buyCond()]||'Default'}</option>`:'<option value="">Not set</option>'}${(st==='owned'?CONDS:CONDS.slice(0,4)).map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${st==='wanted'&&k!=='NM'?n+' or better':n}</option>`).join('')}</select></label>`:''}</span></div>`;
 }
 let view='all';
 function viewStatus(){return view==='owned'?'owned':view==='want'?'wanted':f.status}
-function tabCounts(){let o=0,w=0;for(const c of C){const s=state[c[0]];if(s==='owned')o++;else if(s==='wanted')w++}const a=document.getElementById('nOwned'),b=document.getElementById('nWant');if(a)a.textContent=o;if(b)b.textContent=w}
+function tabCounts(){{const n=document.getElementById('nEtb');if(n)n.textContent=E.filter(c=>state[c[0]]==='owned').length||''}let o=0,w=0;for(const c of C){const s=state[c[0]];if(s==='owned')o++;else if(s==='wanted')w++}const a=document.getElementById('nOwned'),b=document.getElementById('nWant');if(a)a.textContent=o;if(b)b.textContent=w}
 function refresh(){renderStats();render();renderBuy();renderMovers();tabCounts()}
 const saveEl=document.getElementById('saveState');
 async function setStatus(id,val){
@@ -665,7 +692,7 @@ syncRar();
 refresh();
 {const fb=document.querySelector('.filters');const setFh=()=>document.documentElement.style.setProperty('--fh',(fb?fb.offsetHeight:0)+'px');setFh();if(window.ResizeObserver&&fb)new ResizeObserver(setFh).observe(fb);window.addEventListener('resize',setFh)}
 const binder=document.getElementById('binder'),lb=document.getElementById('lb');
-const byId=Object.fromEntries(C.map(c=>[c[0],c]));
+const byId=Object.fromEntries(C.concat(E).map(c=>[c[0],c]));
 ['buyScope','buyCond','buyMin','buyMax'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
   el.addEventListener(/Scope|Cond/.test(id)?'change':'input',()=>{try{localStorage.setItem('binder-'+id,el.value)}catch(e){};if(id==='buyCond')render();renderBuy()})});
 const buyBody=document.getElementById('buyBody'),buyTg=document.getElementById('buyToggle');
@@ -812,13 +839,13 @@ let HERO=HEROES[0];
   size();draw(still?4000:0);window.addEventListener('resize',()=>{size();draw(performance.now())});
   if(still)return;let on=true;document.addEventListener('visibilitychange',()=>{on=!document.hidden;if(on)requestAnimationFrame(loop)});
   function loop(t){if(!on)return;draw(t);requestAnimationFrame(loop)}requestAnimationFrame(loop)})();
-function showTab(name){if(name==='binder')name='all';if(!['owned','want','all','movers'].includes(name))name='owned';
+function showTab(name){if(name==='binder')name='all';if(!['owned','want','all','etb','movers'].includes(name))name='owned';
   const mv=name==='movers';document.getElementById('tabBinder').hidden=mv;document.getElementById('tabMovers').hidden=!mv;
   document.querySelectorAll('.tabs button[data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===name));
   try{localStorage.setItem('binder-tab',name)}catch(e){};
   if(mv){renderMovers();return}
-  view=name;document.getElementById('status').hidden=name!=='all';document.getElementById('buy').hidden=name==='owned';
-  document.getElementById('viewIntro').textContent={owned:'Cards you own. Track what you paid, condition and gain here.',want:'Cards you want. The Buy list shows which of these are on sale or dropping in price.',all:'Every card in the checklist. Search and filter, then tap Owned or Want to add cards to My Binder or your Want List.'}[name];
+  view=name;document.getElementById('tabBinder').classList.toggle('etbview',name==='etb');document.getElementById('status').hidden=name!=='all';document.getElementById('buy').hidden=name==='owned'||name==='etb';
+  document.getElementById('viewIntro').textContent={owned:'Cards you own. Track what you paid, condition and gain here.',want:'Cards you want. The Buy list shows which of these are on sale or dropping in price.',all:'Every card in the checklist. Search and filter, then tap Owned or Want to add cards to My Binder or your Want List.',etb:'Elite Trainer Boxes for every set in the checklist, with daily TCGplayer market prices. Tap Owned or Want to track them.'}[name];
   if(name==='want'){const sc=document.getElementById('buyScope');if(sc&&!localStorage.getItem('binder-buyScope'))sc.value='want'}
   render();renderStats();renderBuy()}
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b)showTab(b.dataset.tab)});
@@ -859,7 +886,7 @@ function openDetail(c){
   cur=c;const s=S[c[2]],im=document.getElementById('lbImg');
   im.src='';im.alt=c[1];im.src=img(c,true);
   document.getElementById('lbName').textContent=c[1];
-  document.getElementById('lbMeta').textContent=s[0]+' · #'+c[3]+(s[3]?'/'+s[3]:'')+' · '+LABEL[c[4]];
+  document.getElementById('lbMeta').textContent=c[4]==='ETB'?s[0]+' · Elite Trainer Box · '+s[2].slice(0,4):s[0]+' · #'+c[3]+(s[3]?'/'+s[3]:'')+' · '+LABEL[c[4]];
   document.getElementById('dvMkt').textContent=money(c[5]);
   const parts=[[1,'1 day'],[7,'7 days'],[30,'30 days']].map(([n,l])=>{const v=chgOver(c,n);return v==null?null:`<span class="${v>=0?'up':'down'}">${pct(v)}</span> ${l}`}).filter(Boolean);
   document.getElementById('dvChg').innerHTML=parts.join(' · ');
