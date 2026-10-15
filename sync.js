@@ -92,7 +92,12 @@ async function start() {
     if (!navigator.onLine) { status(); return; }
     pushing = true; status();
     const data = { t: S.serverTimestamp() };
-    for (const k of KEYS) { data[k] = {}; for (const [id, v] of Object.entries(ch[k])) data[k][id] = v === null ? S.deleteField() : v; }
+    // Only send the kinds of data that changed. (An empty {} sent with merge would REPLACE that whole list on the
+    // server with nothing, which is what wiped marks and paid prices before.)
+    for (const k of KEYS) {
+      const ids = Object.keys(ch[k]); if (!ids.length) continue;
+      data[k] = {}; for (const id of ids) data[k][id] = ch[k][id] === null ? S.deleteField() : ch[k][id];
+    }
     const forUid = uid;
     try {
       await S.setDoc(S.doc(db, 'users', forUid), data, { merge: true });
