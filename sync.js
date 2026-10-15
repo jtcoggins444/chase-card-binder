@@ -41,6 +41,18 @@ function apply(base, ch) {
   return o;
 }
 const same = (a, b) => !diff(a, b);
+// A big drop in marks that the person didn't ask for (anything but Restore / Undo) is never passed on:
+// the deletions are dropped, so the other copy wins and the marks come back.
+function guardMass(ch, baseState) {
+  if (!ch) return ch;
+  const dels = Object.keys(ch.state).filter(id => ch.state[id] === null);
+  if (dels.length >= 5 && dels.length > Object.keys(baseState).length * 0.2 && !(window.binderBulk && Date.now() - window.binderBulk < 120000)) {
+    for (const id of dels) delete ch.state[id];
+    console.warn('Sync: ignored removal of ' + dels.length + ' marks that wasn\u2019t asked for');
+  }
+  let n = 0; for (const k of KEYS) n += Object.keys(ch[k]).length;
+  return n ? ch : null;
+}
 
 const baseKey = uid => 'binder-sync-base-' + uid;
 function loadBase(uid) { try { const s = localStorage.getItem(baseKey(uid)); return s ? norm(JSON.parse(s)) : null; } catch (e) { return null; } }
@@ -75,7 +87,7 @@ async function start() {
     if (!uid || !base) return;
     if (pushing) { again = true; return; }
     const local = norm(store.get());
-    const ch = diff(base, local);
+    const ch = guardMass(diff(base, local), base.state);
     if (!ch) { status(); return; }
     if (!navigator.onLine) { status(); return; }
     pushing = true; status();
@@ -99,14 +111,25 @@ async function start() {
   window.addEventListener('offline', status);
 
   function listen() {
-    unsub = S.onSnapshot(S.doc(db, 'users', uid), snap => {
-      if (snap.metadata.hasPendingWrites) return;
+    unsub = S.onSnapshot(S.doc(db, 'users', uid), { includeMetadataChanges: true }, snap => {
+      // Only trust answers that come from the server. While the phone is still reconnecting (for example right
+      // after the app comes back from the background), Firebase can report the saved copy as missing or stale.
+      if (snap.metadata.hasPendingWrites || snap.metadata.fromCache) return;
       const remote = norm(snap.exists() ? snap.data() : null);
       const local = norm(store.get());
+      const b = base || empty();
       // Changes made on this device since it last synced (everything, the first time this device signs in)
-      const mine = diff(base || empty(), local);
+      let mine = guardMass(diff(b, local), b.state);
+      // Safety net: never let the saved copy wipe out lots of marks at once. If it is missing, or would remove
+      // many marks this device still has, keep this device's marks and send them back up instead.
+      const removed = Object.keys(b.state).filter(id => !(id in remote.state) && id in local.state).length;
+      const total = Object.keys(local.state).length;
+      if (!snap.exists() || (removed >= 5 && removed > total * 0.2)) {
+        if (removed || !snap.exists()) console.warn('Sync: kept ' + total + ' local marks instead of removing ' + removed);
+        mine = diff(empty(), local);
+      }
       const merged = apply(remote, mine);
-      if (!same(merged, local)) store.set(merged.state, merged.paid, merged.cond);
+      if (!same(merged, local)) { store.backup && store.backup('before sync'); store.set(merged.state, merged.paid, merged.cond); }
       base = remote; saveBase(uid, base); lastSync = new Date();
       if (mine && !same(merged, remote)) schedule(); else status();
     }, err => { console.warn('Sync listener error', err); ui('off', 'Sync paused'); });

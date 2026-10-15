@@ -298,6 +298,9 @@ dialog.scan::backdrop{background:rgb(0 0 0 / .75)}
 .scManual input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
 dialog.sd{border:0;border-radius:14px;padding:22px;background:var(--panel);color:var(--ink);width:min(92vw,400px);box-sizing:border-box}
 dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
+.safelist{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px;max-height:50vh;overflow:auto}
+.safelist li{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.88rem}
+.safelist small{display:block;color:var(--muted)}
 .sd h2{font:800 1.3rem var(--f-display,inherit);margin:0 30px 8px 0}
 .sd form{position:relative;margin:0}
 .sd label{display:block;font-weight:700;font-size:.85rem;margin-top:12px}
@@ -383,6 +386,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <button id="expAll" type="button">Expand all sets</button>
     <button id="exportBtn" type="button">Back up checklist</button>
     <label class="filebtn" for="importFile">Restore from backup</label>
+    <button id="safeBtn" type="button">Undo recent changes</button>
     <input id="importFile" type="file" accept="application/json,.json" hidden>
     <span id="backupMsg" class="save" role="status"></span>
   </div>
@@ -420,6 +424,14 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <p class="scStatus" id="scStatus" role="status"></p>
     <div id="scResults"></div>
     <form class="scManual" id="scManual"><label for="scManIn">Or type the number printed on the card</label><div><input id="scManIn" placeholder="e.g. 114/084 or TG08/TG30" autocomplete="off" autocapitalize="characters"><button type="submit">Find</button></div></form>
+  </dialog>
+  <dialog class="sd" id="safeDlg" aria-labelledby="safeTitle">
+    <form method="dialog">
+      <h2 id="safeTitle">Undo recent changes</h2>
+      <p class="sdp">The app keeps a copy of your marks each time it opens and before any sync or restore changes them. Pick one to go back to it; it then syncs to your other devices.</p>
+      <ol class="safelist" id="safeList"></ol>
+      <div class="sdrow"><button type="submit">Close</button></div>
+    </form>
   </dialog>
   <dialog class="sd" id="syncDlg" aria-labelledby="sdTitle">
     <form id="sdForm" method="dialog" novalidate>
@@ -970,14 +982,28 @@ document.getElementById('importFile').addEventListener('change',async e=>{
     for(const [k,v] of Object.entries(s))if(v==='owned'||v==='wanted')ok[k]=v;
     for(const [k,v] of Object.entries(j.paid||{}))if(typeof v==='number'&&v>=0)pk[k]=v;
     const ck={};for(const [k,v] of Object.entries(j.cond||{}))if(CONDS.some(x=>x[0]===v))ck[k]=v;
-    state=ok;paid=pk;cond=ck;cache();refresh();bm.textContent='Restored '+Object.keys(ok).length+' marked cards.';
+    autoBackup('before restore');window.binderBulk=Date.now();state=ok;paid=pk;cond=ck;cache();refresh();bm.textContent='Restored '+Object.keys(ok).length+' marked cards.';
   }catch(err){bm.textContent='That file isn\u2019t a checklist backup. Choose the .json file from Back up.'}
   e.target.value='';
 });
 saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a copy.';
+{const dlg=document.getElementById('safeDlg'),ul=document.getElementById('safeList');
+ const load=()=>{try{return JSON.parse(localStorage.getItem('binder-autobackup')||'[]')}catch(e){return []}};
+ document.getElementById('safeBtn').addEventListener('click',()=>{const l=load();
+   ul.innerHTML=l.length?l.map((b,i)=>{const w=Object.values(b.state).filter(v=>v==='wanted').length;return `<li><span><b>${b.owned} owned</b>, ${w} wanted<small>${new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} \u00b7 ${esc(b.why)}</small></span><button type="button" data-i="${i}">Restore</button></li>`}).join(''):'<li>No safety copies yet.</li>';
+   dlg.showModal()});
+ ul.addEventListener('click',e=>{const bt=e.target.closest('button[data-i]');if(!bt)return;const b=load()[+bt.dataset.i];if(!b)return;
+   autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};cache();refresh();dlg.close();
+   document.getElementById('backupMsg').textContent='Restored '+b.owned+' owned cards from '+new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'});}
 // Hooks for the sync module (web app only)
+function autoBackup(why){try{const own=Object.values(state).filter(v=>v==='owned').length;if(!own)return;
+  const list=JSON.parse(localStorage.getItem('binder-autobackup')||'[]');const last=list[0];
+  if(last&&JSON.stringify(last.state)===JSON.stringify(state))return;
+  list.unshift({t:new Date().toISOString(),why,owned:own,state,paid,cond});localStorage.setItem('binder-autobackup',JSON.stringify(list.slice(0,8)))}catch(e){}}
+autoBackup('app opened');
 window.binderStore={
   get:()=>({state:{...state},paid:{...paid},cond:{...cond}}),
+  backup:autoBackup,
   set:(s,p,c)=>{state={...s};paid={...p};cond={...c};cache(true);
     const ae=document.activeElement;if(ae&&ae.matches&&ae.matches('input.paid,input[type=number]')&&ae.closest('.row')){renderStats();tabCounts();return}
     refresh()},
