@@ -1,6 +1,6 @@
 // Chase Card Binder - card scanner.
 // Matches a photo of a card against every card in the checklist by its artwork (see scanfeat.js),
-// entirely on the device, then lets you mark the card Owned or Want.
+// entirely on the device, then lets you mark the card Owned or add it to a list.
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -135,7 +135,7 @@
 
   // ---------- results ----------
   function say(t, kind) { statusEl.textContent = t; statusEl.dataset.kind = kind || ''; }
-  function statusOf(c) { const s = state[c[0]]; return s === 'owned' ? 'In My Binder' : s === 'wanted' ? 'On Want List' : ''; }
+  function statusOf(c) { const s = state[c[0]]; return s === 'owned' ? 'In My Binder' : window.openListPicker && typeof listsOf === 'function' && listsOf(c[0]).length ? 'On a list' : ''; }
   function rowHTML(c, best) {
     const s = S[c[2]], st = statusOf(c);
     const opts = CONDS.map(([k, l]) => `<option value="${k}"${(cond[c[0]] || 'NM') === k ? ' selected' : ''}>${esc(l)}</option>`).join('');
@@ -143,7 +143,7 @@
       <button type="button" class="scImg" data-act="open" aria-label="Price chart for ${esc(c[1])}"><img src="${img(c, false)}" alt="" onerror="this.remove()"></button>
       <div class="scInfo"><b>${esc(c[1])}</b><small>${esc(s[0])} · #${esc(c[3])}${s[3] ? '/' + s[3] : ''} · ${esc(LABEL[c[4]] || c[4])}</small>
         <span class="scPrice">${money(c[5])}${st ? ` <em>${st}</em>` : ''}</span>
-        <div class="scAct"><button type="button" data-act="owned">Owned</button><button type="button" data-act="wanted">Want</button>
+        <div class="scAct"><button type="button" data-act="owned">Owned</button><button type="button" data-act="list">+ List</button>
           <select aria-label="Condition">${opts}</select></div>
         <span class="scDone" role="status"></span></div></li>`;
   }
@@ -160,11 +160,12 @@
     const b = e.target.closest('button[data-act]'); if (!b) return;
     const row = b.closest('.scRow'), id = row.dataset.id, c = byId[id];
     if (b.dataset.act === 'open') { openDetail(c); return; }
+    if (b.dataset.act === 'list') { window.openListPicker(id); return; }
     const val = b.dataset.act;
     const cv = row.querySelector('select').value;
     if (cv) cond[id] = cv;
     window.setStatus(id, val);
-    row.querySelector('.scDone').textContent = val === 'owned' ? '✓ Added to My Binder' : '✓ Added to your Want List';
+    row.querySelector('.scDone').textContent = '✓ Added to My Binder';
     row.classList.add('done');
     const em = row.querySelector('.scPrice em'); if (em) em.remove();
   });

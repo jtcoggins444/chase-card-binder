@@ -1,7 +1,7 @@
 // Chase Card Binder - sync between devices (Firebase Auth + Firestore) and installable-app setup.
 // The binder keeps working on its own if any of this fails; sync just lights up when it can.
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
-const KEYS = ['state', 'paid', 'cond'];
+const KEYS = ['state', 'paid', 'cond', 'lists', 'lm'];
 const $ = id => document.getElementById(id);
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -14,13 +14,15 @@ function ui(s, label) {
   btn.hidden = false; btn.dataset.s = s; txt.textContent = label;
 }
 
-// ---- helpers: three-way merge of {state, paid, cond} maps ----
-const empty = () => ({ state: {}, paid: {}, cond: {} });
+// ---- helpers: three-way merge of {state, paid, cond, lists, lm} maps ----
+const empty = () => ({ state: {}, paid: {}, cond: {}, lists: {}, lm: {} });
 function norm(d) {
   const o = empty();
   if (!d) return o;
   for (const k of KEYS) if (d[k] && typeof d[k] === 'object') for (const [id, v] of Object.entries(d[k])) {
     if (k === 'state' && (v === 'owned' || v === 'wanted')) o.state[id] = v;
+    else if (k === 'lists' && typeof v === 'string' && v) o.lists[id] = v;
+    else if (k === 'lm' && v === 1) o.lm[id] = 1;
     else if (k === 'paid' && typeof v === 'number' && isFinite(v) && v >= 0) o.paid[id] = v;
     else if (k === 'cond' && typeof v === 'string' && v) o.cond[id] = v;
   }
@@ -36,19 +38,23 @@ function diff(a, b) {
   return n ? c : null;
 }
 function apply(base, ch) {
-  const o = { state: { ...base.state }, paid: { ...base.paid }, cond: { ...base.cond } };
+  const o = { state: { ...base.state }, paid: { ...base.paid }, cond: { ...base.cond }, lists: { ...base.lists }, lm: { ...base.lm } };
   if (ch) for (const k of KEYS) for (const [id, v] of Object.entries(ch[k])) { if (v === null) delete o[k][id]; else o[k][id] = v; }
   return o;
 }
 const same = (a, b) => !diff(a, b);
 // A big drop in marks that the person didn't ask for (anything but Restore / Undo) is never passed on:
 // the deletions are dropped, so the other copy wins and the marks come back.
-function guardMass(ch, baseState) {
+function guardMass(ch, base) {
   if (!ch) return ch;
-  const dels = Object.keys(ch.state).filter(id => ch.state[id] === null);
-  if (dels.length >= 5 && dels.length > Object.keys(baseState).length * 0.2 && !(window.binderBulk && Date.now() - window.binderBulk < 120000)) {
-    for (const id of dels) delete ch.state[id];
-    console.warn('Sync: ignored removal of ' + dels.length + ' marks that wasn\u2019t asked for');
+  if (base && base.state && typeof Object.values(base.state)[0] === 'string') base = { state: base };   // older callers passed just the marks
+  const bulk = window.binderBulk && Date.now() - window.binderBulk < 120000;
+  for (const k of ['state', 'lm']) {
+    const dels = Object.keys(ch[k]).filter(id => ch[k][id] === null);
+    if (dels.length >= 5 && dels.length > Object.keys((base && base[k]) || {}).length * 0.2 && !bulk) {
+      for (const id of dels) delete ch[k][id];
+      console.warn('Sync: ignored removal of ' + dels.length + ' ' + (k === 'lm' ? 'list entries' : 'marks') + ' that wasn\u2019t asked for');
+    }
   }
   let n = 0; for (const k of KEYS) n += Object.keys(ch[k]).length;
   return n ? ch : null;
@@ -87,7 +93,7 @@ async function start() {
     if (!uid || !base) return;
     if (pushing) { again = true; return; }
     const local = norm(store.get());
-    const ch = guardMass(diff(base, local), base.state);
+    const ch = guardMass(diff(base, local), base);
     if (!ch) { status(); return; }
     if (!navigator.onLine) { status(); return; }
     pushing = true; status();
@@ -127,7 +133,7 @@ async function start() {
       const local = norm(store.get());
       const b = base || empty();
       // Changes made on this device since it last synced (everything, the first time this device signs in)
-      let mine = guardMass(diff(b, local), b.state);
+      let mine = guardMass(diff(b, local), b);
       // Safety net: never let the saved copy wipe out lots of marks at once. If it is missing, or would remove
       // many marks this device still has, keep this device's marks and send them back up instead.
       const removed = Object.keys(b.state).filter(id => !(id in remote.state) && id in local.state).length;
@@ -137,7 +143,7 @@ async function start() {
         mine = diff(empty(), local);
       }
       const merged = apply(remote, mine);
-      if (!same(merged, local)) { store.backup && store.backup('before sync'); store.set(merged.state, merged.paid, merged.cond); }
+      if (!same(merged, local)) { store.backup && store.backup('before sync'); store.set(merged.state, merged.paid, merged.cond, merged.lists, merged.lm); }
       base = remote; saveBase(uid, base); lastSync = new Date();
       if (mine && !same(merged, remote)) schedule(); else status();
     }, err => { console.warn('Sync listener error', err); ui('off', 'Sync paused'); });

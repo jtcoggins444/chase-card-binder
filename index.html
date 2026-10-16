@@ -103,7 +103,24 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .setn{display:block;font-size:.76rem;color:var(--muted)}
 .acts button{font:700 .74rem var(--f-body);border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:5px 9px;cursor:pointer}
 .acts button.on-own{background:var(--own-bg);color:var(--own);border-color:var(--own)}
-.acts button.on-want{background:var(--want-bg);color:var(--want);border-color:var(--want)}
+.acts button.on-want,.acts button.on-list{background:var(--want-bg);color:var(--want);border-color:var(--want)}
+.listbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 14px}
+.listbar .lchip{font:700 .85rem var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}
+.listbar .lchip small{font-weight:600;color:var(--muted);margin-left:6px}
+.listbar .lchip[aria-pressed=true]{background:var(--want-bg);color:var(--want);border-color:var(--want)}
+.listbar .lchip[aria-pressed=true] small{color:inherit}
+.listbar .lnew{font:700 .85rem var(--f-body);border:1px dashed var(--muted);background:transparent;color:var(--muted);border-radius:999px;padding:7px 14px;cursor:pointer}
+.listtools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-4px 0 14px;font-size:.85rem;color:var(--muted)}
+.listtools button{font:700 .78rem var(--f-body);border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:5px 10px;cursor:pointer}
+.listtools button.danger{color:#c0392b;border-color:#c0392b}
+.listtools button.danger.armed{background:#c0392b;color:#fff}
+.lpick{list-style:none;margin:10px 0 0;padding:0;max-height:45vh;overflow:auto}
+.lpick li label{display:flex;align-items:center;gap:10px;margin:0;padding:9px 4px;border-bottom:1px solid var(--line);font-weight:600;cursor:pointer}
+.lpick li label input{width:18px;height:18px;margin:0;accent-color:var(--want)}
+.lpick li label small{margin-left:auto;color:var(--muted);font-weight:500}
+.lpick .none{color:var(--muted);padding:8px 4px;font-size:.9rem}
+.lnewrow{display:flex;gap:8px;margin-top:14px}
+.lnewrow input{flex:1;min-width:0}
 .empty{color:var(--muted);padding:32px 0;text-align:center}
 .foot{color:var(--muted);font-size:.8rem;margin-top:28px;max-width:70ch}
 .save{font-size:.78rem;color:var(--muted)}
@@ -341,13 +358,14 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
   </header>
   <nav class="tabs" role="tablist" aria-label="Views">
     <button type="button" role="tab" id="tabBtnOwned" data-tab="owned" aria-selected="true">My Binder <span class="tabn" id="nOwned"></span></button>
-    <button type="button" role="tab" id="tabBtnWant" data-tab="want" aria-selected="false">Want List <span class="tabn" id="nWant"></span></button>
+    <button type="button" role="tab" id="tabBtnWant" data-tab="want" aria-selected="false">Lists <span class="tabn" id="nWant"></span></button>
     <button type="button" role="tab" id="tabBtnAll" data-tab="all" aria-selected="false">All Cards</button>
     <button type="button" role="tab" id="tabBtnEtb" data-tab="etb" aria-selected="false">ETBs <span class="tabn" id="nEtb"></span></button>
     <button type="button" role="tab" id="tabBtnMovers" data-tab="movers" aria-selected="false">Movers</button>
   </nav>
   <div id="tabBinder" role="tabpanel">
   <p class="viewintro" id="viewIntro"></p>
+  <div id="listBar" hidden><div class="listbar" id="listChips"></div><div class="listtools" id="listTools"></div></div>
   <div class="stats" id="stats"></div>
   <section class="buy" id="buy">
     <div class="buyhd">
@@ -355,7 +373,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     </div>
     <div id="buyBody">
       <div class="buyctl">
-        <select id="buyScope" aria-label="Which cards"><option value="want">My Want list</option><option value="missing" selected>Cards I don't own</option><option value="all">All cards</option></select>
+        <select id="buyScope" aria-label="Which cards"><option value="want">This list</option><option value="missing" selected>Cards I don't own</option><option value="all">All cards</option></select>
         <select id="buyCond" aria-label="Condition you buy"><option value="NM">Near Mint only</option><option value="LP" selected>Near Mint or Lightly Played</option><option value="any">Any condition</option></select>
         <span class="prange">Price<input id="buyMin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Buy list minimum price">to<input id="buyMax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Buy list maximum price"></span>
       </div>
@@ -387,7 +405,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       </div>
     </details>
     <select id="era" aria-label="Era"><option value="">All eras</option></select>
-    <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="wanted">Wanted</option><option value="missing">Missing</option></select>
+    <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="listed">On a list</option><option value="missing">Missing</option></select>
     <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
     <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="active">Most active (sales)</option><option value="heat">Sales picking up</option><option value="move">Biggest movers, 7 days</option></select>
   </div>
@@ -439,6 +457,16 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <div id="scResults"></div>
     <form class="scManual" id="scManual"><label for="scManIn">Or type the number printed on the card</label><div><input id="scManIn" placeholder="e.g. 114/084 or TG08/TG30" autocomplete="off" autocapitalize="characters"><button type="submit">Find</button></div></form>
   </dialog>
+  <dialog class="sd" id="listDlg" aria-labelledby="ldTitle">
+    <form method="dialog" id="ldForm">
+      <h2 id="ldTitle">Add to a list</h2>
+      <p class="sdp" id="ldCard"></p>
+      <ul class="lpick" id="ldList"></ul>
+      <div class="lnewrow"><input id="ldNew" type="text" maxlength="40" placeholder="New list name" aria-label="New list name" autocomplete="off"><button type="button" id="ldCreate">Create</button></div>
+      <div class="sdrow"><button type="submit" class="pri">Done</button></div>
+      <button type="submit" class="sdx" aria-label="Close">×</button>
+    </form>
+  </dialog>
   <dialog class="sd" id="safeDlg" aria-labelledby="safeTitle">
     <form method="dialog">
       <h2 id="safeTitle">Undo recent changes</h2>
@@ -451,7 +479,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <form id="sdForm" method="dialog" novalidate>
       <h2 id="sdTitle">Sync your binder</h2>
       <div id="sdOut">
-        <p class="sdp">Sign in on each device with the same email and password. Your Owned and Want marks, paid prices and conditions stay in step everywhere.</p>
+        <p class="sdp">Sign in on each device with the same email and password. Your Owned marks, lists, paid prices and conditions stay in step everywhere.</p>
         <label>Email<input id="sdEmail" type="email" autocomplete="username" required></label>
         <label>Password<input id="sdPass" type="password" autocomplete="current-password" minlength="6" required></label>
         <p class="sderr" id="sdErr" role="alert"></p>
@@ -517,7 +545,7 @@ function renderBuy(){
   const picks=[];
   for(const c of C){
     if(!f.r.has(c[4]))continue;if(f.era&&S[c[2]][1]!==f.era)continue;
-    const st=state[c[0]];if(scope==='want'&&st!=='wanted')continue;if(scope==='missing'&&st==='owned')continue;
+    const st=state[c[0]];if(scope==='want'&&!inList(curList,c[0]))continue;if(scope==='missing'&&st==='owned')continue;
     if(c[5]==null||c[5]<lo||c[5]>hi)continue;
     const sg=buySignals(c);if(sg.score>=0.08)picks.push([c,sg]);
   }
@@ -526,7 +554,7 @@ function renderBuy(){
   document.getElementById('buySub').textContent=` · ${top.length?top.length+' picks':'no picks'} · prices ${DT[DT.length-1].toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
   list.innerHTML=top.map(([c,sg],i)=>{const s=S[c[2]];const w30=winStats(c,30);
     return `<li data-id="${c[0]}"><span class="rk">${i+1}</span><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a><span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">${esc(s[0])} · #${esc(c[3])}</span><span class="why">${sg.why.map(([k,t])=>`<span class="${k}">${t}</span>`).join('')}</span></span><span class="pr"><b>${money(c[5])}</b>${w30&&w30.n>=6?`<span class="avg">30-day avg ${money(w30.avg)}</span>`:''}</span></li>`}).join('');
-  if(!top.length)list.innerHTML=`<li class="empty" style="display:block">${scope==='want'?'Nothing on your Want list is a deal right now. Mark cards Want to watch them here.':'No deals match these settings today.'}</li>`;
+  if(!top.length)list.innerHTML=`<li class="empty" style="display:block">${scope==='want'?(lists[curList]?'Nothing on this list is a deal right now.':'Pick a list above to watch it here.'):'No deals match these settings today.'}</li>`;
   const note=document.getElementById('buyNote');
   note.textContent=(days<8?`Price-drop picks need about a week of daily history (tracking started ${DT[0].toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}), so the list will be short until then. `:'')+'Picks are cards at least 8% below their 30-day average, at least 15% off their 30-day high, or at a 90-day low. Prices are TCGplayer market prices from recent sales. Links open TCGplayer showing only the conditions you picked'+(buyCond()==='any'?'. With Any condition, cheap listings 12–40% under market are also shown; the feed does not say their condition, so many are played copies.':'.')+' Cards under the minimum price (default $5) are skipped.';
 }
@@ -603,28 +631,40 @@ function outlook(c){const a=activity(c);if(!a||!a.ready||!a.trend)return null;co
 function chgOver(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=last[0]-days*864e5;let base=s[0];for(const p of s){if(p[0]<=cut)base=p;else break}if(base===last||!base[1])return null;return (last[1]-base[1])/base[1]*100}
 const LABEL={IR:'IR',SIR:'SIR',FA:'Full Art',VINT:'Vintage Holo',VALT:'VMAX Alt Art',VREG:'VMAX/VSTAR',RAIN:'Rainbow Rare',GOLD:'Gold/Secret Rare',HR:'Gold Hyper Rare',SHINY:'Shiny Vault',GG:'Galarian Gallery',TG:'Trainer Gallery',BWR:'Black White Rare',MHR:'Mega Hyper Rare',MAR:'Mega Attack Rare'};
 const KINDS=Object.keys(LABEL);
-let state={}; // id -> 'owned'|'wanted'
+const byIdL=Object.fromEntries(C.concat(E).map(c=>[c[0],c]));
+let state={}; // id -> 'owned' (older copies may still say 'wanted'; those move to a list on load)
 const LS='binder-state-v1';
 try{state=JSON.parse(localStorage.getItem(LS)||'{}')||{}}catch(e){state={}}
 let paid={};try{paid=JSON.parse(localStorage.getItem('binder-paid-v1')||'{}')||{}}catch(e){paid={}}
 let cond={};try{cond=JSON.parse(localStorage.getItem('binder-cond-v1')||'{}')||{}}catch(e){cond={}}
+// Custom lists: lists = {listId: name}; lm = {"listId:cardId": 1}
+let lists={},lm={};try{const j=JSON.parse(localStorage.getItem('binder-lists-v1')||'{}')||{};lists=j.lists||{};lm=j.lm||{}}catch(e){lists={};lm={}}
+let curList='';try{curList=localStorage.getItem('binder-curList')||''}catch(e){}
+// The old Want marks become a list called "Want list" (same id on every device, so they line up when synced)
+{const w=Object.keys(state).filter(k=>state[k]==='wanted');if(w.length){if(!lists.want)lists.want='Want list';for(const id of w){lm['want:'+id]=1;delete state[id]}window.binderBulk=Date.now();
+  try{localStorage.setItem('binder-state-v1',JSON.stringify(state));localStorage.setItem('binder-lists-v1',JSON.stringify({lists,lm}))}catch(e){}}}
+function listIds(){return Object.keys(lists).sort((a,b)=>a==='want'?-1:b==='want'?1:lists[a].localeCompare(lists[b]))}
+function inList(l,id){return !!lm[l+':'+id]}
+function listsOf(id){return listIds().filter(l=>lm[l+':'+id])}
+function listCount(l){const p=l+':';let n=0;for(const k in lm)if(k.startsWith(p)&&byIdL[k.slice(p.length)])n++;return n}
+function onAnyList(id){for(const l in lists)if(lm[l+':'+id])return true;return false}
 const CONDS=[['NM','Near Mint'],['LP','Lightly Played'],['MP','Moderately Played'],['HP','Heavily Played'],['DMG','Damaged'],['GR','Graded']];
 const CONDQ={NM:'Near+Mint',LP:'Near+Mint|Lightly+Played',MP:'Near+Mint|Lightly+Played|Moderately+Played',HP:'Near+Mint|Lightly+Played|Moderately+Played|Heavily+Played'};
 function buyCond(){const el=document.getElementById('buyCond');return el?el.value:'LP'}
-function cache(fromSync){try{localStorage.setItem(LS,JSON.stringify(state));localStorage.setItem('binder-paid-v1',JSON.stringify(paid));localStorage.setItem('binder-cond-v1',JSON.stringify(cond))}catch(e){}if(!fromSync&&typeof window.binderChanged==='function')window.binderChanged()}
+function cache(fromSync){try{localStorage.setItem(LS,JSON.stringify(state));localStorage.setItem('binder-lists-v1',JSON.stringify({lists,lm}));localStorage.setItem('binder-paid-v1',JSON.stringify(paid));localStorage.setItem('binder-cond-v1',JSON.stringify(cond))}catch(e){}if(!fromSync&&typeof window.binderChanged==='function')window.binderChanged()}
 const eras=[...new Set(Object.values(S).map(s=>s[1]))];
 const eraSel=document.getElementById('era');
 eras.reverse().forEach(e=>{const o=document.createElement('option');o.value=e;o.textContent=e;eraSel.appendChild(o)});
 const f={q:'',r:new Set(KINDS),era:'',status:'',sort:'set'};
 let collapsed=new Set();try{collapsed=new Set(JSON.parse(localStorage.getItem('binder-collapsed')||'[]'))}catch(e){}
 function saveCollapsed(){try{localStorage.setItem('binder-collapsed',JSON.stringify([...collapsed]))}catch(e){}}
-try{const p=JSON.parse(localStorage.getItem('binder-filters')||'null');if(p){f.era=p.era||'';f.status=p.status||'';f.sort=p.sort||'set';f.pmin=p.pmin??null;f.pmax=p.pmax??null;const off=p.x||(p.r?['IR','SIR','FA'].filter(k=>!p.r.includes(k)):[]);f.r=new Set(KINDS.filter(k=>!off.includes(k)));if(!f.r.size)f.r=new Set(KINDS)}}catch(e){}
+try{const p=JSON.parse(localStorage.getItem('binder-filters')||'null');if(p){f.era=p.era||'';f.status=p.status==='wanted'?'listed':p.status||'';f.sort=p.sort||'set';f.pmin=p.pmin??null;f.pmax=p.pmax??null;const off=p.x||(p.r?['IR','SIR','FA'].filter(k=>!p.r.includes(k)):[]);f.r=new Set(KINDS.filter(k=>!off.includes(k)));if(!f.r.size)f.r=new Set(KINDS)}}catch(e){}
 eraSel.value=f.era;document.getElementById('status').value=f.status;document.getElementById('sort').value=f.sort;
 
 function keep(c){if(!f.r.has(c[4]))return false;if(f.pmin==null&&f.pmax==null)return true;const p=c[5];if(p==null)return false;return (f.pmin==null||p>=f.pmin)&&(f.pmax==null||p<=f.pmax)}
 function saveFilters(){try{localStorage.setItem('binder-filters',JSON.stringify({era:f.era,status:f.status,sort:f.sort,pmin:f.pmin,pmax:f.pmax,x:KINDS.filter(k=>!f.r.has(k))}))}catch(e){}}
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function link(c){const s=S[c[2]];const q=CONDQ[(state[c[0]]==='wanted'&&cond[c[0]])||buyCond()];return c[6]?'https://www.tcgplayer.com/product/'+c[6]+'?Language=English'+(q?'&Condition='+q:''):'https://www.tcgplayer.com/search/pokemon/product?q='+encodeURIComponent(c[1]+' '+s[0]+' '+c[3])}
+function link(c){const s=S[c[2]];const q=CONDQ[buyCond()];return c[6]?'https://www.tcgplayer.com/product/'+c[6]+'?Language=English'+(q?'&Condition='+q:''):'https://www.tcgplayer.com/search/pokemon/product?q='+encodeURIComponent(c[1]+' '+s[0]+' '+c[3])}
 const usd=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
 const usd0=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 function money(v){return v==null?'—':usd.format(v)}
@@ -636,10 +676,13 @@ function mvTxt(c){const v=chgOver(c,7);return v==null||Math.abs(v)<0.05?'':`<spa
 function sgn(v){return (v>=0?'+':'\u2212')+usd.format(Math.abs(v))}
 function renderStats(){
   let n=0,own=0,ov=0,mv=0,wv=0,pd=0,pv=0;
-  C.forEach(c=>{if(!keep(c))return;n++;const p=c[5]||0,st=state[c[0]];if(st==='owned'){own++;ov+=p;if(paid[c[0]]!=null){pd+=paid[c[0]];pv+=p}}else{mv+=p;if(st==='wanted')wv+=p}});
-  const g=pv-pd;
   const t=(lab,val,bar,cls)=>`<div class="stat"><span>${lab}</span><b${cls?` class="${cls}"`:''}>${val}</b>${bar==null?'':`<div class="bar"><i style="width:${bar}%"></i></div>`}</div>`;
-  document.getElementById('stats').innerHTML=t('Owned',own+' / '+n,n?own/n*100:0)+t('Owned value',usd0.format(ov))+t('Total paid',usd0.format(pd))+t('Gain / loss',pd?sgn(g).replace(/\.\d\d$/,''):'—',null,pd?(g>=0?'up':'down'):'')+t('Wanted value',usd0.format(wv))+t('Cost to complete',usd0.format(mv));
+  if(view==='want'){const el=document.getElementById('stats');if(!lists[curList]){el.innerHTML='';return}
+    let k=0,ko=0,tv=0,tov=0,na=0;for(const c of C.concat(E)){if(!inList(curList,c[0]))continue;k++;const p=c[5];if(p==null)na++;tv+=p||0;if(state[c[0]]==='owned'){ko++;tov+=p||0}}
+    el.innerHTML=t('Cards',k)+t('List value',usd.format(tv))+t('Already own',ko+' · '+usd0.format(tov),k?ko/k*100:0)+t('Cost to buy the rest',usd.format(tv-tov))+(na?t('No price yet',na):'');return}
+  C.forEach(c=>{if(!keep(c))return;n++;const p=c[5]||0,st=state[c[0]];if(st==='owned'){own++;ov+=p;if(paid[c[0]]!=null){pd+=paid[c[0]];pv+=p}}else{mv+=p;if(onAnyList(c[0]))wv+=p}});
+  const g=pv-pd;
+  document.getElementById('stats').innerHTML=t('Owned',own+' / '+n,n?own/n*100:0)+t('Owned value',usd0.format(ov))+t('Total paid',usd0.format(pd))+t('Gain / loss',pd?sgn(g).replace(/\.\d\d$/,''):'—',null,pd?(g>=0?'up':'down'):'')+t('On your lists',usd0.format(wv))+t('Cost to complete',usd0.format(mv));
 }
 function renderEtb(){
   const q=f.q.trim().toLowerCase(),el=document.getElementById('binder');
@@ -662,8 +705,8 @@ function renderEtb(){
 }
 function etbExtra(){
   if(view!=='owned'&&view!=='want')return '';
-  const want=view==='owned'?'owned':'wanted',q=f.q.trim().toLowerCase();
-  const a=E.filter(c=>state[c[0]]===want&&(!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q))).sort((x,y)=>S[y[2]][2].localeCompare(S[x[2]][2]));
+  const want=view==='owned'?'owned':'list',q=f.q.trim().toLowerCase();
+  const a=E.filter(c=>(want==='owned'?state[c[0]]==='owned':inList(curList,c[0]))&&(!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q))).sort((x,y)=>S[y[2]][2].localeCompare(S[x[2]][2]));
   if(!a.length)return '';
   const v=a.reduce((x,c)=>x+(c[5]||0),0),key='etb:'+want,open=!!q||!collapsed.has(key);
   return `<section class="set${open?'':' closed'}" data-set="${key}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>Elite Trainer Boxes<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${money(v)}</span></button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>';
@@ -679,14 +722,15 @@ function render(){
     const st=state[c[0]]||'';
     const fs=viewStatus();
     if(fs==='owned'&&st!=='owned')continue;
-    if(fs==='wanted'&&st!=='wanted')continue;
+    if(fs==='list'&&!inList(curList,c[0]))continue;
+    if(fs==='listed'&&!onAnyList(c[0]))continue;
     if(fs==='missing'&&st==='owned')continue;
     if(q&&!c[1].toLowerCase().includes(q)&&!s[0].toLowerCase().includes(q))continue;
     if(!groups.has(c[2]))groups.set(c[2],[]);
     groups.get(c[2]).push(c);
   }
   const ids=[...groups.keys()].sort((a,b)=>S[b][2].localeCompare(S[a][2])||b.localeCompare(a));
-  if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!C.some(c=>state[c[0]]==='wanted')?'Your Want list is empty. Find cards in All Cards and tap Want to add them here.':'No cards match these filters.';const ex=etbExtra();document.getElementById('binder').innerHTML=ex||'<p class="empty">'+no+'</p>';return}
+  if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!lists[curList]?(Object.keys(lists).length?'Pick a list above.':'You don\u2019t have any lists yet. Tap + New list to make one, then tap + List on any card to add it.'):view==='want'&&!listCount(curList)?'This list is empty. Find cards in All Cards or ETBs and tap + List to add them.':'No cards match these filters.';const ex=etbExtra();document.getElementById('binder').innerHTML=ex||'<p class="empty">'+no+'</p>';return}
   let h='';
   if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
@@ -710,22 +754,56 @@ function render(){
 function row(c,showSet){
   const s=S[c[2]],st=state[c[0]]||'';
   const pp=paid[c[0]],d=(st==='owned'&&pp!=null&&c[5]!=null)?c[5]-pp:null;
-  return `<div class="row ${st}${c[4]==='ETB'?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}${actChip(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button><button data-a="wanted" class="${st==='wanted'?'on-want':''}" aria-pressed="${st==='wanted'}">Want</button>${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st?`<label class="paid">${st==='owned'?'Condition':'Want in'} <select class="cond" aria-label="${st==='owned'?'Condition of your copy':'Condition you want'} for ${esc(c[1])}">${st==='wanted'?`<option value="">${{NM:'Near Mint',LP:'NM or LP',any:'Any'}[buyCond()]||'Default'}</option>`:'<option value="">Not set</option>'}${(st==='owned'?CONDS:CONDS.slice(0,4)).map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${st==='wanted'&&k!=='NM'?n+' or better':n}</option>`).join('')}</select></label>`:''}</span></div>`;
+  return `<div class="row ${st}${c[4]==='ETB'?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}${actChip(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button>${(()=>{const ls=listsOf(c[0]);return `<button data-l="1" class="${ls.length?'on-list':''}" title="${ls.length?esc(ls.map(l=>lists[l]).join(', ')):'Add to a list'}">${ls.length?(ls.length===1?'\u2713 '+esc(lists[ls[0]].length>14?lists[ls[0]].slice(0,13)+'\u2026':lists[ls[0]]):'\u2713 '+ls.length+' lists'):'+ List'}</button>`})()}${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st==='owned'?`<label class="paid">Condition <select class="cond" aria-label="Condition of your copy for ${esc(c[1])}"><option value="">Not set</option>${CONDS.map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${n}</option>`).join('')}</select></label>`:''}</span></div>`;
 }
 let view='all';
-function viewStatus(){return view==='owned'?'owned':view==='want'?'wanted':f.status}
-function tabCounts(){{const n=document.getElementById('nEtb');if(n)n.textContent=E.filter(c=>state[c[0]]==='owned').length||''}let o=0,w=0;for(const c of C.concat(E)){const s=state[c[0]];if(s==='owned')o++;else if(s==='wanted')w++}const a=document.getElementById('nOwned'),b=document.getElementById('nWant');if(a)a.textContent=o;if(b)b.textContent=w}
-function refresh(){renderStats();render();renderBuy();renderMovers();tabCounts()}
+function viewStatus(){return view==='owned'?'owned':view==='want'?'list':f.status}
+function tabCounts(){{const n=document.getElementById('nEtb');if(n)n.textContent=E.filter(c=>state[c[0]]==='owned').length||''}let o=0,w=Object.keys(lists).length;for(const c of C.concat(E)){if(state[c[0]]==='owned')o++}const a=document.getElementById('nOwned'),b=document.getElementById('nWant');if(a)a.textContent=o;if(b)b.textContent=w||''}
+function refresh(){renderListBar();renderStats();render();renderBuy();renderMovers();tabCounts()}
 const saveEl=document.getElementById('saveState');
 async function setStatus(id,val){
   if(val)state[id]=val;else delete state[id];
   cache();refresh();
 }
 document.getElementById('binder').addEventListener('click',e=>{
+  const lb2=e.target.closest('button[data-l]');if(lb2){openListPicker(lb2.closest('.row').dataset.id);return}
   const b=e.target.closest('button[data-a]');if(!b)return;
   const id=b.closest('.row').dataset.id;const cur=state[id];
   setStatus(id,cur===b.dataset.a?null:b.dataset.a);
 });
+// ---- custom lists ----
+function newListId(){return 'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function makeList(name){name=(name||'').trim().slice(0,40);if(!name)return null;const ex=Object.keys(lists).find(l=>lists[l].toLowerCase()===name.toLowerCase());if(ex)return ex;const id=newListId();lists[id]=name;return id}
+function setCur(l){curList=l;try{localStorage.setItem('binder-curList',l)}catch(e){}}
+function renderListBar(){const bar=document.getElementById('listBar');if(!bar)return;bar.hidden=view!=='want';if(view!=='want')return;
+  const ids=listIds();if(!lists[curList]&&ids.length)setCur(ids[0]);
+  document.getElementById('listChips').innerHTML=ids.map(l=>`<button type="button" class="lchip" data-list="${l}" aria-pressed="${l===curList}">${esc(lists[l])}<small>${listCount(l)}</small></button>`).join('')+'<button type="button" class="lnew" id="listNew">+ New list</button>';
+  document.getElementById('listTools').innerHTML=lists[curList]?`<button type="button" id="listRename">Rename</button><button type="button" id="listClear">Remove all cards</button><button type="button" class="danger" id="listDel">Delete list</button>`:''}
+function askName(title,val){const v=prompt(title,val||'');return v==null?null:v.trim().slice(0,40)}
+document.getElementById('listBar').addEventListener('click',e=>{
+  const ch=e.target.closest('.lchip');if(ch){setCur(ch.dataset.list);refresh();return}
+  const t=e.target.closest('button');if(!t)return;
+  if(t.id==='listNew'){const n=askName('Name your new list');if(!n)return;const id=makeList(n);if(id){setCur(id);cache();refresh()}return}
+  if(t.id==='listRename'){const n=askName('Rename this list',lists[curList]);if(!n)return;lists[curList]=n;cache();refresh();return}
+  if(t.id==='listClear'||t.id==='listDel'){
+    if(!t.classList.contains('armed')){t.classList.add('armed');t.dataset.txt=t.textContent;t.textContent=t.id==='listDel'?'Tap again to delete':'Tap again to remove all';setTimeout(()=>{if(t.isConnected){t.classList.remove('armed');t.textContent=t.dataset.txt}},4000);return}
+    autoBackup(t.id==='listDel'?'before deleting list '+lists[curList]:'before emptying list '+lists[curList]);window.binderBulk=Date.now();
+    const p=curList+':';for(const k of Object.keys(lm))if(k.startsWith(p))delete lm[k];
+    if(t.id==='listDel'){delete lists[curList];setCur(listIds()[0]||'')}
+    cache();refresh()}
+});
+let ldCard=null;
+function ldDraw(){const ids=listIds(),ul=document.getElementById('ldList');
+  ul.innerHTML=ids.length?ids.map(l=>`<li><label><input type="checkbox" data-list="${l}"${inList(l,ldCard)?' checked':''}>${esc(lists[l])}<small>${listCount(l)} card${listCount(l)===1?'':'s'}</small></label></li>`).join(''):'<li class="none">No lists yet. Name one below to start.</li>'}
+function openListPicker(id){const c=byIdL[id];if(!c)return;ldCard=id;
+  document.getElementById('ldCard').textContent=c[1]+(c[4]==='ETB'?'':' · #'+c[3])+' · '+S[c[2]][0];
+  document.getElementById('ldNew').value='';ldDraw();document.getElementById('listDlg').showModal()}
+window.openListPicker=openListPicker;
+document.getElementById('ldList').addEventListener('change',e=>{const i=e.target.closest('input[data-list]');if(!i||!ldCard)return;const k=i.dataset.list+':'+ldCard;if(i.checked)lm[k]=1;else delete lm[k];cache();ldDraw();refresh()});
+function ldMake(){const inp=document.getElementById('ldNew'),id=makeList(inp.value);if(!id)return;lm[id+':'+ldCard]=1;inp.value='';if(!lists[curList])setCur(id);cache();ldDraw();refresh()}
+document.getElementById('ldCreate').addEventListener('click',ldMake);
+document.getElementById('ldNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ldMake()}});
+document.getElementById('listDlg').addEventListener('click',e=>{if(e.target.id==='listDlg')e.target.close()});
 document.getElementById('q').addEventListener('input',e=>{f.q=e.target.value;render()});
 eraSel.addEventListener('change',e=>{f.era=e.target.value;saveFilters();render()});
 document.getElementById('status').addEventListener('change',e=>{f.status=e.target.value;saveFilters();render()});
@@ -912,9 +990,9 @@ function showTab(name){if(name==='binder')name='all';if(!['owned','want','all','
   try{localStorage.setItem('binder-tab',name)}catch(e){};
   if(mv){renderMovers();return}
   view=name;document.getElementById('tabBinder').classList.toggle('etbview',name==='etb');document.getElementById('status').hidden=name!=='all';document.getElementById('buy').hidden=name==='owned'||name==='etb';
-  document.getElementById('viewIntro').textContent={owned:'Cards you own. Track what you paid, condition and gain here.',want:'Cards you want. The Buy list shows which of these are on sale or dropping in price.',all:'Every card in the checklist. Search and filter, then tap Owned or Want to add cards to My Binder or your Want List.',etb:'Elite Trainer Boxes for every set in the checklist, with daily TCGplayer market prices. Tap Owned or Want to track them.'}[name];
+  document.getElementById('viewIntro').textContent={owned:'Cards you own. Track what you paid, condition and gain here.',want:'Your own lists for pricing out a group of cards. Pick a list to see its cards and total cost; the Buy list shows which are on sale.',all:'Every card in the checklist. Search and filter, then tap Owned to add a card to My Binder, or + List to put it on one of your lists.',etb:'Elite Trainer Boxes for every set in the checklist, with daily TCGplayer market prices. Tap Owned or + List to track them.'}[name];
   if(name==='want'){const sc=document.getElementById('buyScope');if(sc&&!localStorage.getItem('binder-buyScope'))sc.value='want'}
-  render();renderStats();renderBuy()}
+  renderListBar();render();renderStats();renderBuy()}
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b)showTab(b.dataset.tab)});
 document.getElementById('mvRng').addEventListener('click',e=>{const b=e.target.closest('button[data-d]');if(!b)return;document.querySelectorAll('#mvRng button').forEach(x=>x.setAttribute('aria-pressed',x===b));try{localStorage.setItem('binder-mvDays',b.dataset.d)}catch(e){};renderMovers()});
 ['mvMetric','mvMin'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
@@ -1029,7 +1107,7 @@ window.addEventListener('resize',()=>{if(lb.open)drawChart()});
 lb.addEventListener('click',e=>{if(e.target===lb)lb.close()});
 const bm=document.getElementById('backupMsg');
 document.getElementById('exportBtn').addEventListener('click',()=>{
-  const blob=new Blob([JSON.stringify({app:'chase-card-binder',saved:new Date().toISOString(),state,paid,cond},null,1)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({app:'chase-card-binder',saved:new Date().toISOString(),state,paid,cond,lists,lm},null,1)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='chase-card-binder-backup.json';document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);bm.textContent='Backup saved to your downloads.';
 });
@@ -1039,7 +1117,9 @@ document.getElementById('importFile').addEventListener('change',async e=>{
     for(const [k,v] of Object.entries(s))if(v==='owned'||v==='wanted')ok[k]=v;
     for(const [k,v] of Object.entries(j.paid||{}))if(typeof v==='number'&&v>=0)pk[k]=v;
     const ck={};for(const [k,v] of Object.entries(j.cond||{}))if(CONDS.some(x=>x[0]===v))ck[k]=v;
-    autoBackup('before restore');window.binderBulk=Date.now();state=ok;paid=pk;cond=ck;cache();refresh();bm.textContent='Restored '+Object.keys(ok).length+' marked cards.';
+    const ln={},lk={};for(const [k,v] of Object.entries(j.lists||{}))if(typeof v==='string'&&v)ln[k]=v.slice(0,40);for(const k of Object.keys(j.lm||{}))if(ln[k.split(':')[0]])lk[k]=1;
+    for(const k of Object.keys(ok))if(ok[k]==='wanted'){if(!ln.want)ln.want='Want list';lk['want:'+k]=1;delete ok[k]}
+    autoBackup('before restore');window.binderBulk=Date.now();state=ok;paid=pk;cond=ck;lists=ln;lm=lk;cache();refresh();bm.textContent='Restored '+Object.keys(ok).length+' marked cards.';
   }catch(err){bm.textContent='That file isn\u2019t a checklist backup. Choose the .json file from Back up.'}
   e.target.value='';
 });
@@ -1047,21 +1127,22 @@ saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a 
 {const dlg=document.getElementById('safeDlg'),ul=document.getElementById('safeList');
  const load=()=>{try{return JSON.parse(localStorage.getItem('binder-autobackup')||'[]')}catch(e){return []}};
  document.getElementById('safeBtn').addEventListener('click',()=>{const l=load();
-   ul.innerHTML=l.length?l.map((b,i)=>{const w=Object.values(b.state).filter(v=>v==='wanted').length;return `<li><span><b>${b.owned} owned</b>, ${w} wanted<small>${new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} \u00b7 ${esc(b.why)}</small></span><button type="button" data-i="${i}">Restore</button></li>`}).join(''):'<li>No safety copies yet.</li>';
+   ul.innerHTML=l.length?l.map((b,i)=>{const w=b.lists?Object.keys(b.lists).length:0;return `<li><span><b>${b.owned} owned</b>, ${w} list${w===1?'':'s'}<small>${new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} \u00b7 ${esc(b.why)}</small></span><button type="button" data-i="${i}">Restore</button></li>`}).join(''):'<li>No safety copies yet.</li>';
    dlg.showModal()});
  ul.addEventListener('click',e=>{const bt=e.target.closest('button[data-i]');if(!bt)return;const b=load()[+bt.dataset.i];if(!b)return;
-   autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};cache();refresh();dlg.close();
+   autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};if(b.lists){lists={...b.lists};lm={...(b.lm||{})}}cache();refresh();dlg.close();
    document.getElementById('backupMsg').textContent='Restored '+b.owned+' owned cards from '+new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'});}
 // Hooks for the sync module (web app only)
-function autoBackup(why){try{const own=Object.values(state).filter(v=>v==='owned').length;if(!own)return;
+function autoBackup(why){try{const own=Object.values(state).filter(v=>v==='owned').length;if(!own&&!Object.keys(lists).length)return;
   const list=JSON.parse(localStorage.getItem('binder-autobackup')||'[]');const last=list[0];
-  if(last&&JSON.stringify(last.state)===JSON.stringify(state))return;
-  list.unshift({t:new Date().toISOString(),why,owned:own,state,paid,cond});localStorage.setItem('binder-autobackup',JSON.stringify(list.slice(0,8)))}catch(e){}}
+  if(last&&JSON.stringify(last.state)===JSON.stringify(state)&&JSON.stringify(last.lm||{})===JSON.stringify(lm)&&JSON.stringify(last.lists||{})===JSON.stringify(lists))return;
+  list.unshift({t:new Date().toISOString(),why,owned:own,state,paid,cond,lists,lm});localStorage.setItem('binder-autobackup',JSON.stringify(list.slice(0,8)))}catch(e){}}
 autoBackup('app opened');
 window.binderStore={
-  get:()=>({state:{...state},paid:{...paid},cond:{...cond}}),
+  get:()=>({state:{...state},paid:{...paid},cond:{...cond},lists:{...lists},lm:{...lm}}),
   backup:autoBackup,
-  set:(s,p,c)=>{state={...s};paid={...p};cond={...c};cache(true);
+  set:(s,p,c,l,m)=>{state={...s};paid={...p};cond={...c};if(l){lists={...l};lm={...(m||{})}}cache(true);
+    if(document.getElementById('listDlg').open&&ldCard)ldDraw();
     const ae=document.activeElement;if(ae&&ae.matches&&ae.matches('input.paid,input[type=number]')&&ae.closest('.row')){renderStats();tabCounts();return}
     refresh()},
   msg:t=>{saveEl.textContent=t}
