@@ -1029,6 +1029,10 @@ let cur=null,range=0;
 const fmtD=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 const fmtDY=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 function q(c){const s=S[c[2]];return encodeURIComponent(c[1]+' '+c[3]+' '+s[0])}
+function srchTxt(c){const s=S[c[2]];return c[4]==='ETB'?c[1]:c[1]+' '+s[0]+' '+c[3]}
+document.getElementById('dvLinks').addEventListener('click',e=>{const a=e.target.closest('a[data-copy]');if(!a)return;const t=a.dataset.copy,n=document.getElementById('dvCopied');
+  const done=()=>{if(n)n.textContent='Copied \u201c'+t+'\u201d. Paste it into the search box on '+(a.href.includes('alt.xyz')?'Alt':'Card Ladder')+'.'};
+  try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>{});else{const x=document.createElement('textarea');x.value=t;document.body.appendChild(x);x.select();document.execCommand('copy');x.remove();done()}}catch(err){}});
 function openDetail(c){
   cur=c;const s=S[c[2]],im=document.getElementById('lbImg');
   im.src='';im.alt=c[1];im.src=img(c,true);
@@ -1055,7 +1059,10 @@ function openDetail(c){
     [link(c),'TCGplayer: price history and latest sales'],
     ['https://www.pricecharting.com/search-products?type=prices&q='+q(c),'PriceCharting: PSA prices and sold listings'],
     ['https://www.ebay.com/sch/i.html?LH_Sold=1&LH_Complete=1&_nkw='+q(c),'eBay: sold listings']
-  ].map(([u,t])=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join('');
+  ].map(([u,t])=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')+
+  [['https://app.cardladder.com/','Card Ladder: graded sales (members)'],['https://alt.xyz/browse','Alt: Alt Value and graded sales']]
+    .map(([u,t])=>`<a href="${u}" target="_blank" rel="noopener" data-copy="${esc(srchTxt(c))}">${t}</a>`).join('')+
+  '<p class="note" id="dvCopied">Card Ladder and Alt can\u2019t be opened straight to a card, so these copy the card name for you to paste into their search.</p>';
   if(lb.showModal)lb.showModal();else lb.setAttribute('open','');
   drawChart();
 }
