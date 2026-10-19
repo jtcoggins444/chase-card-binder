@@ -318,6 +318,34 @@ dialog.scan::backdrop{background:rgb(0 0 0 / .75)}
 .scAct button{padding:7px 12px;font-size:.82rem}
 .scAct select{font:inherit;font-size:.82rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px}
 .scDone{font-weight:700;font-size:.8rem;color:var(--own)}
+.scMode{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-left:auto;margin-right:6px}
+.scMode button{font:700 .78rem var(--f-body);border:0;background:transparent;color:var(--muted);padding:6px 11px;cursor:pointer}
+.scMode button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.scFrame{transition:border-color .2s}
+.scCam[data-near="1"] .scFrame{border-color:#ffd54a}
+.scCam.flash .scFrame{animation:scflash .5s ease-out}
+@keyframes scflash{0%{border-color:#4ee28a;box-shadow:0 0 0 999px rgb(0 0 0 / .45),inset 0 0 0 60px rgb(78 226 138 / .35)}100%{border-color:#fff;box-shadow:0 0 0 999px rgb(0 0 0 / .45)}}
+.scScan{position:absolute;left:6%;right:6%;height:2px;top:10%;background:linear-gradient(90deg,transparent,#fff,transparent);opacity:0}
+.scCam[data-live="1"] .scScan{opacity:.7;animation:scline 2.2s ease-in-out infinite}
+@keyframes scline{0%{top:10%}50%{top:88%}100%{top:10%}}
+@media (prefers-reduced-motion:reduce){.scCam[data-live="1"] .scScan{animation:none;opacity:0}}
+.scChase{font:700 .66rem var(--f-body);color:var(--want);background:var(--want-bg);border-radius:4px;padding:1px 5px;vertical-align:2px}
+.scPrice em.muted,.scInfo .muted{color:var(--muted);font-weight:500}
+.scLink{font:700 .82rem var(--f-body);color:var(--accent);text-decoration:none;padding:6px 0}
+.scTray{padding:10px 0 4px;border-top:1px solid var(--line);margin-top:12px}
+.scTrayHd{display:flex;justify-content:space-between;align-items:baseline;padding:0 16px;font-size:.95rem}
+.scTrayHd span{font:700 1rem var(--f-mono)}
+.scTrayBtns{display:flex;gap:8px;padding:8px 16px 0;flex-wrap:wrap}
+.scTrayBtns button{font:700 .82rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer}
+.scHint{margin:6px 16px 0;color:var(--muted);font-size:.85rem}
+.scRow.mini{grid-template-columns:44px 1fr;padding:6px}
+.scRow.mini.pull{border-color:var(--own);background:var(--own-bg)}
+.scRow.mini.bulk{opacity:.8}
+.scPullTag{font:800 .68rem var(--f-body);color:#fff;background:var(--own);border-radius:4px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+.scPull{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:space-between;align-items:center;padding:6px 16px 0;font-size:.85rem;color:var(--muted)}
+.scPull select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 4px}
+.scPull b{color:var(--own)}
+.scRow.mini .scImg{width:44px}
 .scMore{padding:10px 16px 0}.scMore summary{cursor:pointer;font-weight:700;font-size:.88rem;color:var(--accent)}.scMore .scList{padding:0;margin-top:8px}
 .wrap{padding-bottom:84px}
 .scManual{padding:12px 16px 16px;font-size:.85rem;color:var(--muted)}
@@ -446,15 +474,16 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
   </div>
   <button type="button" class="scanfab" id="scanFab" hidden aria-label="Scan a card"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><rect x="8.5" y="7" width="7" height="10" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Scan</span></button>
   <dialog class="scan" id="scanDlg" aria-labelledby="scTitle">
-    <div class="scHead"><h2 id="scTitle">Scan a card</h2><button type="button" class="scX" id="scClose" aria-label="Close">×</button></div>
+    <div class="scHead"><h2 id="scTitle">Scan cards</h2><div class="scMode" id="scMode" role="group" aria-label="Scan mode"><button type="button" data-mode="one" aria-pressed="true">One card</button><button type="button" data-mode="stack" aria-pressed="false">Stack</button></div><button type="button" class="scX" id="scClose" aria-label="Close">×</button></div>
     <div class="scCam" id="scCam" data-state="">
       <video id="scVideo" playsinline muted autoplay></video>
-      <div class="scFrame" id="scFrame"></div>
+      <div class="scFrame" id="scFrame"><span class="scScan" aria-hidden="true"></span></div>
       <p class="scNoCam">Camera not available — use Choose a photo.</p>
     </div>
-    <div class="scBtns"><button type="button" class="pri" id="scShot">Scan card</button><label class="scPick">Choose a photo<input id="scFile" type="file" accept="image/*" hidden></label></div>
+    <div class="scBtns"><button type="button" class="pri" id="scShot">Scan now</button><label class="scPick">Choose a photo<input id="scFile" type="file" accept="image/*" hidden></label></div>
     <p class="scStatus" id="scStatus" role="status"></p>
     <div id="scResults"></div>
+    <section class="scTray" id="scTray" hidden aria-label="Scanned stack"></section>
     <form class="scManual" id="scManual"><label for="scManIn">Or type the number printed on the card</label><div><input id="scManIn" placeholder="e.g. 114/084 or TG08/TG30" autocomplete="off" autocapitalize="characters"><button type="submit">Find</button></div></form>
   </dialog>
   <dialog class="sd" id="listDlg" aria-labelledby="ldTitle">
