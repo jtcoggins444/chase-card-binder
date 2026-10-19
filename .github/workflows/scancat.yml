@@ -1,0 +1,41 @@
+name: Build scanner catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      max:
+        description: 'Most new cards to fingerprint this run'
+        default: '30000'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: price-update
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Card catalog and prices
+        run: node scripts/allcards.mjs
+      - name: Scanner fingerprints
+        run: |
+          npm i --no-save --no-package-lock pngjs@7 jpeg-js@0.4 >/dev/null 2>&1
+          node scripts/scanall.mjs ${{ github.event.inputs.max || '30000' }}
+      - name: Save to the repository
+        run: |
+          git config user.name "binder-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf node_modules
+          git add -A data
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git commit -m "Scanner catalog update"
+          git pull --rebase -q origin main || true
+          git push

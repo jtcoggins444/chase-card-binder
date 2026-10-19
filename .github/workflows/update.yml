@@ -32,6 +32,11 @@ jobs:
           npm i --no-save --no-package-lock pngjs@7 jpeg-js@0.4 >/dev/null 2>&1
           node scripts/scanindex.mjs
         continue-on-error: true
+      - name: Scan-any-card catalog, prices and fingerprints
+        run: |
+          node scripts/allcards.mjs
+          node scripts/scanall.mjs 3000
+        continue-on-error: true
       - name: Save to the repository
         run: |
           git config user.name "binder-bot"
