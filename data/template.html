@@ -329,6 +329,8 @@ dialog.scan::backdrop{background:rgb(0 0 0 / .75)}
 .scCam[data-live="1"] .scScan{opacity:.7;animation:scline 2.2s ease-in-out infinite}
 @keyframes scline{0%{top:10%}50%{top:88%}100%{top:10%}}
 @media (prefers-reduced-motion:reduce){.scCam[data-live="1"] .scScan{animation:none;opacity:0}}
+.scGuess{position:absolute;left:10px;right:10px;bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;font:600 .88rem var(--f-body);color:#111;background:rgb(255 255 255 / .94);border:0;border-radius:10px;padding:10px 12px;cursor:pointer;text-align:left;box-shadow:0 4px 14px rgb(0 0 0 / .3)}
+.scGuess em{font-style:normal;font-weight:800;color:var(--accent);white-space:nowrap}
 .scChase{font:700 .66rem var(--f-body);color:var(--want);background:var(--want-bg);border-radius:4px;padding:1px 5px;vertical-align:2px}
 .scPrice em.muted,.scInfo .muted{color:var(--muted);font-weight:500}
 .scLink{font:700 .82rem var(--f-body);color:var(--accent);text-decoration:none;padding:6px 0}
@@ -478,6 +480,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <div class="scCam" id="scCam" data-state="">
       <video id="scVideo" playsinline muted autoplay></video>
       <div class="scFrame" id="scFrame"><span class="scScan" aria-hidden="true"></span></div>
+      <button type="button" class="scGuess" id="scGuess" hidden></button>
       <p class="scNoCam">Camera not available — use Choose a photo.</p>
     </div>
     <div class="scBtns"><button type="button" class="pri" id="scShot">Scan now</button><label class="scPick">Choose a photo<input id="scFile" type="file" accept="image/*" hidden></label></div>

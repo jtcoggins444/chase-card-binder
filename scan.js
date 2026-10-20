@@ -70,11 +70,13 @@
   async function match(src, guesses, opts) {
     await engine(); await catalog().catch(() => null);
     const g0 = guesses[0], cx = g0[0] + g0[2] / 2, cy = g0[1] + g0[3] / 2, MAXW = 760;
-    const imgs = [pixels(src, MAXW, 0), pixels(src, MAXW, -5, cx, cy), pixels(src, MAXW, 5, cx, cy)];
+    const imgs = [pixels(src, MAXW, 0)];   // tilted cards are straightened inside the engine
     const k = imgs[0].k, id = ++seq;
     const msg = new Promise((res, rej) => pending.set(id, { res, rej }));
     worker.postMessage({ t: 'match', id, imgs: imgs.map(i => ({ a: i.a, buf: i.buf, w: i.w, h: i.h })), guesses: guesses.map(g => g.map(v => v * k)), opts: opts || {} }, imgs.map(i => i.buf));
     const m = await msg;
+    window.__crank = m.crank; window.__times = m.times;
+    window.__scanDets = (m.dets || []).map(d => ({ box: d.box.map(v => v / k), deg: d.deg, score: d.score }));
     return m.top.map(t => Object.assign(resolve(t.id) || { kind: 'gone', id: t.id, name: '' }, { d: t.d, box: t.box.map(v => v / k), a: t.a })).filter(x => x.kind !== 'gone');
   }
   // ---------- reading the printed number (only when look-alike printings are tied) ----------
@@ -121,7 +123,7 @@
       const w = await ocrEngine();
       // numbers are printed dark-on-light on some cards and light-on-dark on others: read both ways
       let raw = '';
-      for (const inv of [false, true]) { const { data } = await w.recognize(numberStrip(src, a.box, a.a, inv)); raw += ' ' + (data.text || ''); }
+      for (const inv of [false, true]) { const { data } = await w.recognize(numberStrip(src, a.box, -a.a, inv)); raw += ' ' + (data.text || ''); }
       const text = String(raw).toUpperCase().replace(/O/g, '0').replace(/\s+/g, '');
       // a printing counts as read only if its whole number (like 4/102) appears in what was read
       const variants = n => { const [x, t] = String(n).toUpperCase().split('/'); if (!t) return []; const strip = v => v.replace(/^([A-Z-]*)0+(\d)/, '$1$2'); const pad = v => v.replace(/^([A-Z-]*)(\d+)$/, (m, p1, d) => p1 + d.padStart(3, '0')); return [...new Set([x + '/' + t, strip(x) + '/' + strip(t), pad(x) + '/' + pad(t), strip(x) + '/' + t])]; };
@@ -171,7 +173,7 @@
   let live = false, timer = null, inflight = false, lastKey = null, streak = 0, lockKey = null, away = 0;
   const keyOf = x => x ? x.name : '';   // printings of the same card count as the same card here
   function startLive() { live = true; lastKey = null; streak = 0; camBox.dataset.live = '1'; clearTimeout(timer); timer = setTimeout(tick, 300); }
-  function stopLive() { live = false; clearTimeout(timer); camBox.dataset.live = ''; }
+  function stopLive() { live = false; clearTimeout(timer); camBox.dataset.live = ''; if (typeof guess === 'function') guess(null); }
   function tick() {
     if (!live || !dlg.open) return;
     if (inflight || document.hidden || !video.videoWidth) { timer = setTimeout(tick, 250); return; }
@@ -182,18 +184,38 @@
   }
   // sure enough when the best match is close and clearly better than the next different card
   function nextOther(top) { return top.slice(1).find(y => !sameCard(top[0], y)); }
-  function confident(top) { const a = top[0], b = nextOther(top); return !!a && a.d < ABS && (!b || (b.d - a.d) / b.d > REL); }
+  // close match with a clear lead, or a looser match with a big lead over every other card
+  function confident(top) { const a = top[0], b = nextOther(top), r = b ? (b.d - a.d) / b.d : 1; return !!a && ((a.d < ABS && r > REL) || (a.d < 165 && r > 0.35)); }
   function veryConfident(top) { const a = top[0], b = nextOther(top); return !!a && a.d < ABS * 0.5 && (!b || (b.d - a.d) / b.d > 0.5); }
+  // Real photos (sleeves, foil, room light) score worse than clean pictures, so besides a clear win on one frame,
+  // a card also locks when it stays the best match frame after frame with some lead over the next card.
+  let topKey = null, stable = 0, lastTop = null;
+  const rel = top => { const a = top[0], b = nextOther(top); return a && b ? (b.d - a.d) / b.d : 1; };
   function onLive(top) {
     if (!live) return;
-    const ok = confident(top), a = top[0], k = ok ? keyOf(a) : null;
+    const a = top[0], tk = a && a.d < 200 ? keyOf(a) : null;
+    if (tk && tk === topKey) stable++; else { topKey = tk; stable = tk ? 1 : 0; }
+    lastTop = top;
+    const ok = confident(top) || (stable >= 3 && a.d < 180 && rel(top) > 0.15), k = ok ? keyOf(a) : null;
     if (ok && k === lastKey) streak++; else { lastKey = k; streak = ok ? 1 : 0; }
     // in Stack mode, wait for the card to change (or be taken away) before the same card can be added again
-    if (lockKey) { if (k !== lockKey) { if (++away >= 2) { lockKey = null; away = 0; } } else away = 0; }
-    if (ok && (streak >= 2 || veryConfident(top)) && k !== lockKey) { found(top); return; }
-    if (!lockKey) say(a && a.d < ABS * 1.25 ? 'Hold steady…' : 'Looking for a card… fill the outline with it.');
-    camBox.dataset.near = a && a.d < ABS * 1.25 ? '1' : '';
+    const seen = tk || (a && a.d < 200 ? keyOf(a) : null);
+    if (lockKey) { if (seen !== lockKey) { if (++away >= 2) { lockKey = null; away = 0; } } else away = 0; }
+    if (ok && (streak >= 2 || veryConfident(top) || stable >= 3) && k !== lockKey) { guess(null); found(top); return; }
+    if (!lockKey) say(a && a.d < 190 ? 'Hold steady…' : 'Looking for a card… hold the phone flat over it.');
+    camBox.dataset.near = a && a.d < 190 ? '1' : '';
+    guess(stable >= 2 && tk !== lockKey ? a : null);
   }
+  // the current best guess, shown on the camera; tap it to take it
+  const guessEl = $('scGuess');
+  function guess(a) {
+    if (!guessEl) return;
+    if (!a) { guessEl.hidden = true; return; }
+    const set = a.kind === 'chase' ? S[a.c[2]][0] : (a.r && CAT.sets[a.r[3]] ? CAT.sets[a.r[3]][0] : '');
+    guessEl.innerHTML = `<span>Is it <b>${esc(a.name)}</b>${set ? ' · ' + esc(set) : ''}?</span><em>Tap if right</em>`;
+    guessEl.hidden = false;
+  }
+  if (guessEl) guessEl.addEventListener('click', () => { if (lastTop && lastTop[0]) { guess(null); found(lastTop); } });
   async function found(top) {
     // claim the card straight away so the next frames don't add it twice while the number is being read
     if (mode === 'stack') { lockKey = keyOf(top[0]); away = 0; } else stopLive();
@@ -235,7 +257,7 @@
         <div class="scAct"><a class="scLink" href="https://www.tcgplayer.com/product/${x.pid}?Language=English" target="_blank" rel="noopener">TCGplayer ↗</a></div></div></li>`;
   }
   function show(top, how) {
-    if (!top.length) { results.innerHTML = ''; say('No match found. Fill the outline with the card, or type the card number below.', 'warn'); return; }
+    if (!top.length) { results.innerHTML = ''; say('No match found. Hold the phone flat over the card, or type the card number below.', 'warn'); return; }
     const byNum = how === 'number';
     const [a, b] = top, sure = byNum ? top.length === 1 : confident(top);
     say(byNum ? (top.length === 1 ? 'Found it:' : `${top.length} cards have that number. Tap the right one:`) : a.byNumber ? 'Found it (checked the card number):' : sure ? 'Found it:' : 'Closest matches. The first is most likely:', 'ok');
