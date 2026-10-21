@@ -438,6 +438,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="listed">On a list</option><option value="missing">Missing</option></select>
     <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
     <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="active">Most active (sales)</option><option value="heat">Sales picking up</option><option value="move">Biggest movers, 7 days</option></select>
+    <select id="within" aria-label="Order within each set"><option value="num">In each set: card number</option><option value="price">In each set: price, high to low</option><option value="priceasc">In each set: price, low to high</option><option value="move">In each set: biggest movers</option><option value="active">In each set: most active</option><option value="missing">In each set: missing first</option><option value="owned">In each set: owned first</option><option value="name">In each set: name A–Z</option></select>
   </div>
   <div class="backup">
     <button id="colAll" type="button">Collapse all sets</button>
@@ -687,14 +688,14 @@ function cache(fromSync){try{localStorage.setItem(LS,JSON.stringify(state));loca
 const eras=[...new Set(Object.values(S).map(s=>s[1]))];
 const eraSel=document.getElementById('era');
 eras.reverse().forEach(e=>{const o=document.createElement('option');o.value=e;o.textContent=e;eraSel.appendChild(o)});
-const f={q:'',r:new Set(KINDS),era:'',status:'',sort:'set'};
+const f={q:'',r:new Set(KINDS),era:'',status:'',sort:'set',within:'num'};
 let collapsed=new Set();try{collapsed=new Set(JSON.parse(localStorage.getItem('binder-collapsed')||'[]'))}catch(e){}
 function saveCollapsed(){try{localStorage.setItem('binder-collapsed',JSON.stringify([...collapsed]))}catch(e){}}
-try{const p=JSON.parse(localStorage.getItem('binder-filters')||'null');if(p){f.era=p.era||'';f.status=p.status==='wanted'?'listed':p.status||'';f.sort=p.sort||'set';f.pmin=p.pmin??null;f.pmax=p.pmax??null;const off=p.x||(p.r?['IR','SIR','FA'].filter(k=>!p.r.includes(k)):[]);f.r=new Set(KINDS.filter(k=>!off.includes(k)));if(!f.r.size)f.r=new Set(KINDS)}}catch(e){}
-eraSel.value=f.era;document.getElementById('status').value=f.status;document.getElementById('sort').value=f.sort;
+try{const p=JSON.parse(localStorage.getItem('binder-filters')||'null');if(p){f.era=p.era||'';f.status=p.status==='wanted'?'listed':p.status||'';f.sort=p.sort||'set';f.within=p.within||'num';f.pmin=p.pmin??null;f.pmax=p.pmax??null;const off=p.x||(p.r?['IR','SIR','FA'].filter(k=>!p.r.includes(k)):[]);f.r=new Set(KINDS.filter(k=>!off.includes(k)));if(!f.r.size)f.r=new Set(KINDS)}}catch(e){}
+eraSel.value=f.era;document.getElementById('status').value=f.status;document.getElementById('sort').value=f.sort;document.getElementById('within').value=f.within;
 
 function keep(c){if(!f.r.has(c[4]))return false;if(f.pmin==null&&f.pmax==null)return true;const p=c[5];if(p==null)return false;return (f.pmin==null||p>=f.pmin)&&(f.pmax==null||p<=f.pmax)}
-function saveFilters(){try{localStorage.setItem('binder-filters',JSON.stringify({era:f.era,status:f.status,sort:f.sort,pmin:f.pmin,pmax:f.pmax,x:KINDS.filter(k=>!f.r.has(k))}))}catch(e){}}
+function saveFilters(){try{localStorage.setItem('binder-filters',JSON.stringify({era:f.era,status:f.status,sort:f.sort,within:f.within,pmin:f.pmin,pmax:f.pmax,x:KINDS.filter(k=>!f.r.has(k))}))}catch(e){}}
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function link(c){const s=S[c[2]];const q=CONDQ[buyCond()];return c[6]?'https://www.tcgplayer.com/product/'+c[6]+'?Language=English'+(q?'&Condition='+q:''):'https://www.tcgplayer.com/search/pokemon/product?q='+encodeURIComponent(c[1]+' '+s[0]+' '+c[3])}
 const usd=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
@@ -732,7 +733,7 @@ function renderEtb(){
   }
   const eras=new Map();for(const c of list.sort(bySet)){const e=S[c[2]][1];if(!eras.has(e))eras.set(e,[]);eras.get(e).push(c)}
   for(const [era,a] of eras){const key='etb:'+era,open=!!q||!collapsed.has(key);
-    h+=`<section class="set${open?'':' closed'}" data-set="${esc(key)}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(era)}<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${owned(a).length}/${a.length} owned</span>${vals(a)}</button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>'}
+    h+=`<section class="set${open?'':' closed'}" data-set="${esc(key)}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(era)}<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${owned(a).length}/${a.length} owned</span>${vals(a)}</button></h2><div class="list"${open?'':' hidden'}>`+withinSort(a).map(c=>row(c,true)).join('')+'</div></section>'}
   el.innerHTML=h;
 }
 function etbExtra(){
@@ -743,6 +744,11 @@ function etbExtra(){
   const v=a.reduce((x,c)=>x+(c[5]||0),0),key='etb:'+want,open=!!q||!collapsed.has(key);
   return `<section class="set${open?'':' closed'}" data-set="${key}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>Elite Trainer Boxes<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${money(v)}</span></button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>';
 }
+// order of cards inside a set (or an ETB era) when viewing By set
+function numKey(c){const m=String(c[3]).match(/^([A-Za-z]*)(\d+)(.*)$/);return m?[m[1],+m[2],m[3]]:[String(c[3]),0,'']}
+function withinSort(a){const w=f.within||'num',mv=c=>Math.abs(chgOver(c,7)??0),own=c=>state[c[0]]==='owned'?1:0,num=(x,y)=>{const p=numKey(x),q=numKey(y);return p[0].localeCompare(q[0])||p[1]-q[1]||p[2].localeCompare(q[2])};
+  const by={price:(x,y)=>(y[5]??-1)-(x[5]??-1),priceasc:(x,y)=>(x[5]??Infinity)-(y[5]??Infinity),move:(x,y)=>mv(y)-mv(x),active:(x,y)=>((activity(y)||{}).r30??-1)-((activity(x)||{}).r30??-1),missing:(x,y)=>own(x)-own(y),owned:(x,y)=>own(y)-own(x),name:(x,y)=>x[1].localeCompare(y[1])}[w];
+  return w==='num'||!by?a:a.slice().sort((x,y)=>by(x,y)||num(x,y))}
 function render(){
   if(view==='etb'){renderEtb();return}
   const q=f.q.trim().toLowerCase();
@@ -778,7 +784,7 @@ function render(){
     const vals=`<span class="setval"><span><em>Owned</em> ${money(vOwn)}</span><span><em>Unowned</em> ${money(vNot)}</span><span><em>Set</em> ${money(vAll)}</span></span>`;
     const open=!!f.q.trim()||!collapsed.has(id);
     h+=`<section class="set${open?'':' closed'}" data-set="${id}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(s[0])}<small>${esc(s[1])} · ${s[2].slice(0,7).replace('/','-')} · ${cards.length} card${cards.length===1?'':'s'}</small><span class="prog">${own}/${tot} owned</span>${vals}</button></h2><div class="list"${open?'':' hidden'}>`;
-    for(const c of cards)h+=row(c,false);
+    for(const c of withinSort(cards))h+=row(c,false);
     h+='</div></section>';
   }
   document.getElementById('binder').innerHTML=etbExtra()+h;
@@ -844,6 +850,7 @@ pminEl.value=f.pmin??'';pmaxEl.value=f.pmax??'';
 let pt=null;function onPrice(){clearTimeout(pt);pt=setTimeout(()=>{const a=pminEl.value.trim(),b=pmaxEl.value.trim();f.pmin=a===''||isNaN(+a)?null:+a;f.pmax=b===''||isNaN(+b)?null:+b;saveFilters();refresh()},250)}
 pminEl.addEventListener('input',onPrice);pmaxEl.addEventListener('input',onPrice);
 document.getElementById('sort').addEventListener('change',e=>{f.sort=e.target.value;saveFilters();render();syncColBtns()});
+document.getElementById('within').addEventListener('change',e=>{f.within=e.target.value;saveFilters();render()});
 document.getElementById('binder').addEventListener('click',e=>{
   const hd=e.target.closest('.sethd');if(!hd)return;
   const sec=hd.closest('.set'),id=sec.dataset.set;if(!id)return;
@@ -854,7 +861,7 @@ document.getElementById('binder').addEventListener('click',e=>{
 function setAll(close){collapsed=new Set(close?Object.keys(S):[]);saveCollapsed();render()}
 document.getElementById('colAll').addEventListener('click',()=>setAll(true));
 document.getElementById('expAll').addEventListener('click',()=>setAll(false));
-function syncColBtns(){const on=f.sort==='set';document.getElementById('colAll').hidden=!on;document.getElementById('expAll').hidden=!on}
+function syncColBtns(){const on=f.sort==='set';document.getElementById('within').hidden=!on;document.getElementById('colAll').hidden=!on;document.getElementById('expAll').hidden=!on}
 syncColBtns();
 const RSHORT={};document.querySelectorAll('#rarChips input').forEach(i=>RSHORT[i.value]=i.parentNode.firstChild.nextSibling.textContent.trim());
 function syncRar(){document.querySelectorAll('#rarChips input').forEach(i=>i.checked=f.r.has(i.value));const n=f.r.size,sum=document.getElementById('rarSum');
