@@ -353,6 +353,27 @@ dialog.scan::backdrop{background:rgb(0 0 0 / .75)}
 .scManual{padding:12px 16px 16px;font-size:.85rem;color:var(--muted)}
 .scManual div{display:flex;gap:8px;margin-top:6px}
 .scManual input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+#phPrint{display:none}
+.phopt{display:flex!important;align-items:center;gap:10px;font-weight:600!important;margin-top:10px!important}
+.phopt input{width:18px;height:18px;margin:0}
+@media print{
+  html.ph-printing body>*:not(#phPrint){display:none!important}
+  html.ph-printing #phPrint{display:block!important}
+  html.ph-printing,html.ph-printing body{background:#fff!important;margin:0;padding:0}
+  @page{size:letter portrait;margin:0.25in}
+  .phpage{display:grid;grid-template-columns:repeat(3,2.5in);grid-auto-rows:3.5in;gap:0;justify-content:center;break-after:page;page-break-after:always}
+  .phpage:last-child{break-after:auto;page-break-after:auto}
+}
+.phcard{box-sizing:border-box;width:2.5in;height:3.5in;position:relative;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:0.14in;display:flex;flex-direction:column;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.phcard.cut{outline:1px dashed #aaa;outline-offset:-1px}
+.phcard .phimg{position:absolute;inset:0.42in 0.2in 0.62in;background-size:contain;background-position:center;background-repeat:no-repeat;filter:grayscale(1);opacity:.22}
+.phcard .phset{position:relative;font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#555;line-height:1.2}
+.phcard .phname,.phcard .phnum,.phcard .phset{text-shadow:0 0 3px #fff,0 0 3px #fff}
+.phcard .phname{position:relative;font-size:13pt;font-weight:800;line-height:1.15;margin-top:4pt}
+.phcard .phnum{position:relative;font-size:11pt;font-weight:700;margin-top:3pt}
+.phcard .phkind{position:relative;display:inline-block;align-self:flex-start;font-size:7.5pt;font-weight:700;border:1px solid #333;border-radius:3pt;padding:1pt 4pt;margin-top:4pt}
+.phcard .phfoot{position:relative;margin-top:auto;border-top:1px solid #333;padding-top:4pt;font-size:7.5pt;font-weight:800;letter-spacing:.08em;text-align:center}
+.phcard .phprice{position:relative;font-size:8pt;color:#333;text-align:center;margin-top:2pt;font-weight:600;letter-spacing:0}
 dialog.sd{border:0;border-radius:14px;padding:22px;background:var(--panel);color:var(--ink);width:min(92vw,400px);box-sizing:border-box}
 dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
 .safelist{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px;max-height:50vh;overflow:auto}
@@ -446,6 +467,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <button id="exportBtn" type="button">Back up checklist</button>
     <label class="filebtn" for="importFile">Restore from backup</label>
     <button id="safeBtn" type="button">Undo recent changes</button>
+    <button id="phBtn" type="button">Print placeholders</button>
     <input id="importFile" type="file" accept="application/json,.json" hidden>
     <span id="backupMsg" class="save" role="status"></span>
   </div>
@@ -500,6 +522,19 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <button type="submit" class="sdx" aria-label="Close">×</button>
     </form>
   </dialog>
+  <dialog class="sd" id="phDlg" aria-labelledby="phTitle">
+    <form method="dialog" id="phForm">
+      <h2 id="phTitle">Print placeholders</h2>
+      <p class="sdp">Card-size placeholders (2.5 × 3.5 in), 9 per page to fit a standard 9-pocket binder page. They print the cards you're looking at right now, in the same order. Search or filter first to do one set at a time.</p>
+      <label class="phopt"><input type="checkbox" id="phMissing" checked> Only cards I don't own</label>
+      <label class="phopt"><input type="checkbox" id="phPics" checked> Include a faded picture of the card</label>
+      <label class="phopt"><input type="checkbox" id="phPrice"> Include today's market price</label>
+      <label class="phopt"><input type="checkbox" id="phCut" checked> Show cutting lines</label>
+      <p class="sdp sdm" id="phCount"></p>
+      <div class="sdrow"><button type="button" class="pri" id="phGo">Print</button><button type="submit">Cancel</button></div>
+    </form>
+  </dialog>
+  <div id="phPrint" aria-hidden="true"></div>
   <dialog class="sd" id="safeDlg" aria-labelledby="safeTitle">
     <form method="dialog">
       <h2 id="safeTitle">Undo recent changes</h2>
@@ -1178,6 +1213,30 @@ saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a 
  ul.addEventListener('click',e=>{const bt=e.target.closest('button[data-i]');if(!bt)return;const b=load()[+bt.dataset.i];if(!b)return;
    autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};if(b.lists){lists={...b.lists};lm={...(b.lm||{})}}cache();refresh();dlg.close();
    document.getElementById('backupMsg').textContent='Restored '+b.owned+' owned cards from '+new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'});}
+// ---- printable placeholders ----
+{const dlg=document.getElementById('phDlg'),cnt=document.getElementById('phCount');
+ const visibleIds=()=>[...document.querySelectorAll('#binder .row[data-id]')].map(r=>r.dataset.id).filter((v,i,a)=>a.indexOf(v)===i);
+ const pick=()=>{const miss=document.getElementById('phMissing').checked;return visibleIds().map(id=>byId[id]).filter(c=>c&&(!miss||state[c[0]]!=='owned'))};
+ const upd=()=>{const n=pick().length,pg=Math.ceil(n/9);cnt.textContent=n?`${n} placeholder${n===1?'':'s'} on ${pg} page${pg===1?'':'s'}.`+(pg>40?' That’s a lot of paper: search or filter to one set first if you like.':''):'No cards to print in this view. Search or change filters, or untick "Only cards I don’t own".'};
+ document.getElementById('phBtn').addEventListener('click',()=>{upd();dlg.showModal()});
+ dlg.addEventListener('change',upd);
+ dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+ document.getElementById('phGo').addEventListener('click',async()=>{
+   const list=pick();if(!list.length)return;
+   const pics=document.getElementById('phPics').checked,price=document.getElementById('phPrice').checked,cut=document.getElementById('phCut').checked;
+   const day=DT[DT.length-1].toLocaleDateString('en-US',{month:'short',day:'numeric'});
+   const card=c=>{const s=S[c[2]],etb=c[4]==='ETB';
+     return `<div class="phcard${cut?' cut':''}">${pics?`<div class="phimg" style="background-image:url('${img(c,true)}')"></div>`:''}<div class="phset">${esc(s[0])} · ${esc(s[2].slice(0,4))}</div><div class="phname">${esc(c[1])}</div>${etb?'':`<div class="phnum">#${esc(c[3])}${s[3]?'/'+s[3]:''}</div><span class="phkind">${esc(LABEL[c[4]]||c[4])}</span>`}<div class="phfoot">PLACEHOLDER · NEED THIS CARD${price&&c[5]!=null?`<div class="phprice">${usd.format(c[5])} on ${day}</div>`:''}</div></div>`};
+   let h='';for(let i=0;i<list.length;i+=9)h+='<section class="phpage">'+list.slice(i,i+9).map(card).join('')+'</section>';
+   const out=document.getElementById('phPrint');if(out.parentNode!==document.body)document.body.appendChild(out);out.innerHTML=h;
+   const b=document.getElementById('phGo');b.disabled=true;b.textContent='Preparing…';
+   if(pics){const urls=list.map(c=>img(c,true));await Promise.race([Promise.all(urls.map(u=>new Promise(r=>{const i=new Image();i.onload=i.onerror=r;i.src=u}))),new Promise(r=>setTimeout(r,12000))])}
+   b.disabled=false;b.textContent='Print';dlg.close();
+   document.documentElement.classList.add('ph-printing');
+   const done=()=>{document.documentElement.classList.remove('ph-printing');out.innerHTML='';window.removeEventListener('afterprint',done)};
+   window.addEventListener('afterprint',done);
+   // put the page back after printing (or on the next tap, for browsers that don't report it)
+   setTimeout(()=>{window.print();setTimeout(()=>document.addEventListener('pointerdown',done,{once:true}),800)},50)});}
 // Hooks for the sync module (web app only)
 function autoBackup(why){try{const own=Object.values(state).filter(v=>v==='owned').length;if(!own&&!Object.keys(lists).length)return;
   const list=JSON.parse(localStorage.getItem('binder-autobackup')||'[]');const last=list[0];
