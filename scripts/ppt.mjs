@@ -11,8 +11,9 @@ const Root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const Dir = join(Root, 'data/ppt'), SDir = join(Dir, 's');
 mkdirSync(SDir, { recursive: true });
 const KEY = process.env.PPT_API_KEY;
-if (!KEY) { console.log('No PPT_API_KEY secret; skipping.'); process.exit(0); }
-const MAX = Number(process.argv[2] || 1e9);
+const SUMMARIZE_ONLY = process.argv.includes('--summarize');
+if (!KEY && !SUMMARIZE_ONLY) { console.log('No PPT_API_KEY secret; skipping.'); process.exit(0); }
+const MAX = Number(process.argv.find(a => /^\d+$/.test(a)) || 1e9);
 const BASE = 'https://www.pokemonpricetracker.com/api/v2';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = m => console.log(new Date().toISOString().slice(11, 19) + '  ' + m);
@@ -98,6 +99,22 @@ function cardmarketOf(cm) {
   return [r2(cm.marketEur), r2(cm.lowEur), r2(cm.trendEur), r2(cm.avg7Eur), r2(cm.avg30Eur)];
 }
 
+// weekly Near Mint prices for the last 6 months, kept in the small summary so the app's charts and movers reach back
+function addWeekly() {
+  const files = new Map();
+  for (const sid of Object.keys(S)) { const p = join(SDir, sid + '.json'); if (existsSync(p)) files.set(sid, JSON.parse(readFileSync(p, 'utf8'))); }
+  for (const c of cards.cards.concat(cards.etbs || [])) {
+    const f = files.get(c[2]), v = f && f.c[c[0]], sm = summary.c[c[0]];
+    if (!v || !sm || !v.h || !v.h.NM || !v.h.NM.length) continue;
+    const h = v.h.NM, last = h[h.length - 1][0], w = [];
+    for (let i = h.length - 1; i >= 0; i--) if ((last - h[i][0]) % 7 === 0) w.unshift([h[i][0], h[i][1]]);
+    sm.w = w;
+  }
+}
+if (SUMMARIZE_ONLY) {
+  Object.assign(summary, prevSum, { b: day0 }); summary.c = prevSum.c || {};
+  addWeekly(); write(sumPath, JSON.stringify(summary)); log('Summary rebuilt from the set files.'); process.exit(0);
+}
 const list = cards.cards.filter(c => c[6]).slice(0, MAX);
 let ok = 0, failed = 0;
 log(`Fetching ${list.length} cards and ${(cards.etbs || []).length} ETBs.`);
@@ -157,5 +174,6 @@ for (const [sid, sf] of bySet) {
   write(join(SDir, sid + '.json'), JSON.stringify({ b: day0, c: sf.c }));
 }
 for (const [id, v] of Object.entries(prevSum.c || {})) if (!summary.c[id]) summary.c[id] = v;
+addWeekly();
 write(sumPath, JSON.stringify(summary));
 log(`Done: ${ok} cards updated, ${failed} failed, ${used} credits used, ${dailyLeft} left today.`);
