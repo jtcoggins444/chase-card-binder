@@ -1,0 +1,92 @@
+{
+ "key": true,
+ "topic": true,
+ "calls": [
+  {
+   "name": "card_cm",
+   "path": "/api/v2/cards?tcgPlayerId=517045&includeCardmarket=true",
+   "status": 200,
+   "headers": {
+    "x-api-calls-consumed": "2",
+    "x-clerk-auth-message": "Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid, token-carrier=header)",
+    "x-clerk-auth-reason": "token-invalid",
+    "x-clerk-auth-status": "signed-out",
+    "x-ratelimit-daily-limit": "20000",
+    "x-ratelimit-daily-remaining": "19889",
+    "x-ratelimit-daily-reset": "1792800000",
+    "x-ratelimit-minute-limit": "60",
+    "x-ratelimit-minute-remaining": "59",
+    "x-ratelimit-minute-reset": "1792780469",
+    "x-ratelimit-purchased-remaining": "0",
+    "x-ratelimit-scope": "user",
+    "x-ratelimit-total-remaining": "19889"
+   },
+   "bytes": 4625
+  },
+  {
+   "name": "card_cm2",
+   "path": "/api/v2/cards?tcgPlayerId=517045&includeBoth=true&limit=1",
+   "status": 200,
+   "headers": {
+    "x-api-calls-consumed": "3",
+    "x-clerk-auth-message": "Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid, token-carrier=header)",
+    "x-clerk-auth-reason": "token-invalid",
+    "x-clerk-auth-status": "signed-out",
+    "x-ratelimit-daily-limit": "20000",
+    "x-ratelimit-daily-remaining": "19886",
+    "x-ratelimit-daily-reset": "1792800000",
+    "x-ratelimit-minute-limit": "60",
+    "x-ratelimit-minute-remaining": "58",
+    "x-ratelimit-minute-reset": "1792780469",
+    "x-ratelimit-purchased-remaining": "0",
+    "x-ratelimit-scope": "user",
+    "x-ratelimit-total-remaining": "19886"
+   },
+   "bytes": 65085
+  },
+  {
+   "name": "sealed_search",
+   "path": "/api/v2/sealed-products?search=Surging%20Sparks%20Elite%20Trainer%20Box&limit=3",
+   "status": 200,
+   "headers": {
+    "x-api-calls-breakdown": "products=3,history=0",
+    "x-api-calls-consumed": "3",
+    "x-clerk-auth-message": "Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid, token-carrier=header)",
+    "x-clerk-auth-reason": "token-invalid",
+    "x-clerk-auth-status": "signed-out",
+    "x-ratelimit-daily-limit": "20000",
+    "x-ratelimit-daily-remaining": "19883",
+    "x-ratelimit-daily-reset": "1792800000",
+    "x-ratelimit-minute-limit": "60",
+    "x-ratelimit-minute-remaining": "57",
+    "x-ratelimit-minute-reset": "1792780469",
+    "x-ratelimit-purchased-remaining": "0",
+    "x-ratelimit-scope": "user",
+    "x-ratelimit-total-remaining": "19883"
+   },
+   "bytes": 1828
+  },
+  {
+   "name": "sealed_id",
+   "path": "/api/v2/sealed-products?tcgPlayerId=565630&limit=1",
+   "status": 200,
+   "headers": {
+    "x-api-calls-breakdown": "products=1,history=0",
+    "x-api-calls-consumed": "1",
+    "x-clerk-auth-message": "Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid, token-carrier=header)",
+    "x-clerk-auth-reason": "token-invalid",
+    "x-clerk-auth-status": "signed-out",
+    "x-ratelimit-daily-limit": "20000",
+    "x-ratelimit-daily-remaining": "19882",
+    "x-ratelimit-daily-reset": "1792800000",
+    "x-ratelimit-minute-limit": "60",
+    "x-ratelimit-minute-remaining": "56",
+    "x-ratelimit-minute-reset": "1792780469",
+    "x-ratelimit-purchased-remaining": "0",
+    "x-ratelimit-scope": "user",
+    "x-ratelimit-total-remaining": "19882"
+   },
+   "bytes": 1056
+  }
+ ]
+}
