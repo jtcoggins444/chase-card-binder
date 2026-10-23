@@ -13,14 +13,12 @@ async function call(name, path) {
   } catch (e) { out.calls.push({ name, path, error: String(e) }); }
 }
 if (KEY) {
-  await call('card_basic', '/api/v2/cards?tcgPlayerId=517045');
-  await call('card_full', '/api/v2/cards?tcgPlayerId=517045&includeHistory=true&days=180&includeEbay=true&includeBoth=true');
-  await call('card_vintage', '/api/v2/cards?tcgPlayerId=83860&includeHistory=true&days=180&includeEbay=true');
-  await call('card_multi', '/api/v2/cards?tcgPlayerId=704871,246733');
-  await call('sealed_etb', '/api/v2/sealed-products?tcgPlayerId=97747&includeHistory=true&days=180');
-  await call('population', '/api/v2/population?tcgPlayerId=517045');
+  await call('card_cm', '/api/v2/cards?tcgPlayerId=517045&includeCardmarket=true');
+  await call('card_cm2', '/api/v2/cards?tcgPlayerId=517045&includeBoth=true&limit=1');
+  await call('sealed_search', '/api/v2/sealed-products?search=Surging%20Sparks%20Elite%20Trainer%20Box&limit=3');
+  await call('sealed_id', '/api/v2/sealed-products?tcgPlayerId=565630&limit=1');
 }
-if (TOPIC) {
+if (TOPIC && process.env.SEND_TEST) {
   try {
     const r = await fetch('https://ntfy.sh/' + TOPIC, { method: 'POST', headers: { Title: 'Chase Card Binder', Priority: 'high', Tags: 'white_check_mark', Click: 'https://jtcoggins444.github.io/chase-card-binder/' }, body: 'Test alert: your phone is set up to get deal alerts. Tap to open the app.' });
     out.ntfy = r.status;
