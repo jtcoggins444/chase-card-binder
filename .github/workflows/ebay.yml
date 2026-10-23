@@ -1,0 +1,42 @@
+name: Live eBay listings
+
+on:
+  schedule:
+    # four times a day (about 3,400 of eBay's 5,000 daily searches)
+    - cron: '23 1,7,13,19 * * *'
+  workflow_dispatch:
+    inputs:
+      max:
+        description: 'Most cards to search (blank = all $20+ chase cards)'
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ebay-live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Search eBay
+        env:
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+        run: node scripts/ebay.mjs ${{ github.event.inputs.max }}
+      - name: Save to the repository
+        run: |
+          git config user.name "binder-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          [ -f data/live.json ] || exit 0
+          git add data/live.json
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git commit -m "Live eBay listings $(date -u +'%F %H:%M')"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && break; sleep 10; done

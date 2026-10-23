@@ -101,7 +101,7 @@ function cardmarketOf(cm) {
 
 // weekly Near Mint prices for the last 6 months, kept in the small summary so the app's charts and movers reach back
 // graded prices for the grades worth comparing with a raw copy: {grade: [price, sales, 1 if few recent sales]}
-const GD = ['psa10', 'psa9', 'cgc10', 'cgc9_5', 'cgc9', 'bgs9_5', 'tag10'];
+const GD = ['psa10', 'psa9', 'psa8', 'psa7', 'cgc10', 'cgc9_5', 'cgc9', 'cgc8_5', 'cgc8', 'cgc7_5', 'cgc7', 'bgs10', 'bgs9_5', 'bgs9', 'bgs8_5', 'bgs8', 'bgs7_5', 'bgs7', 'tag10', 'tag9', 'tag8_5', 'tag8', 'sgc10', 'sgc9_5', 'sgc9', 'sgc8'];
 function gdOf(g) {
   const o = {};
   for (const k of GD) { const x = g[k]; if (!x || x[3] < 5) continue; const p = x[0] ?? x[2]; if (p == null) continue; o[k] = [p, x[3], x[1] === 'low' ? 1 : 0, x[7] || null]; }   // [price, sales, few recent sales, last sale date]

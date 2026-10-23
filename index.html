@@ -136,6 +136,7 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .act-quiet{background:color-mix(in srgb,var(--muted) 14%,var(--panel));color:var(--muted)}
 .pr .act{display:block;width:max-content;margin:3px 0 0 auto}
 .rng.cond{margin-top:6px}
+.slabchip.live{background:var(--accent);color:var(--accent-ink)}
 .slabchip{display:inline-block;margin-top:3px;font:700 .66rem var(--f-body);border-radius:4px;padding:1px 5px;background:var(--own-bg);color:var(--own);white-space:nowrap}
 .gtab .deal{color:var(--own);font-weight:700}
 .gtab{width:100%;border-collapse:collapse;font-size:.85rem}
@@ -531,6 +532,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <label class="pchk"><input type="checkbox" id="pRoll"> Unspent money goes to the fund</label>
         <label>Pick from <select id="pScope"><option value="missing">Chase cards I don't own</option><option value="lists">Cards on my lists</option><option value="all">All chase cards</option></select></label>
         <label class="pchk"><input type="checkbox" id="pEtb"> Include ETBs</label>
+        <label>Grade 7s on cards over <span class="pin">$<input id="pLowMin" type="number" inputmode="decimal" min="0" step="10"></span> if <span class="pin"><input id="pLowPct" type="number" inputmode="decimal" min="0" max="90" step="5">%</span> under raw</label>
         <label>Saving for <select id="pGoal"><option value="">Nothing specific</option></select></label>
       </div>
       <details class="planev" id="planEv"><summary id="planEvSum">Reprints and restocks</summary>
@@ -543,7 +545,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <ol class="mvl planl" id="planPicks"></ol>
       <h3 class="planh">Bigger buys for your fund</h3>
       <ol class="mvl planl" id="planBig"></ol>
-      <h3 class="planh">Graded at or below raw</h3>
+      <h3 class="planh">Graded deals (near mint or better)</h3>
       <ol class="mvl planl" id="planSlab"></ol>
       <h3 class="planh">Watch, don't buy yet</h3>
       <ol class="mvl planl" id="planWatch"></ol>
@@ -652,6 +654,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <div class="sec"><span class="lab">Sales activity</span><div id="dvAct" class="dvact"></div></div>
       <div class="sec"><span class="lab">Today's listings on TCGplayer</span><div class="kv" id="dvList"></div></div>
       <div class="sec" id="dvCmpWrap" hidden><span class="lab">Compare markets</span><div class="kv" id="dvCmp"></div><p class="note" id="dvCmpNote"></p></div>
+      <div class="sec" id="dvLiveWrap" hidden><span class="lab">On eBay now, under raw Near Mint</span><ol class="mvl planl" id="dvLive"></ol><p class="note" id="dvLiveNote"></p></div>
       <div class="sec" id="dvGradedWrap" hidden><span class="lab">Graded sales (eBay + Fanatics)</span><div id="dvGraded"></div><p class="note" id="dvGradedNote"></p></div>
       <div class="sec" id="dvMineWrap" hidden><span class="lab">Your copy</span><div class="kv" id="dvMine"></div></div>
       <div class="sec"><span class="lab">Recent sales and graded prices</span><div class="links" id="dvLinks"></div></div>
@@ -837,7 +840,7 @@ function img(c,large){const i=c[0].lastIndexOf('-'),sid=c[0].slice(0,i),n=c[0].s
   if(c[7]==='t')return 'https://tcgplayer-cdn.tcgplayer.com/product/'+c[6]+(large?'_in_1000x1000.jpg':'_200w.jpg');
   return c[7]==='s'?'https://images.scrydex.com/pokemon/'+c[0]+(large?'/large':'/small'):'https://images.pokemontcg.io/'+sid+'/'+n+(large?'_hires.png':'.png')}
 function pct(v){return (v>=0?'+':'\u2212')+Math.abs(v).toFixed(1)+'%'}
-function slabTxt(c){const d=slabDeal(c);return d?`<span class="slabchip" title="${SLAB_L[d.g]} copies have sold for ${usd.format(d.price)} (${d.n} sales), ${Math.round((1-d.r)*100)}% under raw Near Mint">${SLAB_L[d.g]} ${d.r<0.995?'−'+Math.round((1-d.r)*100)+'%':'≈ raw'}</span>`:''}
+function slabTxt(c){const lv=liveDeals(c).find(x=>x.grader);if(lv)return `<span class="slabchip live" title="Listed on eBay now: ${lv.grader} ${lv.grade} for ${usd.format(lv.total)} with shipping">Live ${lv.grader} ${lv.grade} −${Math.round((1-lv.r)*100)}%</span>`;const d=slabDeal(c);return d?`<span class="slabchip" title="${SLAB_L[d.g]} copies have sold for ${usd.format(d.price)} (${d.n} sales), ${Math.round((1-d.r)*100)}% under raw Near Mint">${SLAB_L[d.g]} ${d.r<0.995?'−'+Math.round((1-d.r)*100)+'%':'≈ raw'}</span>`:''}
 function mvTxt(c){const v=chgOver(c,7);return v==null||Math.abs(v)<0.05?'':`<span class="mv ${v>=0?'up':'down'}" title="Change over the last 7 days">${v>=0?'\u25B2':'\u25BC'} ${Math.abs(v).toFixed(1)}% 7d</span>`}
 function sgn(v){return (v>=0?'+':'\u2212')+usd.format(Math.abs(v))}
 function renderStats(){
@@ -881,19 +884,29 @@ function etbExtra(){
 // graded values from the market data summary
 const p10=c=>{const P=PPT&&PPT.c[c[0]];return P&&P.p10&&P.p10[0]!=null?P.p10[0]:null};
 const upside=c=>{const g=p10(c);return g!=null&&c[5]?g/c[5]:null};
-// graded copies selling at or below a raw Near Mint copy (enough recent sales to trust the price)
-const SLAB_ORDER=['psa10','cgc10','tag10','bgs9_5','cgc9_5','psa9','cgc9'];
-const SLAB_L={psa10:'PSA 10',psa9:'PSA 9',cgc10:'CGC 10',cgc9_5:'CGC 9.5',cgc9:'CGC 9',bgs9_5:'BGS 9.5',tag10:'TAG 10'};
-function slabDeal(c){const P=PPT&&PPT.c[c[0]],raw=c[5];if(!P||!P.gd||!raw||raw<10)return null;let best=null;
+// graded copies selling under a raw Near Mint copy. Near-mint-or-better grades: 9+ at or below raw, 8-8.5 (NM-Mint) at
+// 15%+ under, and 7-7.5 (Near Mint) only on pricier cards with a steep discount (both set in the buy plan).
+const gnum=k=>Number(String(k).replace(/^[a-z]+/,'').replace('_','.'));
+const glabel=k=>{const m=String(k).match(/^([a-z]+)(.*)$/);return m[1].toUpperCase()+' '+m[2].replace('_','.')};
+const SLAB_L=new Proxy({},{get:(t,k)=>glabel(k)});
+function gradeOk(grade,r,raw){if(grade>=9)return r<=1.0;if(grade>=8)return r<=0.85;if(grade>=7)return raw>=(+pc('lowMin')||150)&&r<=1-(+pc('lowPct')||35)/100;return false}
+const gW=g=>g>=10?1.4:g>=9.5?1.2:g>=9?1:g>=8.5?0.85:g>=8?0.8:0.6;
+function slabDeal(c){const P=PPT&&PPT.c[c[0]],raw=c[5];if(!P||!P.gd||!raw||raw<10)return null;
   const ok=[],recent=Date.now()-120*864e5;
-  for(const g of SLAB_ORDER){const x=P.gd[g];if(!x||x[1]<8||x[2]||!x[3]||Date.parse(x[3])<recent)continue;const r=x[0]/raw;
-    if(r<=1.0&&r>=0.55)ok.push({g,price:x[0],r,n:x[1]})}   // more than 45% under raw usually means mismatched or stale data
-  if(!ok.length)return null;const mn=Math.min(...ok.map(x=>x.r));
-  return ok.find(x=>x.r<=mn+0.08)}   // the best grade that's about as cheap as the cheapest option
-const SLAB_W={psa10:1.4,cgc10:1.3,tag10:1.25,bgs9_5:1.25,cgc9_5:1.1,psa9:1,cgc9:0.7};
-const slabValue=(c,d)=>d?(c[5]-d.price)*SLAB_W[d.g]:-1;   // dollars saved, weighted toward higher grades
-function slabSearch(c,g){const s=S[c[2]];return 'https://www.ebay.com/sch/i.html?_sop=15&_nkw='+encodeURIComponent(`${c[1]} ${c[3]}${s[3]?'/'+s[3]:''} ${s[0]} ${SLAB_L[g].replace(' ',' ')}`)}
-function cmpFor(k){if(k==='slab')return (a,b)=>slabValue(b,slabDeal(b))-slabValue(a,slabDeal(a));return k==='psa10'?(a,b)=>(p10(b)??-1)-(p10(a)??-1):k==='upside'?(a,b)=>(upside(b)??-1)-(upside(a)??-1):null}
+  for(const [g,x] of Object.entries(P.gd)){if(!x||x[1]<8||x[2]||!x[3]||Date.parse(x[3])<recent)continue;const r=x[0]/raw,n=gnum(g);
+    if(r>=0.55&&gradeOk(n,r,raw))ok.push({g,grade:n,price:x[0],r,n:x[1]})}   // more than 45% under raw usually means mismatched or stale data
+  if(!ok.length)return null;ok.sort((a,b)=>(raw-b.price)*gW(b.grade)-(raw-a.price)*gW(a.grade));return ok[0]}
+const slabValue=(c,d)=>d?(c[5]-d.price)*gW(d.grade):-1;   // dollars saved, weighted toward higher grades
+// live eBay listings under raw (from data/live.json, refreshed four times a day)
+let LIVE=null;fetch('data/live.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.c){LIVE=j;if(typeof refresh==='function')refresh()}}).catch(()=>{});
+function liveDeals(c){const raw=c[5],L=LIVE&&LIVE.c[c[0]];if(!L||!raw)return [];
+  return L.map(([total,grader,grade,id,title,fb,bo])=>({total,grader,grade,id,title,fb,bo,r:total/raw,g:grader?(grader.toLowerCase()+String(grade).replace('.','_')):null}))
+   .filter(x=>x.grader?gradeOk(x.grade,x.r,raw):x.r<=0.85)
+   .sort((a,b)=>(raw-b.total)*(b.grader?gW(b.grade):0.5)-(raw-a.total)*(a.grader?gW(a.grade):0.5))}
+const liveLink=id=>'https://www.ebay.com/itm/'+encodeURIComponent(id);
+const liveAge=()=>LIVE&&LIVE.t?Math.max(0,Math.round((Date.now()-Date.parse(LIVE.t))/36e5)):null;
+function slabSearch(c,g){const s=S[c[2]];return 'https://www.ebay.com/sch/i.html?_sop=15&_nkw='+encodeURIComponent(`${c[1]} ${c[3]}${s[3]?'/'+s[3]:''} ${s[0]} ${glabel(g)}`)}
+function cmpFor(k){if(k==='slab'){const v=c=>{const l=liveDeals(c)[0];return l?(c[5]-l.total)*(l.grader?gW(l.grade):0.5)+1e6:slabValue(c,slabDeal(c))};return (a,b)=>v(b)-v(a)}return k==='psa10'?(a,b)=>(p10(b)??-1)-(p10(a)??-1):k==='upside'?(a,b)=>(upside(b)??-1)-(upside(a)??-1):null}
 function numKey(c){const m=String(c[3]).match(/^([A-Za-z]*)(\d+)(.*)$/);return m?[m[1],+m[2],m[3]]:[String(c[3]),0,'']}
 function withinSort(a){const w=f.within||'num',mv=c=>Math.abs(chgOver(c,7)??0),own=c=>state[c[0]]==='owned'?1:0,num=(x,y)=>{const p=numKey(x),q=numKey(y);return p[0].localeCompare(q[0])||p[1]-q[1]||p[2].localeCompare(q[2])};
   const by={psa10:cmpFor('psa10'),upside:cmpFor('upside'),price:(x,y)=>(y[5]??-1)-(x[5]??-1),priceasc:(x,y)=>(x[5]??Infinity)-(y[5]??Infinity),move:(x,y)=>mv(y)-mv(x),active:(x,y)=>((activity(y)||{}).r30??-1)-((activity(x)||{}).r30??-1),missing:(x,y)=>own(x)-own(y),owned:(x,y)=>own(y)-own(x),name:(x,y)=>x[1].localeCompare(y[1])}[w];
@@ -1297,7 +1310,11 @@ function openDetail(c){
 // ---- market comparison and graded sales, from the daily market data ----
 const GL={psa10:'PSA 10',psa9:'PSA 9',psa8:'PSA 8',cgc10:'CGC 10',cgc9_5:'CGC 9.5',cgc9:'CGC 9',bgs10:'BGS 10',bgs9_5:'BGS 9.5',bgs9:'BGS 9',tag10:'TAG 10',sgc10:'SGC 10'};
 const eur=new Intl.NumberFormat('en-US',{style:'currency',currency:'EUR'});
+function fillLive(c){const w=document.getElementById('dvLiveWrap'),L=liveDeals(c).slice(0,6);w.hidden=!L.length;if(!L.length)return;
+  document.getElementById('dvLive').innerHTML=L.map(x=>`<li style="grid-template-columns:minmax(0,1fr) auto"><span class="nm"><b>${x.grader?x.grader+' '+x.grade:'Ungraded'}${x.bo?' · Best Offer':''}</b><small>${esc(x.title)}</small><span class="why"><span class="g">${Math.round((1-x.r)*100)}% under raw</span>${x.grader?'':'<span class="b">check condition</span>'}${x.fb?`<span>seller ${x.fb}%</span>`:''}${x.r<0.55?'<span class="b">unusually low: check carefully</span>':''}</span></span><span class="ch">${usd.format(x.total)}<br><a class="planlink" href="${liveLink(x.id)}" target="_blank" rel="noopener">Open on eBay</a></span></li>`).join('');
+  const h=liveAge();document.getElementById('dvLiveNote').textContent=`Buy It Now listings, price includes shipping. Grade read from the listing title${h!=null?`; checked ${h<1?'within the hour':h+' hour'+(h===1?'':'s')+' ago'}`:''}. Graded 9+ at or below raw, 8–8.5 at 15%+ under, 7s only on pricier cards with a steep discount.`}
 async function fillMarket(c){
+  fillLive(c);
   const cmpW=document.getElementById('dvCmpWrap'),gW=document.getElementById('dvGradedWrap'),condEl=document.getElementById('dvCond');
   cmpW.hidden=gW.hidden=condEl.hidden=true;
   if(!PPT)return;
@@ -1405,7 +1422,7 @@ saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a 
    autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};if(b.lists){lists={...b.lists};lm={...(b.lm||{})}}cache();refresh();dlg.close();
    document.getElementById('backupMsg').textContent='Restored '+b.owned+' owned cards from '+new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'});}
 // ---- weekly buy plan ----
-function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:''}[k]}   // plan setting, or its default
+function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35}[k]}   // plan setting, or its default
 // supply events (reprints/restocks): from data/events.json, plus sets Taylor adds (cfg.rpAdd) or turns off (cfg.rpOff)
 let EVENTS={};fetch('data/events.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.sets){EVENTS=j.sets;if(window.__planReady)renderPlan()}}).catch(()=>{});
 const idsOf=k=>String(cfg[k]||'').split(',').filter(Boolean);
@@ -1447,7 +1464,7 @@ function renderPlan(){
   const el=document.getElementById('plan');if(!el)return;
   if(!cfg.start){cfg.start=ymd(weekStart(new Date()))}
   const set=(id,v)=>{const e=document.getElementById(id);if(e.type==='checkbox')e.checked=!!v;else if(document.activeElement!==e)e.value=v};
-  set('pBudget',pc('budget'));set('pReserve',pc('reserve'));set('pRoll',pc('roll'));set('pScope',pc('scope'));set('pEtb',pc('etb'));
+  set('pBudget',pc('budget'));set('pReserve',pc('reserve'));set('pLowMin',pc('lowMin'));set('pLowPct',pc('lowPct'));set('pRoll',pc('roll'));set('pScope',pc('scope'));set('pEtb',pc('etb'));
   const M=planMoney(),scope=pc('scope');
   {const sids=[...new Set(Object.keys(EVENTS).concat(idsOf('rpAdd')))].filter(id=>S[id]),on=sids.filter(id=>supplyEvent(id));
    document.getElementById('planEvSum').textContent=`Reprints and restocks (${on.length} set${on.length===1?'':'s'})`;
@@ -1479,15 +1496,19 @@ function renderPlan(){
   const held=scored.filter(x=>x.reprint&&x.sc>=50&&x.price<=M.spend+M.fund),hs=[...new Set(held.map(x=>S[x.c[2]][0]))];
   document.getElementById('planWatch').innerHTML=(watch.length?watch.map(x=>item(x,0)).join(''):'<li class="none">No good cards are spiking or sliding right now.</li>')+
     (held.length?`<li class="none">Also holding back ${held.length} otherwise good card${held.length===1?'':'s'} from ${hs.slice(0,3).join(', ')}${hs.length>3?' and more':''} while ${hs.length===1?'that set is':'those sets are'} reprinted.</li>`:'');
-  {const sl=pool.map(c=>({c,d:slabDeal(c)})).filter(x=>x.d&&x.d.price<=M.left+M.fund&&!supplyEvent(x.c[2])).sort((a,b)=>slabValue(b.c,b.d)-slabValue(a.c,a.d)).slice(0,5);
-   document.getElementById('planSlab').innerHTML=sl.length?sl.map(({c,d})=>{const s=S[c[2]];return `<li data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(c[1])}</b><small>${esc(s[0])} · #${esc(c[3])} · raw NM ${money(c[5])}</small><span class="why"><span class="g">${SLAB_L[d.g]} ${d.r<0.995?Math.round((1-d.r)*100)+'% under raw':'≈ raw price'}</span><span>save ~${usd0.format(c[5]-d.price)}</span><span>${d.n} graded sales</span></span></span><span class="ch">${money(d.price)}<br><a class="planlink" href="${slabSearch(c,d.g)}" target="_blank" rel="noopener">Find on eBay</a></span></li>`}).join('')+'<li class="none">Recent eBay/Fanatics sales of graded copies vs TCGplayer\u2019s raw Near Mint price. Check the slab and seller before buying.</li>':`<li class="none">${PPT?'No graded copies within your money are selling at or below raw right now.':'Graded prices are still loading.'}</li>`}
+  {const money2=M.left+M.fund;
+   const lv=pool.map(c=>({c,l:liveDeals(c).find(x=>x.grader&&x.total<=money2)})).filter(x=>x.l&&!supplyEvent(x.c[2])).sort((a,b)=>(b.c[5]-b.l.total)*gW(b.l.grade)-(a.c[5]-a.l.total)*gW(a.l.grade)).slice(0,5);
+   const lvIds=new Set(lv.map(x=>x.c[0]));
+   const sl=pool.filter(c=>!lvIds.has(c[0])).map(c=>({c,d:slabDeal(c)})).filter(x=>x.d&&x.d.price<=money2&&!supplyEvent(x.c[2])).sort((a,b)=>slabValue(b.c,b.d)-slabValue(a.c,a.d)).slice(0,Math.max(0,6-lv.length));
+   const liveHtml=lv.map(({c,l})=>{const s=S[c[2]];return `<li data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(c[1])}</b><small>${esc(s[0])} · #${esc(c[3])} · raw NM ${money(c[5])}</small><span class="why"><span class="g">Live: ${l.grader} ${l.grade} ${Math.round((1-l.r)*100)}% under raw</span><span>save ~${usd0.format(c[5]-l.total)}</span>${l.bo?'<span>Best Offer</span>':''}</span></span><span class="ch">${usd.format(l.total)}<br><a class="planlink" href="${liveLink(l.id)}" target="_blank" rel="noopener">Open listing</a></span></li>`}).join('');
+   document.getElementById('planSlab').innerHTML=(lv.length||sl.length)?liveHtml+sl.map(({c,d})=>{const s=S[c[2]];return `<li data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(c[1])}</b><small>${esc(s[0])} · #${esc(c[3])} · raw NM ${money(c[5])}</small><span class="why"><span class="g">${SLAB_L[d.g]} ${d.r<0.995?Math.round((1-d.r)*100)+'% under raw':'≈ raw price'}</span><span>save ~${usd0.format(c[5]-d.price)}</span><span>${d.n} graded sales</span></span></span><span class="ch">${money(d.price)}<br><a class="planlink" href="${slabSearch(c,d.g)}" target="_blank" rel="noopener">Find on eBay</a></span></li>`}).join('')+`<li class="none">${lv.length?'Live = listed on eBay now (checked four times a day). Others: ':''}recent eBay/Fanatics sales of graded copies vs TCGplayer\u2019s raw Near Mint price. Counts 9+ at or below raw, 8–8.5 at 15%+ under, 7s on cards over ${usd0.format(+pc('lowMin')||150)} at ${+pc('lowPct')||35}%+ under. Check the slab and seller before buying.</li>`:`<li class="none">${PPT?'No graded copies within your money are selling at or below raw right now.':'Graded prices are still loading.'}</li>`}
   document.getElementById('planBoughtSum').textContent=`Bought this week (${M.items.length})`;
   document.getElementById('planBought').innerHTML=M.items.length?M.items.map(([id,v,d])=>{const c=byId[id];return `<li data-id="${id}"><button class="th" type="button"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(c[1])}</b><small>${new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</small></span><span class="ch">${usd.format(v)}<br><button type="button" data-unbuy="${id}">Undo</button></span></li>`}).join(''):'<li class="none">Tap "I bought it" on a pick (or here later) to count it against this week.</li>';
   document.getElementById('planNote').textContent='Scores weigh price against the card’s own 30-day and 3-month averages, its 6-month direction, TCGplayer sales speed and trend, and listings vs monthly sales. Cards that just spiked, are still dropping fast, or come from a set being reprinted go to Watch until they settle. Reprint info comes from news and collector reports (checked Oct 23) plus any sets you add. These are signals from past prices, not predictions; collectibles can be slow to resell.';
 }
 {const pl=document.getElementById('plan');
  const num=(id,k)=>document.getElementById(id).addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>=0){cfg[k]=v;cache();renderPlan()}});
- num('pBudget','budget');num('pReserve','reserve');
+ num('pBudget','budget');num('pReserve','reserve');num('pLowMin','lowMin');num('pLowPct','lowPct');
  pl.addEventListener('change',e=>{const t=e.target;if(t.id==='pRoll'){cfg.roll=t.checked?1:0}else if(t.id==='pEtb'){cfg.etb=t.checked?1:0}else if(t.id==='pScope'){cfg.scope=t.value}else if(t.id==='pGoal'){cfg.goal=t.value}else return;cache();renderPlan()});
  pl.addEventListener('click',e=>{
    const ev=e.target.closest('button[data-ev]');if(ev){const id=ev.dataset.ev,add=idsOf('rpAdd'),off=idsOf('rpOff');
