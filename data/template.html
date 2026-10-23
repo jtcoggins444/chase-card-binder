@@ -711,7 +711,7 @@ function activity(c){
   if(P&&P.v&&P.v.length>=30){   // real TCGplayer sales counts (Near Mint + Lightly Played) for the last 30 days
     const v=P.v,sum=a=>a.reduce((x,y)=>x+y,0),s7=sum(v.slice(-7)),s30=sum(v),sp=sum(v.slice(0,23));
     const r={real:true,n:30,ready:true,vol:v,mv:v.map(x=>x>0),s7,s30,sp,r7:s7/7,r30:s30/30,rp:sp/23};
-    r.level=r.r30>=1?'hot':r.r30>=0.2?'steady':'quiet';
+    r.level=r.r30>=3.5?'hot':r.r30>=0.7?'steady':'quiet';   // about the top 15% of chase cards are Hot
     r.trend=r.r7>=Math.max(1.4*r.rp,r.rp+0.15)&&s7>=3?'up':r.r7<=0.6*r.rp&&sp>=4?'down':'flat';
     r.heat=(r.r7-r.rp)/Math.max(r.rp,0.2);
     ACT.set(c[0],r);return r}
