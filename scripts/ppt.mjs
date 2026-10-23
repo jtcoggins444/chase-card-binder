@@ -113,6 +113,8 @@ function addWeekly() {
   for (const c of cards.cards.concat(cards.etbs || [])) {
     const f = files.get(c[2]), v = f && f.c[c[0]], sm = summary.c[c[0]];
     if (v && sm && v.g) sm.gd = gdOf(v.g);
+    // Lightly Played: latest TCGplayer LP price and LP copies sold in the last 30 days
+    if (v && sm && v.h && v.h.LP && v.h.LP.length) { const l = v.h.LP, last = l[l.length - 1][0]; sm.lp = [l[l.length - 1][1], l.filter(x => x[0] > last - 30).reduce((a, x) => a + (x[2] || 0), 0)]; }
     if (!v || !sm || !v.h || !v.h.NM || !v.h.NM.length) continue;
     const h = v.h.NM, last = h[h.length - 1][0], w = [];
     for (let i = h.length - 1; i >= 0; i--) if ((last - h[i][0]) % 7 === 0) w.unshift([h[i][0], h[i][1]]);
