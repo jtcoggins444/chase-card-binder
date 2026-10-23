@@ -135,6 +135,15 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .act-steady{background:color-mix(in srgb,#2f80c0 13%,var(--panel));color:#2a6ea8}
 .act-quiet{background:color-mix(in srgb,var(--muted) 14%,var(--panel));color:var(--muted)}
 .pr .act{display:block;width:max-content;margin:3px 0 0 auto}
+.rng.cond{margin-top:6px}
+.gtab{width:100%;border-collapse:collapse;font-size:.85rem}
+.gtab th{font:700 .7rem var(--f-body);text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+.gtab th:first-child,.gtab td:first-child{text-align:left}
+.gtab td{padding:6px;text-align:right;border-bottom:1px solid var(--line);font-family:var(--f-mono);white-space:nowrap}
+.gtab td:first-child{font-family:var(--f-body);font-weight:700}
+.gtab .tr-up{color:var(--up,#1f7a4a)}.gtab .tr-down{color:var(--down,#b4471b)}
+.gtab .low{color:var(--muted)}
+.cmpflag{display:inline-block;margin-top:4px;font:700 .75rem var(--f-body);border-radius:5px;padding:2px 6px;background:var(--want-bg);color:var(--want)}
 .dvact p{margin:6px 0 0;font-size:.9rem}.dvact .act{margin:0 6px 0 0}
 .actstrip{display:grid;grid-template-columns:repeat(30,1fr);gap:2px;margin-top:6px;max-width:360px}
 .actstrip i{display:block;aspect-ratio:1;border-radius:2px;background:var(--line)}
@@ -470,8 +479,8 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <select id="era" aria-label="Era"><option value="">All eras</option></select>
     <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="listed">On a list</option><option value="missing">Missing</option></select>
     <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
-    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="active">Most active (sales)</option><option value="heat">Sales picking up</option><option value="move">Biggest movers, 7 days</option></select>
-    <select id="within" aria-label="Order within each set"><option value="num">In each set: card number</option><option value="price">In each set: price, high to low</option><option value="priceasc">In each set: price, low to high</option><option value="move">In each set: biggest movers</option><option value="active">In each set: most active</option><option value="missing">In each set: missing first</option><option value="owned">In each set: owned first</option><option value="name">In each set: name A–Z</option></select>
+    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="active">Most active (sales)</option><option value="heat">Sales picking up</option><option value="move">Biggest movers, 7 days</option><option value="psa10">PSA 10 value</option><option value="upside">Grading upside (PSA 10 ÷ raw)</option></select>
+    <select id="within" aria-label="Order within each set"><option value="num">In each set: card number</option><option value="price">In each set: price, high to low</option><option value="priceasc">In each set: price, low to high</option><option value="move">In each set: biggest movers</option><option value="active">In each set: most active</option><option value="psa10">In each set: PSA 10 value</option><option value="upside">In each set: grading upside</option><option value="missing">In each set: missing first</option><option value="owned">In each set: owned first</option><option value="name">In each set: name A–Z</option></select>
   </div>
   <div class="backup">
     <button id="colAll" type="button">Collapse all sets</button>
@@ -581,11 +590,14 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <div class="dvprice"><span class="lab">TCGplayer market</span><b id="dvMkt"></b><span id="dvChg" class="dvchg"></span></div>
       <div class="chartbox">
         <div class="rng" id="dvRng" role="group" aria-label="Chart range"><button data-r="30" type="button">1M</button><button data-r="90" type="button">3M</button><button data-r="182" type="button">6M</button><button data-r="365" type="button">1Y</button><button data-r="730" type="button">2Y</button><button data-r="0" type="button" aria-pressed="true">All</button></div>
+        <div class="rng cond" id="dvCond" role="group" aria-label="Condition" hidden><button data-c="NM" type="button" aria-pressed="true">Near Mint</button><button data-c="LP" type="button">Lightly Played</button></div>
         <div class="plot" id="dvPlot"><svg id="dvChart" role="img" aria-label="Market price history"></svg><div class="tip" id="dvTip" hidden></div></div>
         <p class="note" id="dvNote"></p>
       </div>
       <div class="sec"><span class="lab">Sales activity</span><div id="dvAct" class="dvact"></div></div>
       <div class="sec"><span class="lab">Today's listings on TCGplayer</span><div class="kv" id="dvList"></div></div>
+      <div class="sec" id="dvCmpWrap" hidden><span class="lab">Compare markets</span><div class="kv" id="dvCmp"></div><p class="note" id="dvCmpNote"></p></div>
+      <div class="sec" id="dvGradedWrap" hidden><span class="lab">Graded sales (eBay + Fanatics)</span><div id="dvGraded"></div><p class="note" id="dvGradedNote"></p></div>
       <div class="sec" id="dvMineWrap" hidden><span class="lab">Your copy</span><div class="kv" id="dvMine"></div></div>
       <div class="sec"><span class="lab">Recent sales and graded prices</span><div class="links" id="dvLinks"></div></div>
     </div>
@@ -602,7 +614,14 @@ const H=(()=>{const R=JSON.parse(document.getElementById('hist').textContent);if
   R.pids.forEach((p,j)=>{let any=false;const a=R.days.map(x=>{const v=x.v[j];if(v!=null)any=true;return v==null?null:v});if(any)m[p]=a});
   return {dates,m,latest:R.latest||{},updated:R.updated};})(); // {dates,m:{pid:[market by date]},latest:{pid:[low,mid,high,market,directLow]}}
 const DT=H.dates.map(d=>new Date(d+'T12:00:00'));
-function series(c){const a=c[6]&&H.m[c[6]];if(!a)return[];const o=[];a.forEach((v,i)=>{if(v!=null)o.push([DT[i],v])});return o}
+// Market data from PokemonPriceTracker (loaded after the page opens; the app works without it)
+let PPT=null;const PPTS=new Map();
+function pptDate(n){const [y,m,d]=PPT.b.split('-').map(Number);return new Date(y,m-1,d+n,12)}
+function pptSet(sid){if(!PPTS.has(sid))PPTS.set(sid,fetch('data/ppt/s/'+sid+'.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null));return PPTS.get(sid)}
+// own daily prices, reaching back with weekly points from the 6-month history where we have it
+function series(c){const a=c[6]&&H.m[c[6]];const o=[];if(a)a.forEach((v,i)=>{if(v!=null)o.push([DT[i],v])});
+  const P=PPT&&PPT.c[c[0]];if(P&&P.w){const first=o.length?o[0][0].getTime():Infinity,pre=[];for(const [n,v] of P.w){const d=pptDate(n);if(d.getTime()<first-864e5&&v!=null)pre.push([d,v])}if(pre.length)return pre.concat(o)}
+  return o}
 C.forEach(c=>{const s=series(c);c[5]=s.length?s[s.length-1][1]:null});
 const E=DATA.etbs||[];   // Elite Trainer Boxes: same shape as cards, kind 'ETB'
 E.forEach(c=>{const s=series(c);c[5]=s.length?s[s.length-1][1]:null});
@@ -675,7 +694,7 @@ function renderMovers(){
    const ready=new Date(+DT[0]+15*864e5);
    document.getElementById('mvHeat').innerHTML=pool.length?(heat.length?heat.map(aItem).join(''):'<li class="none">No cards picking up this week.</li>'):`<li class="none">Activity trends start ${ready.toLocaleDateString('en-US',{month:'short',day:'numeric'})}, after two weeks of daily prices.</li>`;
    document.getElementById('mvCool').innerHTML=pool.length?(cool.length?cool.map(aItem).join(''):'<li class="none">No cards slowing down this week.</li>'):'';
-   document.getElementById('mvActSum').textContent='Share of days each card\u2019s market price moved (a sign of sales), this week vs the weeks before. Cards at '+usd0.format(min)+' or more.'}
+   document.getElementById('mvActSum').textContent=(PPT?'TCGplayer sales (Near Mint and Lightly Played) this week vs the 3 weeks before.':'Share of days each card\u2019s market price moved (a sign of sales), this week vs the weeks before.')+' Cards at '+usd0.format(min)+' or more.'}
   const note=document.getElementById('mvNote');
   if(!all.length){note.textContent='Movers need at least two days of prices.';return}
   const last=DT[DT.length-1];
@@ -688,6 +707,14 @@ function renderMovers(){
 const ACT=new Map();
 function activity(c){
   if(ACT.has(c[0]))return ACT.get(c[0]);
+  const P=PPT&&PPT.c[c[0]];
+  if(P&&P.v&&P.v.length>=30){   // real TCGplayer sales counts (Near Mint + Lightly Played) for the last 30 days
+    const v=P.v,sum=a=>a.reduce((x,y)=>x+y,0),s7=sum(v.slice(-7)),s30=sum(v),sp=sum(v.slice(0,23));
+    const r={real:true,n:30,ready:true,vol:v,mv:v.map(x=>x>0),s7,s30,sp,r7:s7/7,r30:s30/30,rp:sp/23};
+    r.level=r.r30>=1?'hot':r.r30>=0.2?'steady':'quiet';
+    r.trend=r.r7>=Math.max(1.4*r.rp,r.rp+0.15)&&s7>=3?'up':r.r7<=0.6*r.rp&&sp>=4?'down':'flat';
+    r.heat=(r.r7-r.rp)/Math.max(r.rp,0.2);
+    ACT.set(c[0],r);return r}
   const a=c[6]&&H.m[c[6]];let r=null;
   if(a){const mv=[];for(let i=1;i<a.length;i++){const p=a[i-1],q=a[i];mv.push(p==null||q==null?null:Math.abs(q-p)>=0.005)}
     const rate=s=>{s=s.filter(x=>x!=null);return s.length?s.filter(Boolean).length/s.length:null};
@@ -702,7 +729,7 @@ function activity(c){
 const ACTL={hot:'Hot',steady:'Steady',quiet:'Quiet'};
 function actChip(c){const a=activity(c);if(!a||!a.ready)return '';
   const tr=a.trend==='up'?' \u25B2':a.trend==='down'?' \u25BC':'';
-  return `<span class="act act-${a.level}" title="Sales activity: price moved on ${Math.round(a.r30*100)}% of recent days${a.trend==='up'?', picking up this week':a.trend==='down'?', slowing this week':''}">${ACTL[a.level]}${tr}</span>`}
+  return `<span class="act act-${a.level}" title="Sales activity: ${a.real?a.s30+' TCGplayer sales in the last 30 days':'price moved on '+Math.round(a.r30*100)+'% of recent days'}${a.trend==='up'?', picking up this week':a.trend==='down'?', slowing this week':''}">${ACTL[a.level]}${tr}</span>`}
 // What activity plus price direction suggests. A signal to watch, not a prediction.
 function outlook(c){const a=activity(c);if(!a||!a.ready||!a.trend)return null;const ch=chgOver(c,7)??0,up=ch>=2,down=ch<=-2;
   if(a.trend==='up')return up?['up','Rising demand','More sales and a rising price: buyers are competing for it.']:down?['down','Sell-off','More sales at falling prices: sellers are cutting to move copies.']:['flat','Picking up','Sales are picking up while the price holds. Watch for a move.'];
@@ -773,9 +800,9 @@ function renderEtb(){
   const vals=a=>{const o=owned(a),vo=sum(o),va=sum(a);return `<span class="setval"><span><em>Owned</em> ${money(vo)}</span><span><em>Unowned</em> ${money(va-vo)}</span><span><em>All</em> ${money(va)}</span></span>`};
   const bySet=(a,b)=>S[b[2]][2].localeCompare(S[a[2]][2])||a[1].localeCompare(b[1]);
   let h=`<div class="etbsum"><b>${owned(E).length} of ${E.length}</b> Elite Trainer Boxes owned ${vals(E)}</div>`;
-  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'){
+  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'||f.sort==='psa10'||f.sort==='upside'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
-    list.sort(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
+    list.sort(cmpFor(f.sort)||(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1)));
     el.innerHTML=h+'<section class="set"><h2>'+list.length+' boxes</h2><div class="list">'+list.map(c=>row(c,true)).join('')+'</div></section>';return;
   }
   const eras=new Map();for(const c of list.sort(bySet)){const e=S[c[2]][1];if(!eras.has(e))eras.set(e,[]);eras.get(e).push(c)}
@@ -792,9 +819,13 @@ function etbExtra(){
   return `<section class="set${open?'':' closed'}" data-set="${key}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>Elite Trainer Boxes<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${money(v)}</span></button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>';
 }
 // order of cards inside a set (or an ETB era) when viewing By set
+// graded values from the market data summary
+const p10=c=>{const P=PPT&&PPT.c[c[0]];return P&&P.p10&&P.p10[0]!=null?P.p10[0]:null};
+const upside=c=>{const g=p10(c);return g!=null&&c[5]?g/c[5]:null};
+function cmpFor(k){return k==='psa10'?(a,b)=>(p10(b)??-1)-(p10(a)??-1):k==='upside'?(a,b)=>(upside(b)??-1)-(upside(a)??-1):null}
 function numKey(c){const m=String(c[3]).match(/^([A-Za-z]*)(\d+)(.*)$/);return m?[m[1],+m[2],m[3]]:[String(c[3]),0,'']}
 function withinSort(a){const w=f.within||'num',mv=c=>Math.abs(chgOver(c,7)??0),own=c=>state[c[0]]==='owned'?1:0,num=(x,y)=>{const p=numKey(x),q=numKey(y);return p[0].localeCompare(q[0])||p[1]-q[1]||p[2].localeCompare(q[2])};
-  const by={price:(x,y)=>(y[5]??-1)-(x[5]??-1),priceasc:(x,y)=>(x[5]??Infinity)-(y[5]??Infinity),move:(x,y)=>mv(y)-mv(x),active:(x,y)=>((activity(y)||{}).r30??-1)-((activity(x)||{}).r30??-1),missing:(x,y)=>own(x)-own(y),owned:(x,y)=>own(y)-own(x),name:(x,y)=>x[1].localeCompare(y[1])}[w];
+  const by={psa10:cmpFor('psa10'),upside:cmpFor('upside'),price:(x,y)=>(y[5]??-1)-(x[5]??-1),priceasc:(x,y)=>(x[5]??Infinity)-(y[5]??Infinity),move:(x,y)=>mv(y)-mv(x),active:(x,y)=>((activity(y)||{}).r30??-1)-((activity(x)||{}).r30??-1),missing:(x,y)=>own(x)-own(y),owned:(x,y)=>own(y)-own(x),name:(x,y)=>x[1].localeCompare(y[1])}[w];
   return w==='num'||!by?a:a.slice().sort((x,y)=>by(x,y)||num(x,y))}
 function render(){
   if(view==='etb'){renderEtb();return}
@@ -817,10 +848,10 @@ function render(){
   const ids=[...groups.keys()].sort((a,b)=>S[b][2].localeCompare(S[a][2])||b.localeCompare(a));
   if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!lists[curList]?(Object.keys(lists).length?'Pick a list above.':'You don\u2019t have any lists yet. Tap + New list to make one, then tap + List on any card to add it.'):view==='want'&&!listCount(curList)?'This list is empty. Find cards in All Cards or ETBs and tap + List to add them.':'No cards match these filters.';const ex=etbExtra();document.getElementById('binder').innerHTML=ex||'<p class="empty">'+no+'</p>';return}
   let h='';
-  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'){
+  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'||f.sort==='psa10'||f.sort==='upside'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
-    const all=[].concat(...groups.values()).sort(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1));
-    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='active'?'by sales activity, last 30 days':f.sort==='heat'?'by how much sales picked up this week':f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
+    const all=[].concat(...groups.values()).sort(cmpFor(f.sort)||(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1)));
+    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='psa10'?'by PSA 10 value (recent graded sales)':f.sort==='upside'?'by PSA 10 price ÷ raw Near Mint price':f.sort==='active'?'by sales activity, last 30 days':f.sort==='heat'?'by how much sales picked up this week':f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
     document.getElementById('binder').innerHTML=etbExtra()+h;return;
   }
   for(const id of ids){
@@ -1134,7 +1165,17 @@ binder.addEventListener('click',e=>{
   openDetail(byId[th.closest('.row').dataset.id]);
 });
 document.getElementById('lbClose').addEventListener('click',()=>lb.close());
-let cur=null,range=0;
+let cur=null,range=0,DET=null,chartCond='NM';
+function dayDate(b,n){const [y,m,d]=b.split('-').map(Number);return new Date(y,m-1,d+n,12)}
+// chart points [date, price, sold that day]: 6 months of daily prices for the chosen condition, then our own daily prices
+function chartSeries(c){
+  if(!DET||DET.c!==c||!DET.d.h)return series(c);
+  const h=DET.d.h[chartCond];if(!h||!h.length)return chartCond==='NM'?series(c):[];
+  const daily=h.map(([n,v,q])=>[dayDate(DET.b,n),v,q]);
+  if(chartCond!=='NM')return daily;
+  const a=c[6]&&H.m[c[6]],own=[];if(a)a.forEach((v,i)=>{if(v!=null)own.push([DT[i],v])});
+  const first=own.length?own[0][0].getTime():Infinity,vol=new Map(daily.map(p=>[p[0].toDateString(),p[2]]));
+  return daily.filter(p=>p[0].getTime()<first-864e5).concat(own.map(p=>[p[0],p[1],vol.get(p[0].toDateString())]))}
 const fmtD=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 const fmtDY=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 function q(c){const s=S[c[2]];return encodeURIComponent(c[1]+' '+c[3]+' '+s[0])}
@@ -1150,6 +1191,11 @@ function openDetail(c){
   document.getElementById('dvMkt').textContent=money(c[5]);
   {const a=activity(c),el=document.getElementById('dvAct');
    if(!a||!a.n){el.innerHTML='<p class="note">No price history yet.</p>'}
+   else if(a.real){const mx=Math.max(1,...a.vol),o=outlook(c);
+     const strip=a.vol.map(x=>`<i class="${x?'on':''}" style="${x?'opacity:'+(0.35+0.65*x/mx).toFixed(2):''}" title="${x} sold"></i>`).join('');
+     el.innerHTML=`<div class="actstrip" aria-hidden="true">${strip}</div><p class="note">Each square is a day: copies sold on TCGplayer (Near Mint and Lightly Played). Darker means more sales.</p>`+
+      `<p><b class="act act-${a.level}">${ACTL[a.level]}</b> ${a.s30} sold in the last 30 days; ${a.s7} this week vs about ${(a.rp*7).toFixed(1)} a week before.</p>`+
+      (o?`<p class="outlook o-${o[0]}"><b>${o[1]}</b> \u00b7 ${o[2]}</p><p class="note">A signal from sales and price direction, not a guarantee.</p>`:'')}
    else{const strip=a.mv.map(x=>`<i class="${x==null?'na':x?'on':''}"></i>`).join('');
      const o=outlook(c);
      el.innerHTML=`<div class="actstrip" aria-hidden="true">${strip}</div><p class="note">Each square is a day; filled means the market price moved, a sign it sold that day.</p>`+
@@ -1173,21 +1219,57 @@ function openDetail(c){
     .map(([u,t])=>`<a href="${u}" target="_blank" rel="noopener" data-copy="${esc(srchTxt(c))}">${t}</a>`).join('')+
   '<p class="note" id="dvCopied">Card Ladder and Alt can\u2019t be opened straight to a card, so these copy the card name for you to paste into their search.</p>';
   if(lb.showModal)lb.showModal();else lb.setAttribute('open','');
+  DET=null;chartCond='NM';document.querySelectorAll('#dvCond button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.c==='NM'));
   drawChart();
+  fillMarket(c);
 }
+// ---- market comparison and graded sales, from the daily market data ----
+const GL={psa10:'PSA 10',psa9:'PSA 9',psa8:'PSA 8',cgc10:'CGC 10',cgc9_5:'CGC 9.5',cgc9:'CGC 9',bgs10:'BGS 10',bgs9_5:'BGS 9.5',bgs9:'BGS 9',tag10:'TAG 10',sgc10:'SGC 10'};
+const eur=new Intl.NumberFormat('en-US',{style:'currency',currency:'EUR'});
+async function fillMarket(c){
+  const cmpW=document.getElementById('dvCmpWrap'),gW=document.getElementById('dvGradedWrap'),condEl=document.getElementById('dvCond');
+  cmpW.hidden=gW.hidden=condEl.hidden=true;
+  if(!PPT)return;
+  const f=await pptSet(c[2]);if(cur!==c||!f||!f.c[c[0]])return;
+  const d=f.c[c[0]];DET={c,b:f.b,d};
+  condEl.hidden=!(d.h&&d.h.LP&&d.h.LP.length&&d.h.NM&&d.h.NM.length);
+  drawChart();
+  const kv=a=>a.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
+  const t=d.t||[],a=activity(c),mkt=c[5],P=PPT.c[c[0]]||{},flags=[];
+  const items=[['TCGplayer market (NM)',money(mkt)]];
+  {const L=c[6]&&H.latest[c[6]],lo=L&&L[0];if(lo!=null&&mkt){const pc=(lo-mkt)/mkt*100;if(pc<=-15&&pc>=-45)flags.push(`Today\u2019s lowest TCGplayer listing is ${Math.round(-pc)}% under market: worth a look (check its condition).`)}}
+  if(t[2]!=null)items.push(['Listings · sellers',`${t[2]} · ${t[3]??'—'}`]);
+  if(a&&a.real)items.push(['Sold on TCGplayer, 30 days',String(a.s30)]);
+  if(d.cm&&(d.cm[2]!=null||d.cm[0]!=null)){items.push(['Cardmarket trend (EU)',d.cm[2]!=null?eur.format(d.cm[2]):'—']);if(d.cm[4]!=null)items.push(['Cardmarket 30-day avg',eur.format(d.cm[4])])}
+  const g=d.g||{};
+  if(g.psa10&&mkt){const x=(g.psa10[0]??g.psa10[2])/mkt;if(x)items.push(['PSA 10 vs raw',x.toFixed(1)+'×'])}
+  document.getElementById('dvCmp').innerHTML=kv(items);
+  document.getElementById('dvCmpNote').innerHTML=(flags.length?flags.map(x=>`<span class="cmpflag">${x}</span>`).join(' ')+' ':'')+`Market data from ${PPT.d?new Date(PPT.d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'today'}. Cardmarket is a European marketplace, priced in euros.`;
+  cmpW.hidden=false;
+  const order=Object.keys(GL).filter(k=>g[k]);
+  if(order.length){
+    const day=s=>{if(!s)return '—';const d=new Date(s+'T12:00:00');return d.getFullYear()===new Date().getFullYear()?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):d.toLocaleDateString('en-US',{month:'short',year:'numeric'})};
+    const rows=order.map(k=>{const v=g[k],price=v[0]??v[2],low=v[1]==='low';
+      return `<tr><td>${GL[k]}</td><td${low?' class="low" title="Few recent sales: rough estimate"':''}>${low?'~':''}${money(price)}</td><td>${v[3]}</td><td>${v[4]!=null?money(v[4]):'—'}</td><td class="tr-${v[4]!=null?v[6]||'':''}">${v[4]==null?'\u2013':v[6]==='up'?'\u25B2':v[6]==='down'?'\u25BC':'\u2013'}</td><td>${day(v[7])}</td></tr>`}).join('');
+    document.getElementById('dvGraded').innerHTML=`<table class="gtab"><thead><tr><th>Grade</th><th>Price</th><th>Sales</th><th>Last 7 days</th><th>Trend</th><th>Last sale</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const n10=g.psa10?g.psa10[3]:0,n9=g.psa9?g.psa9[3]:0;
+    document.getElementById('dvGradedNote').textContent=`Price is a recent-sales estimate (~ means few sales). Sales are all recorded eBay and Fanatics sales for that grade; trend shows only when there were sales in the last 7 days.`+(n10+n9>=10?` Of PSA 9 and 10 copies sold, ${Math.round(n10/(n9+n10)*100)}% were 10s (a rough sign of how often this card gems; not a population report).`:'');
+    gW.hidden=false}
+}
+document.getElementById('dvCond').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(!b)return;chartCond=b.dataset.c;document.querySelectorAll('#dvCond button').forEach(x=>x.setAttribute('aria-pressed',x===b));drawChart()});
 document.getElementById('dvRng').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;range=+b.dataset.r;
   document.querySelectorAll('#dvRng button').forEach(x=>x.setAttribute('aria-pressed',x===b));drawChart()});
 const svg=document.getElementById('dvChart'),tip=document.getElementById('dvTip'),NS='http://www.w3.org/2000/svg';
 let pts=[];
 function drawChart(){
-  const c=cur;if(!c)return;let s=series(c);
+  const c=cur;if(!c)return;let s=chartSeries(c);
   if(range&&s.length){const cut=s[s.length-1][0]-range*864e5;s=s.filter(p=>p[0]>=cut)}
   const W=svg.clientWidth||600,Ht=170,pl=56,pr=14,pt=12,pb=24;
   svg.setAttribute('viewBox',`0 0 ${W} ${Ht}`);svg.innerHTML='';tip.hidden=true;pts=[];
   const note=document.getElementById('dvNote');
   if(!s.length){note.textContent='No TCGplayer market price for this card yet.';return}
-  const first=series(c)[0][0];
-  note.textContent=s.length<14?`Your own tracking started ${fmtDY(first)}. A new point is added each day the price update runs, so this chart fills in over time.`:`Tracked daily since ${fmtDY(first)}.`;
+  const first=series(c)[0]?series(c)[0][0]:s[0][0];
+  note.textContent=DET&&DET.c===c?(chartCond==='NM'?'Daily TCGplayer Near Mint prices for 6 months, then the app\u2019s own daily prices. Bars show copies sold each day.':'Daily TCGplayer Lightly Played prices for 6 months. Bars show copies sold each day.'):s.length<14?`Your own tracking started ${fmtDY(first)}. A new point is added each day the price update runs, so this chart fills in over time.`:`Tracked daily since ${fmtDY(first)}.`;
   let lo=Math.min(...s.map(p=>p[1])),hi=Math.max(...s.map(p=>p[1]));
   if(hi-lo<hi*0.02){const m=(hi+lo)/2||1;lo=m*0.97;hi=m*1.03}
   const pad=(hi-lo)*0.1;lo=Math.max(0,lo-pad);hi=hi+pad;
@@ -1201,6 +1283,8 @@ function drawChart(){
   const xl=(t,anchor,x)=>{const tx=el('text',{x,y:Ht-6,'text-anchor':anchor,'font-size':11,fill:'var(--muted)','font-family':'var(--f-body)'});tx.textContent=fmtD(t)};
   xl(s[0][0],s.length===1?'middle':'start',X(t0));if(s.length>1)xl(s[s.length-1][0],'end',X(t1));
   pts=s.map(p=>[X(p[0].getTime()),Y(p[1]),p]);
+  {const mxv=Math.max(0,...s.map(p=>p[2]||0));if(mxv>0){const bw=Math.max(1.5,(W-pl-pr)/Math.max(30,s.length)*0.7);
+    for(const p of pts)if(p[2][2])el('rect',{x:(p[0]-bw/2).toFixed(1),y:(Ht-pb-22*p[2][2]/mxv).toFixed(1),width:bw.toFixed(1),height:(22*p[2][2]/mxv).toFixed(1),fill:'var(--muted)','fill-opacity':.35})}}
   if(pts.length>1){
     const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
     el('path',{d:d+` L${pts[pts.length-1][0].toFixed(1)} ${Ht-pb} L${pts[0][0].toFixed(1)} ${Ht-pb} Z`,fill:'var(--accent)','fill-opacity':.12,stroke:'none'});
@@ -1215,7 +1299,7 @@ function hover(e){if(!pts.length)return;const r=svg.getBoundingClientRect(),vb=s
   const xh=svg.querySelector('#xh'),xd=svg.querySelector('#xd');
   xh.setAttribute('x1',b[0]);xh.setAttribute('x2',b[0]);xh.setAttribute('visibility','visible');
   xd.setAttribute('cx',b[0]);xd.setAttribute('cy',b[1]);xd.setAttribute('visibility','visible');
-  tip.textContent=fmtDY(b[2][0])+' · '+usd.format(b[2][1]);tip.hidden=false;
+  tip.textContent=fmtDY(b[2][0])+' · '+usd.format(b[2][1])+(b[2][2]?' · '+b[2][2]+' sold':'');tip.hidden=false;
   const px=b[0]*r.width/vb.width;tip.style.left=Math.min(Math.max(px,70),r.width-70)+'px'}
 svg.addEventListener('pointermove',hover);svg.addEventListener('pointerdown',hover);
 svg.addEventListener('pointerleave',()=>{tip.hidden=true;svg.querySelectorAll('#xh,#xd').forEach(n=>n.setAttribute('visibility','hidden'))});
@@ -1248,6 +1332,8 @@ saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a 
  ul.addEventListener('click',e=>{const bt=e.target.closest('button[data-i]');if(!bt)return;const b=load()[+bt.dataset.i];if(!b)return;
    autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};if(b.lists){lists={...b.lists};lm={...(b.lm||{})}}cache();refresh();dlg.close();
    document.getElementById('backupMsg').textContent='Restored '+b.owned+' owned cards from '+new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'});}
+// ---- market data summary (6-month history, real sales counts, graded values) ----
+fetch('data/ppt/summary.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(!j||!j.c)return;PPT=j;ACT.clear();refresh();if(lb.open&&cur)openDetail(cur)}).catch(()=>{});
 // ---- printable placeholders ----
 {const dlg=document.getElementById('phDlg'),cnt=document.getElementById('phCount');
  const visibleIds=()=>[...document.querySelectorAll('#binder .row[data-id]')].map(r=>r.dataset.id).filter((v,i,a)=>a.indexOf(v)===i);
