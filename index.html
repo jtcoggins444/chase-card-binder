@@ -136,6 +136,8 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .act-quiet{background:color-mix(in srgb,var(--muted) 14%,var(--panel));color:var(--muted)}
 .pr .act{display:block;width:max-content;margin:3px 0 0 auto}
 .rng.cond{margin-top:6px}
+.slabchip{display:inline-block;margin-top:3px;font:700 .66rem var(--f-body);border-radius:4px;padding:1px 5px;background:var(--own-bg);color:var(--own);white-space:nowrap}
+.gtab .deal{color:var(--own);font-weight:700}
 .gtab{width:100%;border-collapse:collapse;font-size:.85rem}
 .gtab th{font:700 .7rem var(--f-body);text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
 .gtab th:first-child,.gtab td:first-child{text-align:left}
@@ -249,6 +251,7 @@ dialog.lb{border:0;border-radius:14px;padding:0;background:var(--panel);color:va
 .planev .lvl{font:700 .66rem var(--f-body);text-transform:uppercase;border-radius:4px;padding:1px 5px;background:var(--want-bg);color:var(--want);margin-left:6px}
 .planev li button,.planevadd button{font:700 .74rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap}
 .planevadd{display:flex;gap:8px;margin-top:6px}.planevadd select{flex:1;min-width:0;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:5px 6px}
+.planlink{display:inline-block;margin-top:4px;font:700 .74rem var(--f-body);color:var(--accent)}
 .planbought{margin-top:14px}.planbought summary{cursor:pointer;font-weight:700;font-size:.88rem}
 .mvctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mvctl select,.mvctl input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
@@ -504,7 +507,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <select id="era" aria-label="Era"><option value="">All eras</option></select>
     <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="listed">On a list</option><option value="missing">Missing</option></select>
     <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
-    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="active">Most active (sales)</option><option value="heat">Sales picking up</option><option value="move">Biggest movers, 7 days</option><option value="psa10">PSA 10 value</option><option value="upside">Grading upside (PSA 10 ÷ raw)</option></select>
+    <select id="sort" aria-label="Sort"><option value="set">By set</option><option value="price">Price, high to low</option><option value="priceasc">Price, low to high</option><option value="active">Most active (sales)</option><option value="heat">Sales picking up</option><option value="move">Biggest movers, 7 days</option><option value="psa10">PSA 10 value</option><option value="upside">Grading upside (PSA 10 ÷ raw)</option><option value="slab">Slab deals (graded ≤ raw price)</option></select>
     <select id="within" aria-label="Order within each set"><option value="num">In each set: card number</option><option value="price">In each set: price, high to low</option><option value="priceasc">In each set: price, low to high</option><option value="move">In each set: biggest movers</option><option value="active">In each set: most active</option><option value="psa10">In each set: PSA 10 value</option><option value="upside">In each set: grading upside</option><option value="missing">In each set: missing first</option><option value="owned">In each set: owned first</option><option value="name">In each set: name A–Z</option></select>
   </div>
   <div class="backup">
@@ -540,6 +543,8 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <ol class="mvl planl" id="planPicks"></ol>
       <h3 class="planh">Bigger buys for your fund</h3>
       <ol class="mvl planl" id="planBig"></ol>
+      <h3 class="planh">Graded at or below raw</h3>
+      <ol class="mvl planl" id="planSlab"></ol>
       <h3 class="planh">Watch, don't buy yet</h3>
       <ol class="mvl planl" id="planWatch"></ol>
       <details class="planbought"><summary id="planBoughtSum">Bought this week</summary><ol class="mvl planl" id="planBought"></ol></details>
@@ -832,6 +837,7 @@ function img(c,large){const i=c[0].lastIndexOf('-'),sid=c[0].slice(0,i),n=c[0].s
   if(c[7]==='t')return 'https://tcgplayer-cdn.tcgplayer.com/product/'+c[6]+(large?'_in_1000x1000.jpg':'_200w.jpg');
   return c[7]==='s'?'https://images.scrydex.com/pokemon/'+c[0]+(large?'/large':'/small'):'https://images.pokemontcg.io/'+sid+'/'+n+(large?'_hires.png':'.png')}
 function pct(v){return (v>=0?'+':'\u2212')+Math.abs(v).toFixed(1)+'%'}
+function slabTxt(c){const d=slabDeal(c);return d?`<span class="slabchip" title="${SLAB_L[d.g]} copies have sold for ${usd.format(d.price)} (${d.n} sales), ${Math.round((1-d.r)*100)}% under raw Near Mint">${SLAB_L[d.g]} ${d.r<0.995?'−'+Math.round((1-d.r)*100)+'%':'≈ raw'}</span>`:''}
 function mvTxt(c){const v=chgOver(c,7);return v==null||Math.abs(v)<0.05?'':`<span class="mv ${v>=0?'up':'down'}" title="Change over the last 7 days">${v>=0?'\u25B2':'\u25BC'} ${Math.abs(v).toFixed(1)}% 7d</span>`}
 function sgn(v){return (v>=0?'+':'\u2212')+usd.format(Math.abs(v))}
 function renderStats(){
@@ -853,7 +859,7 @@ function renderEtb(){
   const vals=a=>{const o=owned(a),vo=sum(o),va=sum(a);return `<span class="setval"><span><em>Owned</em> ${money(vo)}</span><span><em>Unowned</em> ${money(va-vo)}</span><span><em>All</em> ${money(va)}</span></span>`};
   const bySet=(a,b)=>S[b[2]][2].localeCompare(S[a[2]][2])||a[1].localeCompare(b[1]);
   let h=`<div class="etbsum"><b>${owned(E).length} of ${E.length}</b> Elite Trainer Boxes owned ${vals(E)}</div>`;
-  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'||f.sort==='psa10'||f.sort==='upside'){
+  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'||f.sort==='psa10'||f.sort==='upside'||f.sort==='slab'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
     list.sort(cmpFor(f.sort)||(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1)));
     el.innerHTML=h+'<section class="set"><h2>'+list.length+' boxes</h2><div class="list">'+list.map(c=>row(c,true)).join('')+'</div></section>';return;
@@ -875,7 +881,19 @@ function etbExtra(){
 // graded values from the market data summary
 const p10=c=>{const P=PPT&&PPT.c[c[0]];return P&&P.p10&&P.p10[0]!=null?P.p10[0]:null};
 const upside=c=>{const g=p10(c);return g!=null&&c[5]?g/c[5]:null};
-function cmpFor(k){return k==='psa10'?(a,b)=>(p10(b)??-1)-(p10(a)??-1):k==='upside'?(a,b)=>(upside(b)??-1)-(upside(a)??-1):null}
+// graded copies selling at or below a raw Near Mint copy (enough recent sales to trust the price)
+const SLAB_ORDER=['psa10','cgc10','tag10','bgs9_5','cgc9_5','psa9','cgc9'];
+const SLAB_L={psa10:'PSA 10',psa9:'PSA 9',cgc10:'CGC 10',cgc9_5:'CGC 9.5',cgc9:'CGC 9',bgs9_5:'BGS 9.5',tag10:'TAG 10'};
+function slabDeal(c){const P=PPT&&PPT.c[c[0]],raw=c[5];if(!P||!P.gd||!raw||raw<10)return null;let best=null;
+  const ok=[],recent=Date.now()-120*864e5;
+  for(const g of SLAB_ORDER){const x=P.gd[g];if(!x||x[1]<8||x[2]||!x[3]||Date.parse(x[3])<recent)continue;const r=x[0]/raw;
+    if(r<=1.0&&r>=0.55)ok.push({g,price:x[0],r,n:x[1]})}   // more than 45% under raw usually means mismatched or stale data
+  if(!ok.length)return null;const mn=Math.min(...ok.map(x=>x.r));
+  return ok.find(x=>x.r<=mn+0.08)}   // the best grade that's about as cheap as the cheapest option
+const SLAB_W={psa10:1.4,cgc10:1.3,tag10:1.25,bgs9_5:1.25,cgc9_5:1.1,psa9:1,cgc9:0.7};
+const slabValue=(c,d)=>d?(c[5]-d.price)*SLAB_W[d.g]:-1;   // dollars saved, weighted toward higher grades
+function slabSearch(c,g){const s=S[c[2]];return 'https://www.ebay.com/sch/i.html?_sop=15&_nkw='+encodeURIComponent(`${c[1]} ${c[3]}${s[3]?'/'+s[3]:''} ${s[0]} ${SLAB_L[g].replace(' ',' ')}`)}
+function cmpFor(k){if(k==='slab')return (a,b)=>slabValue(b,slabDeal(b))-slabValue(a,slabDeal(a));return k==='psa10'?(a,b)=>(p10(b)??-1)-(p10(a)??-1):k==='upside'?(a,b)=>(upside(b)??-1)-(upside(a)??-1):null}
 function numKey(c){const m=String(c[3]).match(/^([A-Za-z]*)(\d+)(.*)$/);return m?[m[1],+m[2],m[3]]:[String(c[3]),0,'']}
 function withinSort(a){const w=f.within||'num',mv=c=>Math.abs(chgOver(c,7)??0),own=c=>state[c[0]]==='owned'?1:0,num=(x,y)=>{const p=numKey(x),q=numKey(y);return p[0].localeCompare(q[0])||p[1]-q[1]||p[2].localeCompare(q[2])};
   const by={psa10:cmpFor('psa10'),upside:cmpFor('upside'),price:(x,y)=>(y[5]??-1)-(x[5]??-1),priceasc:(x,y)=>(x[5]??Infinity)-(y[5]??Infinity),move:(x,y)=>mv(y)-mv(x),active:(x,y)=>((activity(y)||{}).r30??-1)-((activity(x)||{}).r30??-1),missing:(x,y)=>own(x)-own(y),owned:(x,y)=>own(y)-own(x),name:(x,y)=>x[1].localeCompare(y[1])}[w];
@@ -901,10 +919,10 @@ function render(){
   const ids=[...groups.keys()].sort((a,b)=>S[b][2].localeCompare(S[a][2])||b.localeCompare(a));
   if(!ids.length){const no=view==='owned'&&!C.some(c=>state[c[0]]==='owned')?'Your binder is empty. Find cards in All Cards and tap Owned to add them here.':view==='want'&&!lists[curList]?(Object.keys(lists).length?'Pick a list above.':'You don\u2019t have any lists yet. Tap + New list to make one, then tap + List on any card to add it.'):view==='want'&&!listCount(curList)?'This list is empty. Find cards in All Cards or ETBs and tap + List to add them.':'No cards match these filters.';const ex=etbExtra();document.getElementById('binder').innerHTML=ex||'<p class="empty">'+no+'</p>';return}
   let h='';
-  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'||f.sort==='psa10'||f.sort==='upside'){
+  if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'||f.sort==='psa10'||f.sort==='upside'||f.sort==='slab'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
     const all=[].concat(...groups.values()).sort(cmpFor(f.sort)||(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1)));
-    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='psa10'?'by PSA 10 value (recent graded sales)':f.sort==='upside'?'by PSA 10 price ÷ raw Near Mint price':f.sort==='active'?'by sales activity, last 30 days':f.sort==='heat'?'by how much sales picked up this week':f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
+    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='slab'?'graded copies selling at or below raw Near Mint, biggest savings first':f.sort==='psa10'?'by PSA 10 value (recent graded sales)':f.sort==='upside'?'by PSA 10 price ÷ raw Near Mint price':f.sort==='active'?'by sales activity, last 30 days':f.sort==='heat'?'by how much sales picked up this week':f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
     document.getElementById('binder').innerHTML=etbExtra()+h;return;
   }
   for(const id of ids){
@@ -923,7 +941,7 @@ function render(){
 function row(c,showSet){
   const s=S[c[2]],st=state[c[0]]||'';
   const pp=paid[c[0]],d=(st==='owned'&&pp!=null&&c[5]!=null)?c[5]-pp:null;
-  return `<div class="row ${st}${c[4]==='ETB'?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}${actChip(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button>${(()=>{const ls=listsOf(c[0]);return `<button data-l="1" class="${ls.length?'on-list':''}" title="${ls.length?esc(ls.map(l=>lists[l]).join(', ')):'Add to a list'}">${ls.length?(ls.length===1?'\u2713 '+esc(lists[ls[0]].length>14?lists[ls[0]].slice(0,13)+'\u2026':lists[ls[0]]):'\u2713 '+ls.length+' lists'):'+ List'}</button>`})()}${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st==='owned'?`<label class="paid">Condition <select class="cond" aria-label="Condition of your copy for ${esc(c[1])}"><option value="">Not set</option>${CONDS.map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${n}</option>`).join('')}</select></label>`:''}</span></div>`;
+  return `<div class="row ${st}${c[4]==='ETB'?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}${actChip(c)}${slabTxt(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button>${(()=>{const ls=listsOf(c[0]);return `<button data-l="1" class="${ls.length?'on-list':''}" title="${ls.length?esc(ls.map(l=>lists[l]).join(', ')):'Add to a list'}">${ls.length?(ls.length===1?'\u2713 '+esc(lists[ls[0]].length>14?lists[ls[0]].slice(0,13)+'\u2026':lists[ls[0]]):'\u2713 '+ls.length+' lists'):'+ List'}</button>`})()}${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st==='owned'?`<label class="paid">Condition <select class="cond" aria-label="Condition of your copy for ${esc(c[1])}"><option value="">Not set</option>${CONDS.map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${n}</option>`).join('')}</select></label>`:''}</span></div>`;
 }
 let view='all';
 function viewStatus(){return view==='owned'?'owned':view==='want'?'list':f.status}
@@ -1303,10 +1321,11 @@ async function fillMarket(c){
   if(order.length){
     const day=s=>{if(!s)return '—';const d=new Date(s+'T12:00:00');return d.getFullYear()===new Date().getFullYear()?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):d.toLocaleDateString('en-US',{month:'short',year:'numeric'})};
     const rows=order.map(k=>{const v=g[k],price=v[0]??v[2],low=v[1]==='low';
-      return `<tr><td>${GL[k]}</td><td${low?' class="low" title="Few recent sales: rough estimate"':''}>${low?'~':''}${money(price)}</td><td>${v[3]}</td><td>${v[4]!=null?money(v[4]):'—'}</td><td class="tr-${v[4]!=null?v[6]||'':''}">${v[4]==null?'\u2013':v[6]==='up'?'\u25B2':v[6]==='down'?'\u25BC':'\u2013'}</td><td>${day(v[7])}</td></tr>`}).join('');
-    document.getElementById('dvGraded').innerHTML=`<table class="gtab"><thead><tr><th>Grade</th><th>Price</th><th>Sales</th><th>Last 7 days</th><th>Trend</th><th>Last sale</th></tr></thead><tbody>${rows}</tbody></table>`;
+      return `<tr><td>${GL[k]}</td><td${low?' class="low" title="Few recent sales: rough estimate"':''}>${low?'~':''}${money(price)}</td><td>${v[3]}</td><td class="${price&&mkt&&price<=mkt&&!low?'deal':''}">${price&&mkt?(price/mkt).toFixed(2)+'×':'—'}</td><td>${v[4]!=null?money(v[4]):'—'}</td><td class="tr-${v[4]!=null?v[6]||'':''}">${v[4]==null?'\u2013':v[6]==='up'?'\u25B2':v[6]==='down'?'\u25BC':'\u2013'}</td><td>${day(v[7])}</td></tr>`}).join('');
+    document.getElementById('dvGraded').innerHTML=`<table class="gtab"><thead><tr><th>Grade</th><th>Price</th><th>Sales</th><th>vs raw</th><th>Last 7 days</th><th>Trend</th><th>Last sale</th></tr></thead><tbody>${rows}</tbody></table>`;
     const n10=g.psa10?g.psa10[3]:0,n9=g.psa9?g.psa9[3]:0;
-    document.getElementById('dvGradedNote').textContent=`Price is a recent-sales estimate (~ means few sales). Sales are all recorded eBay and Fanatics sales for that grade; trend shows only when there were sales in the last 7 days.`+(n10+n9>=10?` Of PSA 9 and 10 copies sold, ${Math.round(n10/(n9+n10)*100)}% were 10s (a rough sign of how often this card gems; not a population report).`:'');
+    const sd=slabDeal(c);
+    document.getElementById('dvGradedNote').textContent=(sd?`${SLAB_L[sd.g]} copies are selling ${sd.r<0.995?Math.round((1-sd.r)*100)+'% under':'at about'} the raw Near Mint price, and a slab confirms the condition. `:'')+`vs raw compares with TCGplayer\u2019s Near Mint market price. Price is a recent-sales estimate (~ means few sales). Sales are all recorded eBay and Fanatics sales for that grade; trend shows only when there were sales in the last 7 days.`+(n10+n9>=10?` Of PSA 9 and 10 copies sold, ${Math.round(n10/(n9+n10)*100)}% were 10s (a rough sign of how often this card gems; not a population report).`:'');
     gW.hidden=false}
 }
 document.getElementById('dvCond').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(!b)return;chartCond=b.dataset.c;document.querySelectorAll('#dvCond button').forEach(x=>x.setAttribute('aria-pressed',x===b));drawChart()});
@@ -1460,6 +1479,8 @@ function renderPlan(){
   const held=scored.filter(x=>x.reprint&&x.sc>=50&&x.price<=M.spend+M.fund),hs=[...new Set(held.map(x=>S[x.c[2]][0]))];
   document.getElementById('planWatch').innerHTML=(watch.length?watch.map(x=>item(x,0)).join(''):'<li class="none">No good cards are spiking or sliding right now.</li>')+
     (held.length?`<li class="none">Also holding back ${held.length} otherwise good card${held.length===1?'':'s'} from ${hs.slice(0,3).join(', ')}${hs.length>3?' and more':''} while ${hs.length===1?'that set is':'those sets are'} reprinted.</li>`:'');
+  {const sl=pool.map(c=>({c,d:slabDeal(c)})).filter(x=>x.d&&x.d.price<=M.left+M.fund&&!supplyEvent(x.c[2])).sort((a,b)=>slabValue(b.c,b.d)-slabValue(a.c,a.d)).slice(0,5);
+   document.getElementById('planSlab').innerHTML=sl.length?sl.map(({c,d})=>{const s=S[c[2]];return `<li data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(c[1])}</b><small>${esc(s[0])} · #${esc(c[3])} · raw NM ${money(c[5])}</small><span class="why"><span class="g">${SLAB_L[d.g]} ${d.r<0.995?Math.round((1-d.r)*100)+'% under raw':'≈ raw price'}</span><span>save ~${usd0.format(c[5]-d.price)}</span><span>${d.n} graded sales</span></span></span><span class="ch">${money(d.price)}<br><a class="planlink" href="${slabSearch(c,d.g)}" target="_blank" rel="noopener">Find on eBay</a></span></li>`}).join('')+'<li class="none">Recent eBay/Fanatics sales of graded copies vs TCGplayer\u2019s raw Near Mint price. Check the slab and seller before buying.</li>':`<li class="none">${PPT?'No graded copies within your money are selling at or below raw right now.':'Graded prices are still loading.'}</li>`}
   document.getElementById('planBoughtSum').textContent=`Bought this week (${M.items.length})`;
   document.getElementById('planBought').innerHTML=M.items.length?M.items.map(([id,v,d])=>{const c=byId[id];return `<li data-id="${id}"><button class="th" type="button"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(c[1])}</b><small>${new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</small></span><span class="ch">${usd.format(v)}<br><button type="button" data-unbuy="${id}">Undo</button></span></li>`}).join(''):'<li class="none">Tap "I bought it" on a pick (or here later) to count it against this week.</li>';
   document.getElementById('planNote').textContent='Scores weigh price against the card’s own 30-day and 3-month averages, its 6-month direction, TCGplayer sales speed and trend, and listings vs monthly sales. Cards that just spiked, are still dropping fast, or come from a set being reprinted go to Watch until they settle. Reprint info comes from news and collector reports (checked Oct 23) plus any sets you add. These are signals from past prices, not predictions; collectibles can be slow to resell.';

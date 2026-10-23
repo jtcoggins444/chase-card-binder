@@ -100,11 +100,19 @@ function cardmarketOf(cm) {
 }
 
 // weekly Near Mint prices for the last 6 months, kept in the small summary so the app's charts and movers reach back
+// graded prices for the grades worth comparing with a raw copy: {grade: [price, sales, 1 if few recent sales]}
+const GD = ['psa10', 'psa9', 'cgc10', 'cgc9_5', 'cgc9', 'bgs9_5', 'tag10'];
+function gdOf(g) {
+  const o = {};
+  for (const k of GD) { const x = g[k]; if (!x || x[3] < 5) continue; const p = x[0] ?? x[2]; if (p == null) continue; o[k] = [p, x[3], x[1] === 'low' ? 1 : 0, x[7] || null]; }   // [price, sales, few recent sales, last sale date]
+  return Object.keys(o).length ? o : undefined;
+}
 function addWeekly() {
   const files = new Map();
   for (const sid of Object.keys(S)) { const p = join(SDir, sid + '.json'); if (existsSync(p)) files.set(sid, JSON.parse(readFileSync(p, 'utf8'))); }
   for (const c of cards.cards.concat(cards.etbs || [])) {
     const f = files.get(c[2]), v = f && f.c[c[0]], sm = summary.c[c[0]];
+    if (v && sm && v.g) sm.gd = gdOf(v.g);
     if (!v || !sm || !v.h || !v.h.NM || !v.h.NM.length) continue;
     const h = v.h.NM, last = h[h.length - 1][0], w = [];
     for (let i = h.length - 1; i >= 0; i--) if ((last - h[i][0]) % 7 === 0) w.unshift([h[i][0], h[i][1]]);
