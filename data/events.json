@@ -1,0 +1,10 @@
+{
+ "updated": "2026-10-23",
+ "note": "Supply events that affect prices: reprints and restock waves. Kept by hand (Claude researches; you can add sets in the app). level: confirmed | reported | rumored.",
+ "sets": {
+  "zsv10pt5": {"type": "reprint", "level": "reported", "when": "late 2026", "note": "English Black Bolt / White Flare reprint expected; collectors report reprinted products in stores (no official announcement found).", "src": "https://x.com/mathew_poynter/status/2087128521357271431"},
+  "rsv10pt5": {"type": "reprint", "level": "reported", "when": "late 2026", "note": "English Black Bolt / White Flare reprint expected; collectors report reprinted products in stores (no official announcement found).", "src": "https://x.com/mathew_poynter/status/2087128521357271431"},
+  "sv10": {"type": "reprint", "level": "reported", "when": "summer–fall 2026", "note": "Destined Rivals ETB reprint wave, reportedly over 1 million units to big-box and online stores.", "src": "https://collectorstation.com/pokemon-tcg-schedule-upcoming-sets"},
+  "sv8pt5": {"type": "reprint", "level": "confirmed", "when": "ongoing 2026", "note": "Prismatic Evolutions restocks continued through 2026 (Super-Premium Collections, ETBs); The Pokémon Company said it would keep reprinting.", "src": "https://tcginvest.io/blog/pokemon-reprints-2026"}
+ }
+}

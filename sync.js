@@ -24,7 +24,7 @@ function norm(d) {
     else if (k === 'lists' && typeof v === 'string' && v) o.lists[id] = v;
     else if (k === 'lm' && v === 1) o.lm[id] = 1;
     else if (k === 'bd' && typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) o.bd[id] = v;
-    else if (k === 'cfg' && ((typeof v === 'number' && isFinite(v)) || (typeof v === 'string' && v.length < 80))) o.cfg[id] = v;
+    else if (k === 'cfg' && ((typeof v === 'number' && isFinite(v)) || (typeof v === 'string' && v.length < 600))) o.cfg[id] = v;
     else if (k === 'paid' && typeof v === 'number' && isFinite(v) && v >= 0) o.paid[id] = v;
     else if (k === 'cond' && typeof v === 'string' && v) o.cond[id] = v;
   }
