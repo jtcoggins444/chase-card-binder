@@ -1,10 +1,41 @@
 {
  "updated": "2026-10-23",
- "note": "Supply events that affect prices: reprints and restock waves. Kept by hand (Claude researches; you can add sets in the app). level: confirmed | reported | rumored.",
+ "note": "Supply events that affect prices: reprints, restock waves and new products containing packs of existing sets. Updated weekly by a scheduled check; you can also add sets in the app. level: confirmed | reported | rumored.",
  "sets": {
-  "zsv10pt5": {"type": "reprint", "level": "reported", "when": "late 2026", "note": "English Black Bolt / White Flare reprint expected; collectors report reprinted products in stores (no official announcement found).", "src": "https://x.com/mathew_poynter/status/2087128521357271431"},
-  "rsv10pt5": {"type": "reprint", "level": "reported", "when": "late 2026", "note": "English Black Bolt / White Flare reprint expected; collectors report reprinted products in stores (no official announcement found).", "src": "https://x.com/mathew_poynter/status/2087128521357271431"},
-  "sv10": {"type": "reprint", "level": "reported", "when": "summer–fall 2026", "note": "Destined Rivals ETB reprint wave, reportedly over 1 million units to big-box and online stores.", "src": "https://collectorstation.com/pokemon-tcg-schedule-upcoming-sets"},
-  "sv8pt5": {"type": "reprint", "level": "confirmed", "when": "ongoing 2026", "note": "Prismatic Evolutions restocks continued through 2026 (Super-Premium Collections, ETBs); The Pokémon Company said it would keep reprinting.", "src": "https://tcginvest.io/blog/pokemon-reprints-2026"}
+  "zsv10pt5": {
+   "type": "reprint",
+   "level": "confirmed",
+   "when": "Dec 4, 2026 + reported reprint",
+   "note": "Unova Heavy Hitters Premium Collection (6 Black Bolt + 6 White Flare packs per box) releases Dec 4, 2026. Collectors also report a wider English reprint in stores (not officially announced).",
+   "src": "https://pokemon.cardsrealm.com/en-au/articles/pokemon-tcg-unova-heavy-hitters-arrives-in-december-2026"
+  },
+  "rsv10pt5": {
+   "type": "reprint",
+   "level": "confirmed",
+   "when": "Dec 4, 2026 + reported reprint",
+   "note": "Unova Heavy Hitters Premium Collection (6 Black Bolt + 6 White Flare packs per box) releases Dec 4, 2026. Collectors also report a wider English reprint in stores (not officially announced).",
+   "src": "https://pokemon.cardsrealm.com/en-au/articles/pokemon-tcg-unova-heavy-hitters-arrives-in-december-2026"
+  },
+  "sv10": {
+   "type": "reprint",
+   "level": "reported",
+   "when": "summer–fall 2026",
+   "note": "Destined Rivals ETB reprint wave, reportedly over 1 million units to big-box and online stores.",
+   "src": "https://collectorstation.com/pokemon-tcg-schedule-upcoming-sets"
+  },
+  "sv8pt5": {
+   "type": "reprint",
+   "level": "confirmed",
+   "when": "ongoing 2026",
+   "note": "Prismatic Evolutions restocks continued through 2026 (Super-Premium Collections, ETBs); The Pokémon Company said it would keep reprinting.",
+   "src": "https://tcginvest.io/blog/pokemon-reprints-2026"
+  },
+  "me2pt5": {
+   "type": "reprint",
+   "level": "reported",
+   "when": "2026",
+   "note": "Ascended Heroes chase cards fell sharply after heavy printing (top SIRs about $1,300 in May to $850–900 by late Sept 2026).",
+   "src": "https://www.wargamer.com/pokemon-trading-card-game/gengar-tree-pikachu-dropping"
+  }
  }
 }
