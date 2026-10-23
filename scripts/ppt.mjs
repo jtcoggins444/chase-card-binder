@@ -61,7 +61,7 @@ function printingOf(d) {
   for (const p of ['Holofoil', 'Unlimited Holofoil', 'Normal']) if (v.includes(p)) return p;
   return (d.prices && d.prices.primaryPrinting) || v[0] || null;
 }
-const COND = { 'Near Mint': 'NM', 'Lightly Played': 'LP', 'Moderately Played': 'MP' };
+const COND = { 'Near Mint': 'NM', 'Lightly Played': 'LP' };
 function histOf(d, printing) {
   const src = (d.priceHistory && d.priceHistory.variants && d.priceHistory.variants[printing]) || (d.priceHistory && d.priceHistory.conditions) || {};
   const out = {};
@@ -110,8 +110,9 @@ for (const c of list) {
     if (!d) throw new Error('not found');
     const printing = printingOf(d);
     const h = histOf(d, printing), gr = gradedOf(d.ebay, printing), cm = cardmarketOf(d.cardmarketPrices);
-    const pr = d.prices || {};
-    const t = [r2(pr.market), r2(pr.low), pr.listings ?? null, pr.sellers ?? null];
+    const pr = d.prices || {}, pv = (d.variants && printing && d.variants[printing]) || {};
+    // [market, lowest listing] for this printing; listings/sellers are for the whole product
+    const t = [r2(pv.marketPrice ?? pr.market), r2(pv.lowPrice ?? pr.low), pr.listings ?? null, pr.sellers ?? null];
     sf.c[c[0]] = { p: printing, h, g: gr && gr.g, gh: gr && gr.gh, cm, t };
     // summary: last 30 days of NM+LP sales volume, key graded prices, listings
     const vol = new Map();
