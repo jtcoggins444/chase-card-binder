@@ -66,6 +66,10 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .rpanel label small{color:var(--muted)}
 .rpanel input{width:17px;height:17px;accent-color:var(--accent);margin:0}
 .rtop{display:flex;gap:6px;padding:2px 2px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.spanel{width:min(88vw,320px)}
+.spanel #setFind{width:100%;box-sizing:border-box;margin:2px 0 6px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 9px}
+.spanel .sera{display:flex;align-items:center;gap:9px;margin-top:6px;padding:6px 8px;font:800 .78rem var(--f-body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-top:1px solid var(--line)}
+.spanel label small{margin-left:auto;padding-left:8px}
 .rtop button{flex:1;font:700 .78rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:7px;padding:6px 8px;cursor:pointer}
 .chip{font:700 .78rem var(--f-body);letter-spacing:.04em;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;padding:6px 11px;cursor:pointer}
 .chip[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 14%,var(--panel));border-color:var(--accent);color:var(--ink)}
@@ -455,6 +459,14 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <label><input type="checkbox" value="MAR" checked> Mega Attack <small>(Mega Attack Rare)</small></label>
       </div>
     </details>
+    <details class="rdd" id="setDD">
+      <summary id="setSum" aria-label="Sets">All sets</summary>
+      <div class="rpanel spanel" id="setChips">
+        <div class="rtop"><button type="button" data-all="1">Select all</button><button type="button" data-all="0">Clear all</button></div>
+        <input type="search" id="setFind" placeholder="Find a set" aria-label="Find a set" autocomplete="off">
+        <div id="setList"></div>
+      </div>
+    </details>
     <select id="era" aria-label="Era"><option value="">All eras</option></select>
     <select id="status" aria-label="Status"><option value="">All cards</option><option value="owned">Owned</option><option value="listed">On a list</option><option value="missing">Missing</option></select>
     <span class="prange" role="group" aria-label="Price range"><input id="pmin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum price">to<input id="pmax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" aria-label="Maximum price"></span>
@@ -612,7 +624,7 @@ function renderBuy(){
   const lo=isNaN(mn)?5:mn,hi=isNaN(mx)?Infinity:mx;
   const picks=[];
   for(const c of C){
-    if(!f.r.has(c[4]))continue;if(f.era&&S[c[2]][1]!==f.era)continue;
+    if(!f.r.has(c[4]))continue;if(f.sets&&!f.sets.has(c[2]))continue;if(f.era&&S[c[2]][1]!==f.era)continue;
     const st=state[c[0]];if(scope==='want'&&!inList(curList,c[0]))continue;if(scope==='missing'&&st==='owned')continue;
     if(c[5]==null||c[5]<lo||c[5]>hi)continue;
     const sg=buySignals(c);if(sg.score>=0.08)picks.push([c,sg]);
@@ -726,11 +738,11 @@ eras.reverse().forEach(e=>{const o=document.createElement('option');o.value=e;o.
 const f={q:'',r:new Set(KINDS),era:'',status:'',sort:'set',within:'num'};
 let collapsed=new Set();try{collapsed=new Set(JSON.parse(localStorage.getItem('binder-collapsed')||'[]'))}catch(e){}
 function saveCollapsed(){try{localStorage.setItem('binder-collapsed',JSON.stringify([...collapsed]))}catch(e){}}
-try{const p=JSON.parse(localStorage.getItem('binder-filters')||'null');if(p){f.era=p.era||'';f.status=p.status==='wanted'?'listed':p.status||'';f.sort=p.sort||'set';f.within=p.within||'num';f.pmin=p.pmin??null;f.pmax=p.pmax??null;const off=p.x||(p.r?['IR','SIR','FA'].filter(k=>!p.r.includes(k)):[]);f.r=new Set(KINDS.filter(k=>!off.includes(k)));if(!f.r.size)f.r=new Set(KINDS)}}catch(e){}
+try{const p=JSON.parse(localStorage.getItem('binder-filters')||'null');if(p){f.era=p.era||'';f.status=p.status==='wanted'?'listed':p.status||'';f.sort=p.sort||'set';f.within=p.within||'num';f.sets=Array.isArray(p.sets)?new Set(p.sets.filter(id=>S[id])):null;f.pmin=p.pmin??null;f.pmax=p.pmax??null;const off=p.x||(p.r?['IR','SIR','FA'].filter(k=>!p.r.includes(k)):[]);f.r=new Set(KINDS.filter(k=>!off.includes(k)));if(!f.r.size)f.r=new Set(KINDS)}}catch(e){}
 eraSel.value=f.era;document.getElementById('status').value=f.status;document.getElementById('sort').value=f.sort;document.getElementById('within').value=f.within;
 
-function keep(c){if(!f.r.has(c[4]))return false;if(f.pmin==null&&f.pmax==null)return true;const p=c[5];if(p==null)return false;return (f.pmin==null||p>=f.pmin)&&(f.pmax==null||p<=f.pmax)}
-function saveFilters(){try{localStorage.setItem('binder-filters',JSON.stringify({era:f.era,status:f.status,sort:f.sort,within:f.within,pmin:f.pmin,pmax:f.pmax,x:KINDS.filter(k=>!f.r.has(k))}))}catch(e){}}
+function keep(c){if(!f.r.has(c[4]))return false;if(f.sets&&!f.sets.has(c[2]))return false;if(f.pmin==null&&f.pmax==null)return true;const p=c[5];if(p==null)return false;return (f.pmin==null||p>=f.pmin)&&(f.pmax==null||p<=f.pmax)}
+function saveFilters(){try{localStorage.setItem('binder-filters',JSON.stringify({era:f.era,status:f.status,sort:f.sort,within:f.within,sets:f.sets?[...f.sets]:null,pmin:f.pmin,pmax:f.pmax,x:KINDS.filter(k=>!f.r.has(k))}))}catch(e){}}
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function link(c){const s=S[c[2]];const q=CONDQ[buyCond()];return c[6]?'https://www.tcgplayer.com/product/'+c[6]+'?Language=English'+(q?'&Condition='+q:''):'https://www.tcgplayer.com/search/pokemon/product?q='+encodeURIComponent(c[1]+' '+s[0]+' '+c[3])}
 const usd=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
@@ -754,7 +766,7 @@ function renderStats(){
 }
 function renderEtb(){
   const q=f.q.trim().toLowerCase(),el=document.getElementById('binder');
-  let list=E.filter(c=>!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q)||S[c[2]][1].toLowerCase().includes(q));
+  let list=E.filter(c=>(!f.sets||f.sets.has(c[2]))&&(!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q)||S[c[2]][1].toLowerCase().includes(q)));
   if(!E.length){el.innerHTML='<p class="empty">The Elite Trainer Box list is being collected. Check back in a few minutes.</p>';return}
   if(!list.length){el.innerHTML='<p class="empty">No Elite Trainer Boxes match your search.</p>';return}
   const sum=a=>a.reduce((x,c)=>x+(c[5]||0),0),owned=a=>a.filter(c=>state[c[0]]==='owned');
@@ -905,7 +917,30 @@ function syncRar(){document.querySelectorAll('#rarChips input').forEach(i=>i.che
 document.getElementById('rarChips').addEventListener('change',e=>{const i=e.target;if(!i.matches('input'))return;if(i.checked)f.r.add(i.value);else f.r.delete(i.value);syncRar();saveFilters();refresh()});
 document.getElementById('rarChips').addEventListener('click',e=>{const b=e.target.closest('button[data-all]');if(!b)return;f.r=b.dataset.all==='1'?new Set(KINDS):new Set();syncRar();saveFilters();refresh()});
 document.getElementById('rarDD').addEventListener('toggle',e=>{const d=e.currentTarget,pn=document.getElementById('rarChips');pn.style.left='0px';if(!d.open)return;const r=pn.getBoundingClientRect(),over=r.right-(document.documentElement.clientWidth-12);if(over>0)pn.style.left=(-Math.min(over,d.getBoundingClientRect().left-12))+'px'});
-document.addEventListener('click',e=>{const d=document.getElementById('rarDD');if(d.open&&!d.contains(e.target))d.open=false});
+document.addEventListener('click',e=>{for(const id of ['rarDD','setDD']){const d=document.getElementById(id);if(d&&d.open&&!d.contains(e.target))d.open=false}});
+// ---- Sets dropdown: pick any number of sets ----
+{const dd=document.getElementById('setDD'),listEl=document.getElementById('setList'),find=document.getElementById('setFind'),sum=document.getElementById('setSum');
+ const nCards={};for(const c of C.concat(E))nCards[c[2]]=(nCards[c[2]]||0)+1;
+ const ids=Object.keys(S).filter(id=>nCards[id]).sort((a,b)=>S[b][2].localeCompare(S[a][2]));
+ const eraOf=id=>S[id][1];
+ function draw(){const q=find.value.trim().toLowerCase();let h='',last=null;
+   for(const id of ids){const s=S[id];if(q&&!s[0].toLowerCase().includes(q)&&!s[1].toLowerCase().includes(q))continue;
+     if(eraOf(id)!==last){last=eraOf(id);const eids=ids.filter(x=>eraOf(x)===last),on=eids.filter(x=>!f.sets||f.sets.has(x)).length;
+       h+=`<label class="sera"><input type="checkbox" data-era="${esc(last)}"${on===eids.length?' checked':''}>${esc(last)}</label>`}
+     h+=`<label><input type="checkbox" value="${id}"${!f.sets||f.sets.has(id)?' checked':''}> ${esc(s[0])}<small>${s[2].slice(0,4)}</small></label>`}
+   listEl.innerHTML=h||'<p class="note" style="padding:6px 8px">No set matches.</p>';
+   listEl.querySelectorAll('input[data-era]').forEach(i=>{const eids=ids.filter(x=>eraOf(x)===i.dataset.era),on=eids.filter(x=>!f.sets||f.sets.has(x)).length;i.indeterminate=on>0&&on<eids.length})}
+ function syncSets(){if(f.sets&&f.sets.size===ids.length)f.sets=null;const n=f.sets?f.sets.size:ids.length;
+   sum.textContent=!f.sets?'All sets':n===0?'No sets':n<=2?[...f.sets].map(id=>S[id][0]).join(', '):n+' sets';dd.classList.toggle('on',!!f.sets)}
+ function changed(){syncSets();saveFilters();refresh();draw()}
+ listEl.addEventListener('change',e=>{const i=e.target;if(!i.matches('input'))return;if(!f.sets)f.sets=new Set(ids);
+   if(i.dataset.era){for(const x of ids.filter(x=>eraOf(x)===i.dataset.era)){if(i.checked)f.sets.add(x);else f.sets.delete(x)}}else{if(i.checked)f.sets.add(i.value);else f.sets.delete(i.value)}
+   changed()});
+ document.getElementById('setChips').addEventListener('click',e=>{const b=e.target.closest('button[data-all]');if(!b)return;f.sets=b.dataset.all==='1'?null:new Set();changed()});
+ find.addEventListener('input',draw);
+ dd.addEventListener('toggle',()=>{const pn=document.getElementById('setChips');pn.style.left='0px';if(!dd.open)return;draw();const r=pn.getBoundingClientRect(),over=r.right-(document.documentElement.clientWidth-12);if(over>0)pn.style.left=(-Math.min(over,dd.getBoundingClientRect().left-12))+'px'});
+ dd.addEventListener('keydown',e=>{if(e.key==='Escape'){dd.open=false;dd.querySelector('summary').focus()}});
+ syncSets();}
 document.getElementById('rarDD').addEventListener('keydown',e=>{if(e.key==='Escape'){const d=e.currentTarget;d.open=false;d.querySelector('summary').focus()}});
 syncRar();
 refresh();
