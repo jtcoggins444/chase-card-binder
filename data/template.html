@@ -225,6 +225,25 @@ dialog.lb{border:0;border-radius:14px;padding:0;background:var(--panel);color:va
 .tabn{font:500 .72rem var(--f-mono);color:var(--muted);margin-left:2px}
 .viewintro{margin:0 0 12px;color:var(--muted);font-size:.88rem}
 .tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.plan .planset{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-size:.85rem;color:var(--muted)}
+.plan .planset label{display:flex;align-items:center;gap:6px}
+.plan .planset input[type=number]{width:5.2em;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:5px 6px}
+.plan .planset select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:5px 6px;max-width:15em}
+.plan .pin{display:inline-flex;align-items:center;gap:2px;color:var(--ink)}
+.plan .pchk input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+.planstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:8px;margin-top:12px}
+.planstats div{background:var(--bg);border-radius:9px;padding:8px 10px}
+.planstats span{display:block;font-size:.72rem;color:var(--muted)}
+.planstats b{font:600 1.05rem var(--f-mono)}
+.planstats .bar{height:5px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}.planstats .bar i{display:block;height:100%;background:var(--accent)}
+.planh{font:700 .74rem var(--f-body);letter-spacing:.07em;text-transform:uppercase;margin:16px 0 4px;color:var(--muted)}
+.planl li{grid-template-columns:34px minmax(0,1fr) auto}
+.planl .why{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.planl .why span{font:600 .68rem var(--f-body);border-radius:4px;padding:1px 5px;background:var(--bg);color:var(--muted)}
+.planl .why span.g{background:var(--own-bg);color:var(--own)}.planl .why span.b{background:var(--want-bg);color:var(--want)}
+.planl .ch button{font:700 .74rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:4px 8px;cursor:pointer;margin-top:4px}
+.planl .score{font:700 .7rem var(--f-body);color:var(--muted)}
+.planbought{margin-top:14px}.planbought summary{cursor:pointer;font-weight:700;font-size:.88rem}
 .mvctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mvctl select,.mvctl input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
 .mvrng{display:flex;flex-wrap:wrap;margin:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px}
@@ -495,6 +514,26 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
   <div id="binder"></div>
   </div>
   <div id="tabMovers" role="tabpanel" aria-labelledby="tabBtnMovers" hidden>
+    <section class="mvsec plan" id="plan">
+      <div class="mvhd"><h2>Weekly buy plan</h2><p class="mvsum" id="planWeek"></p></div>
+      <div class="planset">
+        <label>Weekly budget <span class="pin">$<input id="pBudget" type="number" inputmode="decimal" min="0" step="1"></span></label>
+        <label>To savings fund <span class="pin">$<input id="pReserve" type="number" inputmode="decimal" min="0" step="1"></span></label>
+        <label class="pchk"><input type="checkbox" id="pRoll"> Unspent money goes to the fund</label>
+        <label>Pick from <select id="pScope"><option value="missing">Chase cards I don't own</option><option value="lists">Cards on my lists</option><option value="all">All chase cards</option></select></label>
+        <label class="pchk"><input type="checkbox" id="pEtb"> Include ETBs</label>
+        <label>Saving for <select id="pGoal"><option value="">Nothing specific</option></select></label>
+      </div>
+      <div class="planstats" id="planStats"></div>
+      <h3 class="planh">This week's picks</h3>
+      <ol class="mvl planl" id="planPicks"></ol>
+      <h3 class="planh">Bigger buys for your fund</h3>
+      <ol class="mvl planl" id="planBig"></ol>
+      <h3 class="planh">Watch, don't buy yet</h3>
+      <ol class="mvl planl" id="planWatch"></ol>
+      <details class="planbought"><summary id="planBoughtSum">Bought this week</summary><ol class="mvl planl" id="planBought"></ol></details>
+      <p class="note" id="planNote"></p>
+    </section>
     <div class="mvctl">
       <div class="rng mvrng" id="mvRng" role="group" aria-label="Period"><button type="button" data-d="1" aria-pressed="true">1 day</button><button type="button" data-d="7" aria-pressed="false">7 days</button><button type="button" data-d="30" aria-pressed="false">30 days</button><button type="button" data-d="91" aria-pressed="false">3 mo</button><button type="button" data-d="182" aria-pressed="false">6 mo</button><button type="button" data-d="365" aria-pressed="false">1 yr</button><button type="button" data-d="730" aria-pressed="false">2 yr</button><button type="button" data-d="0" aria-pressed="false">All time</button></div>
       <select id="mvMetric" aria-label="Rank by"><option value="pct">Rank by % change</option><option value="abs">Rank by $ change</option></select>
@@ -660,6 +699,7 @@ function renderBuy(){
 function chgSpan(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=days?last[0]-days*864e5+12*36e5:-Infinity;let base=null;for(const p of s){if(p[0]<=cut&&p!==last)base=p;else if(p[0]>cut)break}
   if(!base)base=s[0];if(base===last||!base[1])return null;return {from:base[1],to:last[1],abs:last[1]-base[1],pct:(last[1]-base[1])/base[1]*100,since:base[0]}}
 function renderMovers(){
+  if(window.__planReady)try{renderPlan()}catch(e){console.warn('plan',e)}
   const panel=document.getElementById('tabMovers');if(!panel||panel.hidden)return;
   const days=+(document.querySelector('#mvRng button[aria-pressed="true"]')||{dataset:{d:1}}).dataset.d;const plabel={1:'1 day',7:'7 days',30:'30 days',91:'3 months',182:'6 months',365:'1 year',730:'2 years'}[days];
   const metric=document.getElementById('mvMetric').value,mn=parseFloat(document.getElementById('mvMin').value),min=isNaN(mn)?5:mn;
@@ -746,6 +786,8 @@ let paid={};try{paid=JSON.parse(localStorage.getItem('binder-paid-v1')||'{}')||{
 let cond={};try{cond=JSON.parse(localStorage.getItem('binder-cond-v1')||'{}')||{}}catch(e){cond={}}
 // Custom lists: lists = {listId: name}; lm = {"listId:cardId": 1}
 let lists={},lm={};try{const j=JSON.parse(localStorage.getItem('binder-lists-v1')||'{}')||{};lists=j.lists||{};lm=j.lm||{}}catch(e){lists={};lm={}}
+// weekly buy plan: bd = {cardId: 'YYYY-MM-DD' bought through the plan}, cfg = plan settings
+let bd={},cfg={};try{const j=JSON.parse(localStorage.getItem('binder-plan-v1')||'{}')||{};bd=j.bd||{};cfg=j.cfg||{}}catch(e){bd={};cfg={}}
 let curList='';try{curList=localStorage.getItem('binder-curList')||''}catch(e){}
 // The old Want marks become a list called "Want list" (same id on every device, so they line up when synced)
 {const w=Object.keys(state).filter(k=>state[k]==='wanted');if(w.length){if(!lists.want)lists.want='Want list';for(const id of w){lm['want:'+id]=1;delete state[id]}window.binderBulk=Date.now();
@@ -758,7 +800,7 @@ function onAnyList(id){for(const l in lists)if(lm[l+':'+id])return true;return f
 const CONDS=[['NM','Near Mint'],['LP','Lightly Played'],['MP','Moderately Played'],['HP','Heavily Played'],['DMG','Damaged'],['GR','Graded']];
 const CONDQ={NM:'Near+Mint',LP:'Near+Mint|Lightly+Played',MP:'Near+Mint|Lightly+Played|Moderately+Played',HP:'Near+Mint|Lightly+Played|Moderately+Played|Heavily+Played'};
 function buyCond(){const el=document.getElementById('buyCond');return el?el.value:'LP'}
-function cache(fromSync){try{localStorage.setItem(LS,JSON.stringify(state));localStorage.setItem('binder-lists-v1',JSON.stringify({lists,lm}));localStorage.setItem('binder-paid-v1',JSON.stringify(paid));localStorage.setItem('binder-cond-v1',JSON.stringify(cond))}catch(e){}if(!fromSync&&typeof window.binderChanged==='function')window.binderChanged()}
+function cache(fromSync){try{localStorage.setItem(LS,JSON.stringify(state));localStorage.setItem('binder-lists-v1',JSON.stringify({lists,lm}));localStorage.setItem('binder-plan-v1',JSON.stringify({bd,cfg}));localStorage.setItem('binder-paid-v1',JSON.stringify(paid));localStorage.setItem('binder-cond-v1',JSON.stringify(cond))}catch(e){}if(!fromSync&&typeof window.binderChanged==='function')window.binderChanged()}
 const eras=[...new Set(Object.values(S).map(s=>s[1]))];
 const eraSel=document.getElementById('era');
 eras.reverse().forEach(e=>{const o=document.createElement('option');o.value=e;o.textContent=e;eraSel.appendChild(o)});
@@ -1332,6 +1374,79 @@ saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a 
  ul.addEventListener('click',e=>{const bt=e.target.closest('button[data-i]');if(!bt)return;const b=load()[+bt.dataset.i];if(!b)return;
    autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};if(b.lists){lists={...b.lists};lm={...(b.lm||{})}}cache();refresh();dlg.close();
    document.getElementById('backupMsg').textContent='Restored '+b.owned+' owned cards from '+new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'});}
+// ---- weekly buy plan ----
+function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:''}[k]}   // plan setting, or its default
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function weekStart(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
+function avgOver(s,days){if(!s.length)return null;const end=s[s.length-1][0].getTime(),cut=end-days*864e5;const a=s.filter(p=>p[0].getTime()>=cut);return a.length>=3?a.reduce((x,p)=>x+p[1],0)/a.length:null}
+// how good a buy each card looks right now: price vs its own averages, long-term direction, sales and supply
+function planScore(c){
+  const cur=c[5];if(cur==null||cur<=0)return null;
+  const s=series(c);if(s.length<8)return null;
+  const a30=avgOver(s,30),a90=avgOver(s,90),c7=chgOver(c,7),c180=chgOver(c,182)??chgOver(c,90),a=activity(c),P=PPT&&PPT.c[c[0]];
+  let sc=50;const why=[];
+  if(a30){const d=(a30-cur)/a30;if(d>=0.04){sc+=Math.min(25,d*120);why.push(['g',`${Math.round(d*100)}% under 30-day avg`])}else if(d<=-0.1){sc-=Math.min(20,-d*80);why.push(['b',`${Math.round(-d*100)}% above 30-day avg`])}}
+  if(a90){const d=(a90-cur)/a90;if(d>=0.08){sc+=Math.min(10,d*40);why.push(['g',`${Math.round(d*100)}% under 3-month avg`])}}
+  let slide=false;
+  if(c180!=null){if(c180>=10){sc+=Math.min(12,c180/5);why.push(['g',`up ${Math.round(c180)}% over 6 months`])}else if(c180<=-25){sc-=15;slide=true;why.push(['b',`down ${Math.round(-c180)}% over 6 months`])}}
+  let falling=false;
+  if(c7!=null){if(c7<=-8){sc-=8;falling=true;why.push(['b',`still falling (${Math.round(c7)}% this week)`])}else if(c7>=12){sc-=10;why.push(['b',`spiked ${Math.round(c7)}% this week`])}}
+  if(a&&a.real){
+    if(a.level==='hot'){sc+=8;why.push(['g','sells fast'])}else if(a.level==='steady')sc+=5;else{sc-=4;why.push(['','slow seller'])}
+    if(a.trend==='up'){sc+=7;why.push(['g','sales picking up'])}else if(a.trend==='down'){sc-=5;why.push(['b','sales slowing'])}
+    const lst=P&&P.t&&P.t[2];if(lst!=null&&a.s30>0){const mo=lst/a.s30;if(mo<=1){sc+=10;why.push(['g',`tight supply (${lst} listed, ${a.s30} sold/mo)`])}else if(mo<=3)sc+=4;else if(mo>=8){sc-=6;why.push(['',`plenty listed (${lst})`])}}}
+  if(typeof onAnyList==='function'&&onAnyList(c[0])){sc+=10;why.push(['g','on your list'])}
+  const spike=(c7!=null&&c7>=12)||(a30&&(cur-a30)/a30>=0.15);
+  // spiked or still dropping fast: good card maybe, bad moment. These go to Watch instead of picks.
+  return {c,price:cur,sc:Math.round(sc),why,spike:spike||falling,slide}}
+function planWeeks(){const start=cfg.start||ymd(weekStart(new Date()));const w0=new Date(start+'T12:00:00'),now=weekStart(new Date());const out=[];for(let d=weekStart(w0);d<=now;d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+7))out.push(ymd(d));return out}
+function spentIn(wk){const a=new Date(wk+'T00:00:00'),b=new Date(a.getFullYear(),a.getMonth(),a.getDate()+7);let t=0;const items=[];for(const [id,d] of Object.entries(bd)){const x=new Date(d+'T12:00:00');if(x>=a&&x<b&&byId[id]){const v=paid[id]??byId[id][5]??0;t+=v;items.push([id,v,d])}}return {t,items}}
+function planMoney(){
+  const budget=+pc('budget')||0,reserve=Math.min(budget,+pc('reserve')||0),spend=budget-reserve,weeks=planWeeks();let fund=0;
+  weeks.forEach((w,i)=>{const sp=spentIn(w).t,last=i===weeks.length-1;fund+=reserve;if(sp>spend)fund-=sp-spend;else if(!last&&pc('roll'))fund+=spend-sp});
+  const cw=spentIn(weeks[weeks.length-1]);return {budget,reserve,spend,fund:Math.max(0,fund),fundRaw:fund,spent:cw.t,left:Math.max(0,spend-cw.t),items:cw.items,week:weeks[weeks.length-1],nweeks:weeks.length}}
+function renderPlan(){
+  const el=document.getElementById('plan');if(!el)return;
+  if(!cfg.start){cfg.start=ymd(weekStart(new Date()))}
+  const set=(id,v)=>{const e=document.getElementById(id);if(e.type==='checkbox')e.checked=!!v;else if(document.activeElement!==e)e.value=v};
+  set('pBudget',pc('budget'));set('pReserve',pc('reserve'));set('pRoll',pc('roll'));set('pScope',pc('scope'));set('pEtb',pc('etb'));
+  const M=planMoney(),scope=pc('scope');
+  const wk=new Date(M.week+'T12:00:00');document.getElementById('planWeek').textContent=`Week of ${wk.toLocaleDateString('en-US',{month:'short',day:'numeric'})}. Picks are ranked on price vs recent averages, 6-month direction, how fast it sells, and how many are listed.`;
+  // goal choices: list cards and missing cards over the weekly spend
+  const gsel=document.getElementById('pGoal'),goalPool=C.concat(E).filter(c=>c[5]!=null&&c[5]>M.spend&&state[c[0]]!=='owned'&&(onAnyList(c[0])||c[0]===cfg.goal)).sort((a,b)=>b[5]-a[5]).slice(0,60);
+  gsel.innerHTML='<option value="">Nothing specific</option>'+goalPool.map(c=>`<option value="${c[0]}"${c[0]===cfg.goal?' selected':''}>${esc(c[1])} · ${money(c[5])}</option>`).join('')+(goalPool.length?'':'<option disabled>Add pricier cards to a list to pick one</option>');
+  const goal=cfg.goal&&byId[cfg.goal];
+  const st=(k,v,bar)=>`<div><span>${k}</span><b>${v}</b>${bar==null?'':`<div class="bar"><i style="width:${Math.max(0,Math.min(100,bar))}%"></i></div>`}</div>`;
+  document.getElementById('planStats').innerHTML=st('Left to spend this week',usd.format(M.left),M.spend?(M.spent/M.spend)*100:0)+st('Spent this week',usd.format(M.spent))+st('Savings fund',usd.format(M.fund))+
+    (goal?st('Saving for '+goal[1],goal[5]!=null?`${Math.min(100,Math.round(M.fund/goal[5]*100))}% · ${M.fund>=goal[5]?'ready':Math.ceil((goal[5]-M.fund)/Math.max(1,M.reserve+(pc('roll')?M.spend*0.3:0)))+' wk'}`:'—',goal[5]?M.fund/goal[5]*100:0):'');
+  // candidates
+  let pool=C.slice();if(pc('etb'))pool=pool.concat(E);
+  pool=pool.filter(c=>state[c[0]]!=='owned'&&!bd[c[0]]&&(scope!=='lists'||onAnyList(c[0]))&&(c[5]??0)>=3);
+  if(scope==='all')pool=C.concat(pc('etb')?E:[]).filter(c=>!bd[c[0]]&&(c[5]??0)>=3);
+  const scored=pool.map(planScore).filter(Boolean).sort((a,b)=>b.sc-a.sc);
+  const picks=[];let left=M.left;
+  for(const x of scored){if(picks.length>=6)break;if(x.spike||x.sc<60)continue;if(x.price<=left){picks.push(x);left-=x.price}}
+  const big=scored.filter(x=>!x.spike&&!x.slide&&x.sc>=65&&x.price>M.left&&x.price<=Math.max(M.left+M.fund,M.spend)*1.0+0.01).slice(0,4);
+  const bigLater=big.length?[]:scored.filter(x=>!x.spike&&!x.slide&&x.sc>=68&&x.price>M.left).slice(0,3);
+  const watch=scored.filter(x=>x.spike&&x.sc>=55).slice(0,4);
+  const item=(x,btn)=>{const s=S[x.c[2]];return `<li data-id="${x.c[0]}"><button class="th" type="button" aria-label="View ${esc(x.c[1])}"><img loading="lazy" src="${img(x.c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(x.c[1])}</b><small>${esc(s[0])}${x.c[4]==='ETB'?'':' · #'+esc(x.c[3])} · <span class="score">score ${x.sc}</span></small><span class="why">${x.why.slice(0,4).map(([k,t])=>`<span class="${k}">${t}</span>`).join('')}</span></span><span class="ch">${money(x.price)}${btn?`<br><button type="button" data-buy="${x.c[0]}">I bought it</button>`:''}</span></li>`};
+  document.getElementById('planPicks').innerHTML=picks.length?picks.map(x=>item(x,1)).join('')+`<li class="none">${picks.length} pick${picks.length===1?'':'s'} · ${usd.format(M.left-left)} of ${usd.format(M.left)} left this week.</li>`:`<li class="none">${M.left<3?'This week’s spending money is used up. New picks on Monday.':scored.length?'Nothing scores well enough within this week’s budget right now. Holding the money is fine'+(pc('roll')?' (it rolls into your fund).':'.'):'Market data is still loading, or no cards match these settings.'}</li>`;
+  document.getElementById('planBig').innerHTML=big.length?big.map(x=>item(x,1)).join(''):bigLater.length?bigLater.map(x=>item(x,0)).join('')+`<li class="none">Your fund (${usd.format(M.fund)}) isn’t big enough for these yet.</li>`:'<li class="none">Nothing over this week’s budget scores well right now.</li>';
+  document.getElementById('planWatch').innerHTML=watch.length?watch.map(x=>item(x,0)).join(''):'<li class="none">No good cards are spiking or sliding right now.</li>';
+  document.getElementById('planBoughtSum').textContent=`Bought this week (${M.items.length})`;
+  document.getElementById('planBought').innerHTML=M.items.length?M.items.map(([id,v,d])=>{const c=byId[id];return `<li data-id="${id}"><button class="th" type="button"><img loading="lazy" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(c[1])}</b><small>${new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</small></span><span class="ch">${usd.format(v)}<br><button type="button" data-unbuy="${id}">Undo</button></span></li>`}).join(''):'<li class="none">Tap "I bought it" on a pick (or here later) to count it against this week.</li>';
+  document.getElementById('planNote').textContent='Scores weigh price against the card’s own 30-day and 3-month averages, its 6-month direction, TCGplayer sales speed and trend, and listings vs monthly sales. Cards that just spiked, or are still dropping fast, go to Watch until they settle. These are signals from past prices, not predictions; collectibles can be slow to resell.';
+}
+{const pl=document.getElementById('plan');
+ const num=(id,k)=>document.getElementById(id).addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>=0){cfg[k]=v;cache();renderPlan()}});
+ num('pBudget','budget');num('pReserve','reserve');
+ pl.addEventListener('change',e=>{const t=e.target;if(t.id==='pRoll'){cfg.roll=t.checked?1:0}else if(t.id==='pEtb'){cfg.etb=t.checked?1:0}else if(t.id==='pScope'){cfg.scope=t.value}else if(t.id==='pGoal'){cfg.goal=t.value}else return;cache();renderPlan()});
+ pl.addEventListener('click',e=>{
+   const th=e.target.closest('.th');if(th){openDetail(byId[th.closest('li').dataset.id]);return}
+   const b=e.target.closest('button[data-buy]');if(b){const c=byId[b.dataset.buy];const v=prompt(`What did you pay for ${c[1]}?`,c[5]!=null?c[5].toFixed(2):'');if(v==null)return;const n=parseFloat(String(v).replace(/[$,]/g,''));
+     if(!isNaN(n)&&n>=0)paid[c[0]]=Math.round(n*100)/100;state[c[0]]='owned';bd[c[0]]=ymd(new Date());cache();refresh();return}
+   const u=e.target.closest('button[data-unbuy]');if(u){const id=u.dataset.unbuy;delete bd[id];delete state[id];delete paid[id];cache();refresh()}});}
+window.__planReady=true;
 // ---- market data summary (6-month history, real sales counts, graded values) ----
 fetch('data/ppt/summary.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(!j||!j.c)return;PPT=j;ACT.clear();refresh();if(lb.open&&cur)openDetail(cur)}).catch(()=>{});
 // ---- printable placeholders ----
@@ -1365,9 +1480,9 @@ function autoBackup(why){try{const own=Object.values(state).filter(v=>v==='owned
   list.unshift({t:new Date().toISOString(),why,owned:own,state,paid,cond,lists,lm});localStorage.setItem('binder-autobackup',JSON.stringify(list.slice(0,8)))}catch(e){}}
 autoBackup('app opened');
 window.binderStore={
-  get:()=>({state:{...state},paid:{...paid},cond:{...cond},lists:{...lists},lm:{...lm}}),
+  get:()=>({state:{...state},paid:{...paid},cond:{...cond},lists:{...lists},lm:{...lm},bd:{...bd},cfg:{...cfg}}),
   backup:autoBackup,
-  set:(s,p,c,l,m)=>{state={...s};paid={...p};cond={...c};if(l){lists={...l};lm={...(m||{})}}cache(true);
+  set:(s,p,c,l,m,b,g)=>{state={...s};paid={...p};cond={...c};if(l){lists={...l};lm={...(m||{})}}if(b)bd={...b};if(g)cfg={...g};cache(true);
     if(document.getElementById('listDlg').open&&ldCard)ldDraw();
     const ae=document.activeElement;if(ae&&ae.matches&&ae.matches('input.paid,input[type=number]')&&ae.closest('.row')){renderStats();tabCounts();return}
     refresh()},

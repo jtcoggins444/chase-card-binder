@@ -1,7 +1,7 @@
 // Chase Card Binder - sync between devices (Firebase Auth + Firestore) and installable-app setup.
 // The binder keeps working on its own if any of this fails; sync just lights up when it can.
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
-const KEYS = ['state', 'paid', 'cond', 'lists', 'lm'];
+const KEYS = ['state', 'paid', 'cond', 'lists', 'lm', 'bd', 'cfg'];
 const $ = id => document.getElementById(id);
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -15,7 +15,7 @@ function ui(s, label) {
 }
 
 // ---- helpers: three-way merge of {state, paid, cond, lists, lm} maps ----
-const empty = () => ({ state: {}, paid: {}, cond: {}, lists: {}, lm: {} });
+const empty = () => ({ state: {}, paid: {}, cond: {}, lists: {}, lm: {}, bd: {}, cfg: {} });
 function norm(d) {
   const o = empty();
   if (!d) return o;
@@ -23,6 +23,8 @@ function norm(d) {
     if (k === 'state' && (v === 'owned' || v === 'wanted')) o.state[id] = v;
     else if (k === 'lists' && typeof v === 'string' && v) o.lists[id] = v;
     else if (k === 'lm' && v === 1) o.lm[id] = 1;
+    else if (k === 'bd' && typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) o.bd[id] = v;
+    else if (k === 'cfg' && ((typeof v === 'number' && isFinite(v)) || (typeof v === 'string' && v.length < 80))) o.cfg[id] = v;
     else if (k === 'paid' && typeof v === 'number' && isFinite(v) && v >= 0) o.paid[id] = v;
     else if (k === 'cond' && typeof v === 'string' && v) o.cond[id] = v;
   }
@@ -38,7 +40,7 @@ function diff(a, b) {
   return n ? c : null;
 }
 function apply(base, ch) {
-  const o = { state: { ...base.state }, paid: { ...base.paid }, cond: { ...base.cond }, lists: { ...base.lists }, lm: { ...base.lm } };
+  const o = { state: { ...base.state }, paid: { ...base.paid }, cond: { ...base.cond }, lists: { ...base.lists }, lm: { ...base.lm }, bd: { ...base.bd }, cfg: { ...base.cfg } };
   if (ch) for (const k of KEYS) for (const [id, v] of Object.entries(ch[k])) { if (v === null) delete o[k][id]; else o[k][id] = v; }
   return o;
 }
@@ -143,7 +145,7 @@ async function start() {
         mine = diff(empty(), local);
       }
       const merged = apply(remote, mine);
-      if (!same(merged, local)) { store.backup && store.backup('before sync'); store.set(merged.state, merged.paid, merged.cond, merged.lists, merged.lm); }
+      if (!same(merged, local)) { store.backup && store.backup('before sync'); store.set(merged.state, merged.paid, merged.cond, merged.lists, merged.lm, merged.bd, merged.cfg); }
       base = remote; saveBase(uid, base); lastSync = new Date();
       if (mine && !same(merged, remote)) schedule(); else status();
     }, err => { console.warn('Sync listener error', err); ui('off', 'Sync paused'); });
