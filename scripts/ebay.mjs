@@ -102,4 +102,71 @@ for (const c of pool) {
 }
 if (calls < 20 && existsSync(prevPath)) { log('Too few searches went through; keeping the previous file.'); process.exit(1); }
 writeFileSync(prevPath + '.tmp', JSON.stringify(out)); renameSync(prevPath + '.tmp', prevPath);
+
+// ---- deal alerts to Taylor's phone (ntfy) ----
+await (async () => {
+  const TOPIC = process.env.NTFY_TOPIC;
+  if (!TOPIC) return log('No NTFY_TOPIC; alerts skipped.');
+  // owned cards + alert settings, shared by the app (Firestore "alerts" documents)
+  const conf = readFileSync(join(Root, 'firebase-config.js'), 'utf8');
+  const key = (conf.match(/apiKey:\s*["']([^"']+)/) || [])[1], pid = (conf.match(/projectId:\s*["']([^"']+)/) || [])[1];
+  let owned = new Set(), cfg = {};
+  try {
+    const r = await fetch(`https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents/alerts?key=${key}`);
+    if (!r.ok) return log(`Alerts: can't read your owned cards yet (HTTP ${r.status}); update the Firebase rules. Skipping alerts.`);
+    const j = await r.json();
+    for (const d of j.documents || []) {
+      const f = d.fields || {};
+      for (const id of String((f.owned && f.owned.stringValue) || '').split(',')) if (id) owned.add(id);
+      for (const [k, v] of Object.entries((f.cfg && f.cfg.mapValue && f.cfg.mapValue.fields) || {})) cfg[k] = Number(v.integerValue ?? v.doubleValue ?? v.stringValue);
+    }
+    if (!(j.documents || []).length) return log('Alerts: no shared settings yet (open the app once while signed in). Skipping alerts.');
+  } catch (e) { return log('Alerts: ' + e.message); }
+  if (cfg.alertOn === 0) return log('Alerts are turned off in the app.');
+  const pct = (cfg.alertPct ?? 15) / 100, lowMin = cfg.lowMin ?? 150, lowPct = (cfg.lowPct ?? 35) / 100;
+  const gradeOk = (g, r, R) => g >= 9 ? r <= 1 : g >= 8 ? r <= 0.85 : g >= 7 ? R >= lowMin && r <= 1 - lowPct : false;
+  const seenPath = join(Root, 'data/alerts-seen.json'), first = !existsSync(seenPath);
+  const seen = first ? {} : JSON.parse(readFileSync(seenPath, 'utf8'));
+  const now = Date.now(), byId = Object.fromEntries(cards.cards.map(c => [c[0], c]));
+  const deals = [];
+  for (const [cid, rows] of Object.entries(out.c)) {
+    if (owned.has(cid)) continue;
+    const c = byId[cid], R = raw(c);
+    for (const [total, grader, grade, id, title] of rows) {
+      if (seen[id]) continue;
+      const r = total / R;
+      if (r > 1 - pct) continue;
+      if (grader ? !gradeOk(grade, r, R) : r > 0.8) continue;
+      deals.push({ c, R, total, grader, grade, id, title, r });
+    }
+  }
+  // ungraded: only Near Mint or Lightly Played, per the seller's eBay condition
+  const keep = [];
+  for (const d of deals.sort((a, b) => (b.R - b.total) - (a.R - a.total))) {
+    if (!d.grader) {
+      if (keep.length >= 12) continue;
+      try {
+        const r = await fetch('https://api.ebay.com/buy/browse/v1/item/' + encodeURIComponent('v1|' + d.id + '|0'), { headers: { Authorization: 'Bearer ' + tok, 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' } });
+        if (!r.ok) continue;
+        const it = await r.json();
+        const cond = JSON.stringify(it.conditionDescriptors || []).toLowerCase();
+        if (/near mint or better/.test(cond)) d.cond = 'Near Mint'; else if (/lightly played|excellent/.test(cond)) d.cond = 'Lightly Played'; else continue;
+      } catch (e) { continue; }
+    }
+    keep.push(d);
+  }
+  for (const d of deals) seen[d.id] = new Date(now).toISOString().slice(0, 10);
+  for (const [id, day] of Object.entries(seen)) if (now - Date.parse(day) > 21 * 864e5) delete seen[id];
+  writeFileSync(seenPath, JSON.stringify(seen));
+  const send = (title, body, click, prio) => fetch('https://ntfy.sh/' + TOPIC, { method: 'POST', headers: { Title: title, Click: click, Priority: prio || 'default', Tags: 'moneybag' }, body }).catch(() => {});
+  const usd = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (first) { await send('Deal alerts are on', `Watching eBay for your unowned chase cards (${owned.size} owned skipped). ${keep.length} current deals noted; you'll get a ping for new ones.`, 'https://jtcoggins444.github.io/chase-card-binder/#movers'); return log(`Alerts: first run, ${keep.length} current deals recorded without pinging.`); }
+  const top = keep.slice(0, 6);
+  for (const d of top) {
+    const set = S[d.c[2]][0], what = d.grader ? `${d.grader} ${d.grade}` : d.cond;
+    await send(`${d.c[1]} · ${what} · ${Math.round((1 - d.r) * 100)}% under`, `${set} #${d.c[3]}: ${usd(d.total)} with shipping vs ${usd(d.R)} raw Near Mint. ${d.title}`, 'https://www.ebay.com/itm/' + d.id, d.r <= 0.7 ? 'high' : 'default');
+  }
+  if (keep.length > top.length) await send(`${keep.length - top.length} more eBay deals`, 'Open the app to see them on each card (Slab deals sort).', 'https://jtcoggins444.github.io/chase-card-binder/');
+  log(`Alerts: ${keep.length} new deals, ${top.length} sent.`);
+})();
 log(`Searched ${pool.length} cards with ${calls} calls; ${found} cards have listings under raw Near Mint.`);

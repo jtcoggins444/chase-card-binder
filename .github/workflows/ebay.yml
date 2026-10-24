@@ -30,6 +30,7 @@ jobs:
         env:
           EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
           EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: node scripts/ebay.mjs ${{ github.event.inputs.max }}
       - name: Save to the repository
         run: |
@@ -37,6 +38,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           [ -f data/live.json ] || exit 0
           git add data/live.json
+          if [ -f data/alerts-seen.json ]; then git add data/alerts-seen.json; fi
           if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
           git commit -m "Live eBay listings $(date -u +'%F %H:%M')"
           for i in 1 2 3; do git pull --rebase -q origin main && git push && break; sleep 10; done

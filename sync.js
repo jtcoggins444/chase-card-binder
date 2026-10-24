@@ -109,7 +109,7 @@ async function start() {
     const forUid = uid;
     try {
       await S.setDoc(S.doc(db, 'users', forUid), data, { merge: true });
-      if (forUid === uid) { base = apply(base, ch); saveBase(uid, base); lastSync = new Date(); }
+      if (forUid === uid) { base = apply(base, ch); saveBase(uid, base); lastSync = new Date(); shareAlerts(); }
     } catch (e) {
       console.warn('Sync failed; will retry', e);
       setTimeout(schedule, 15000);
@@ -117,6 +117,18 @@ async function start() {
     pushing = false;
     if (again) { again = false; schedule(); }
     status();
+  }
+  // For the deal alerts on GitHub: which cards you own (ids only) and your alert settings, in a separate document
+  // the alert job can read. Your prices, conditions and lists stay private. Only sent when something changed.
+  let lastShared = '';
+  function shareAlerts() {
+    if (!uid) return;
+    const d = store.get(), owned = Object.keys(d.state).filter(id => d.state[id] === 'owned').sort();
+    const c = d.cfg || {}, pick = {};
+    for (const k of ['alertOn', 'alertPct', 'lowMin', 'lowPct', 'lpOn', 'lpMin', 'lpPct']) if (c[k] != null) pick[k] = c[k];
+    const body = JSON.stringify({ o: owned, c: pick });
+    if (body === lastShared) return;
+    S.setDoc(S.doc(db, 'alerts', uid), { owned: owned.join(','), cfg: pick, t: S.serverTimestamp() }).then(() => { lastShared = body; }).catch(e => console.warn('Alert settings not shared yet (Firebase rules?)', e && e.code));
   }
   function schedule() { if (!uid) return; clearTimeout(timer); timer = setTimeout(push, 800); status(); }
   window.binderChanged = schedule;
@@ -146,7 +158,7 @@ async function start() {
       }
       const merged = apply(remote, mine);
       if (!same(merged, local)) { store.backup && store.backup('before sync'); store.set(merged.state, merged.paid, merged.cond, merged.lists, merged.lm, merged.bd, merged.cfg); }
-      base = remote; saveBase(uid, base); lastSync = new Date();
+      base = remote; saveBase(uid, base); lastSync = new Date(); shareAlerts();
       if (mine && !same(merged, remote)) schedule(); else status();
     }, err => { console.warn('Sync listener error', err); ui('off', 'Sync paused'); });
   }
