@@ -27,11 +27,17 @@ async function token() {
 const cards = JSON.parse(readFileSync(join(Root, 'data/cards.json'), 'utf8'));
 const S = cards.sets, latest = JSON.parse(readFileSync(join(Root, 'data/latest.json'), 'utf8'));
 const raw = c => { const L = c[6] && latest[String(c[6])]; return L && L[3] ? L[3] : null; };
+// what each grade has actually sold for (from the daily market data), to catch fakes and mislabeled slabs
+const sumPath = join(Root, 'data/ppt/summary.json');
+const GDS = existsSync(sumPath) ? JSON.parse(readFileSync(sumPath, 'utf8')).c : {};
 const pool = cards.cards.filter(c => (raw(c) || 0) >= MIN_PRICE).sort((a, b) => raw(b) - raw(a)).slice(0, MAX);
 
 // grade from the title: "PSA 9", "CGC 9.5", "BGS 8.5", "Beckett 9", "TAG 10", "SGC 9", "ACE 10"
 const GR = /\b(PSA|CGC|BGS|BECKETT|TAG|SGC|ACE)\s*(?:GEM\s*MINT|GEM\s*MT|MINT|NM-?MT|PRISTINE)?\s*(10|[1-9](?:\.5)?)\b/i;
-const JUNK = /\b(proxy|custom|digital|orica|fan ?art|replica|reprint card|lot of|bundle|you pick|choose|pick your|japanese|japan|chinese|korean|metal|jumbo|oversized?|sleeve only|case only|empty|code card|art card|sticker|coin|binder)\b/i;
+// accessories, fakes, other languages and damaged copies that mention the card
+const JUNK = /\b(proxy|proxies|custom|digital|orica|fan ?(art|made)|replica|reprint card|lot of|bundle|you pick|choose|pick your|metal|jumbo|oversized?|sleeve|case|cases|display|stand|empty|code card|art card|sticker|coin|binder|keychain|key chain|skin|skins|credit card|extended art(work)?|gold foil|foil card|novelty|acrylic|magnet|pin|insert|label only|slab only|playmat|poster|print|decal|tin|figure|plush|not real|fake|inspired|homemade|handmade|engraved|3d|lenticular|holo card protector|graded 10 novelty)\b/i;
+const LANG = /\b(japanese|japan|jp|jpn|chinese|chn|s-chinese|t-chinese|korean|kor|kr|thai|indonesian|italian|italiano|ita|french|fran[cç]ais|fr|carte|german|deutsch|de|spanish|espa[nñ]ol|portuguese|portugu[eê]s|brazilian|brasil|dutch|polish|russian)\b/i;
+const DAMAGED = /\b(dmg|dm|damaged|damage|hp|heavily played|heavy play|mp|moderately played|poor|crease[ds]?|creasing|bent|water|torn|tear|scratched|ink|marked|altered|trimmed)\b/i;
 function numTokens(c) {
   const n = String(c[3]), tot = S[c[2]] && S[c[2]][3];
   const t = [n.toUpperCase()];
@@ -40,7 +46,7 @@ function numTokens(c) {
 }
 function matches(c, title) {
   const T = title.toUpperCase().replace(/\s+/g, ' ');
-  if (JUNK.test(title)) return false;
+  if (JUNK.test(title) || LANG.test(title)) return false;
   const words = c[1].toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').split(' ').filter(w => w.length >= 3 && !['THE', 'AND'].includes(w));
   if (words.length && !words.every(w => T.includes(w))) return false;
   const nums = numTokens(c);
@@ -74,8 +80,14 @@ for (const c of pool) {
     if (total > R) continue;
     const graded = String(it.conditionId) === '2750', m = it.title.match(GR);
     let grader = null, grade = null;
-    if (graded) { if (!m) continue; grader = m[1].toUpperCase() === 'BECKETT' ? 'BGS' : m[1].toUpperCase(); grade = Number(m[2]); if (grade < 7) continue; }
-    else if (m) continue;   // says graded in the title but listed ungraded: skip
+    if (graded) {
+      if (!m) continue; grader = m[1].toUpperCase() === 'BECKETT' ? 'BGS' : m[1].toUpperCase(); grade = Number(m[2]); if (grade < 7) continue;
+      const g = GDS[c[0]] && GDS[c[0]].gd && GDS[c[0]].gd[grader.toLowerCase() + String(grade).replace('.', '_')];
+      if (g && g[1] >= 5 ? total < 0.6 * g[0] : total < 0.45 * R) continue;   // far below what this grade sells for: likely fake or mislabeled
+    } else {
+      if (m || DAMAGED.test(it.title)) continue;   // says graded in the title, or damaged/played
+      if (total < 0.4 * R) continue;               // too cheap to be the real card in decent shape
+    }
     const id = it.legacyItemId || (String(it.itemId).split('|')[1]) || it.itemId;
     // [total incl. shipping, grader or null, grade or null, eBay item number, title, seller feedback %, Best Offer]
     rows.push([total, grader, grade, String(id), it.title.slice(0, 90), it.seller ? Number(it.seller.feedbackPercentage) || null : null, (it.buyingOptions || []).includes('BEST_OFFER') ? 1 : 0]);
