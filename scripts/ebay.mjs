@@ -35,8 +35,12 @@ const pool = cards.cards.filter(c => (raw(c) || 0) >= MIN_PRICE).sort((a, b) => 
 // grade from the title: "PSA 9", "CGC 9.5", "BGS 8.5", "Beckett 9", "TAG 10", "SGC 9", "ACE 10"
 const GR = /\b(PSA|CGC|BGS|BECKETT|TAG|SGC|ACE)\s*(?:GEM\s*MINT|GEM\s*MT|MINT|NM-?MT|PRISTINE)?\s*(10|[1-9](?:\.5)?)\b/i;
 // accessories, fakes, other languages and damaged copies that mention the card
-const JUNK = /\b(proxy|proxies|custom|digital|orica|fan ?(art|made)|replica|reprint card|lot of|bundle|you pick|choose|pick your|metal|jumbo|oversized?|sleeve|case|cases|display|stand|empty|code card|art card|sticker|coin|binder|keychain|key chain|skin|skins|credit card|extended art(work)?|gold foil|foil card|novelty|acrylic|magnet|pin|insert|label only|slab only|playmat|poster|print|decal|tin|figure|plush|not real|fake|inspired|homemade|handmade|engraved|3d|lenticular|holo card protector|graded 10 novelty)\b/i;
+const JUNK = /\b(proxy|proxies|custom|digital|orica|fan ?(art|made)|replica|reprint card|lot of|bundle|you pick|choose|pick your|metal|jumbo|oversized?|sleeve|case|cases|display|stand|empty|code card|art card|sticker|coin|binder|keychain|key chain|skin|skins|credit card|extended\s+art(work)?|gold foil|foil card|novelty|acrylic|magnet|pin|insert|label only|slab only|playmat|poster|print|decal|tin|figure|plush|not real|fake|inspired|homemade|handmade|engraved|3d|lenticular|holo card protector|graded 10 novelty)\b/i;
 const LANG = /\b(japanese|japan|jp|jpn|chinese|chn|s-chinese|t-chinese|korean|kor|kr|thai|indonesian|italian|italiano|ita|french|fran[cç]ais|fr|carte|german|deutsch|de|spanish|espa[nñ]ol|portuguese|portugu[eê]s|brazilian|brasil|dutch|polish|russian)\b/i;
+// Japanese/Chinese copies often skip the language in the title but give themselves away with Japanese set codes,
+// set names, rarity codes or characters. AR/SAR/CHR/CSR are Japanese rarity codes unless the title says English.
+const ASIAN = /(\b(sv|s|sm|m)\d{1,2}[a-z]\b|pok[eé]mon card 151|\bart rare\b|shiny treasure|vstar universe|terastal festival|battle partners|heat wave arena|hot air arena|night wanderer|stellar miracle|paradise dragona|super electric breaker|cyber judge|wild force|crimson haze|clay burst|snow hazard|raging surf|ruler of the black flame|ancient roar|future flash|triplet beat|scarlet ex|violet ex|mega brave|mega symphonia|inferno x|mega dream|[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af])/i;
+const ASIAN_CODES = /\b(AR|SAR|CHR|CSR)\b/;
 const DAMAGED = /\b(dmg|dm|damaged|damage|hp|heavily played|heavy play|mp|moderately played|poor|crease[ds]?|creasing|bent|water|torn|tear|scratched|ink|marked|altered|trimmed)\b/i;
 function numTokens(c) {
   const n = String(c[3]), tot = S[c[2]] && S[c[2]][3];
@@ -46,6 +50,7 @@ function numTokens(c) {
 }
 function matches(c, title) {
   const T = title.toUpperCase().replace(/\s+/g, ' ');
+  if (ASIAN.test(title) || (ASIAN_CODES.test(title) && !/\b(english|eng|en)\b/i.test(title))) return false;
   if (JUNK.test(title) || LANG.test(title) || /\b(IT|ITA|FR|DE|ES|PT|JP|JPN|KR|CN|SC|TC)\b/.test(title)) return false;   // language codes in capitals
   if ((title.match(/\b[A-Z]{0,3}\d{1,3}\s*\/\s*[A-Z]{0,3}\d{2,3}\b/gi) || []).length > 1) return false;   // several card numbers: a lot
   const words = c[1].toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').split(' ').filter(w => w.length >= 3 && !['THE', 'AND'].includes(w));
