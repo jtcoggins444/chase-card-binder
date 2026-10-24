@@ -60,7 +60,7 @@ const prevPath = join(Root, 'data/live.json');
 for (const c of pool) {
   const R = raw(c), s = S[c[2]];
   const q = `${c[1]} ${c[3]}${s[3] && /^\d+$/.test(c[3]) ? '/' + s[3] : ''}`.replace(/[()]/g, ' ');
-  const filter = `buyingOptions:{FIXED_PRICE},conditionIds:{2750|4000},price:[1..${Math.ceil(R)}],priceCurrency:USD,deliveryCountry:US`;
+  const filter = `buyingOptions:{FIXED_PRICE},conditionIds:{2750|4000},price:[1..${Math.ceil(R)}],priceCurrency:USD,deliveryCountry:US,itemLocationCountry:US`;   // sellers located in the US only
   const url = 'https://api.ebay.com/buy/browse/v1/item_summary/search?' + new URLSearchParams({ q, category_ids: '183454', filter, sort: 'price', limit: '50' });
   let j = null;
   for (let t = 0; t < 3 && !j; t++) {
