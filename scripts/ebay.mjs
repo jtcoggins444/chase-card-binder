@@ -46,7 +46,8 @@ function numTokens(c) {
 }
 function matches(c, title) {
   const T = title.toUpperCase().replace(/\s+/g, ' ');
-  if (JUNK.test(title) || LANG.test(title)) return false;
+  if (JUNK.test(title) || LANG.test(title) || /\b(IT|ITA|FR|DE|ES|PT|JP|JPN|KR|CN|SC|TC)\b/.test(title)) return false;   // language codes in capitals
+  if ((title.match(/\b[A-Z]{0,3}\d{1,3}\s*\/\s*[A-Z]{0,3}\d{2,3}\b/gi) || []).length > 1) return false;   // several card numbers: a lot
   const words = c[1].toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').split(' ').filter(w => w.length >= 3 && !['THE', 'AND'].includes(w));
   if (words.length && !words.every(w => T.includes(w))) return false;
   const nums = numTokens(c);
