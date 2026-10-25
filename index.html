@@ -254,6 +254,7 @@ dialog.lb{border:0;border-radius:14px;padding:0;background:var(--panel);color:va
 .planev li button,.planevadd button{font:700 .74rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap}
 .planevadd{display:flex;gap:8px;margin-top:6px}.planevadd select{flex:1;min-width:0;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:5px 6px}
 .planlink{display:inline-block;margin-top:4px;font:700 .74rem var(--f-body);color:var(--accent)}
+button.planlink{background:none;border:0;padding:0;cursor:pointer}
 .planbought{margin-top:14px}.planbought summary{cursor:pointer;font-weight:700;font-size:.88rem}
 .mvctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mvctl select,.mvctl input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
@@ -911,9 +912,14 @@ const lpLink=c=>c[6]?'https://www.tcgplayer.com/product/'+c[6]+'?Language=Englis
 // live eBay listings under raw (from data/live.json, refreshed four times a day)
 let LIVE=null;fetch('data/live.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.c){LIVE=j;if(typeof refresh==='function')refresh()}}).catch(()=>{});
 function liveDeals(c){const raw=c[5],L=LIVE&&LIVE.c[c[0]];if(!L||!raw)return [];
-  return L.map(([total,grader,grade,id,title,fb,bo])=>({total,grader,grade,id,title,fb,bo,r:total/raw,g:grader?(grader.toLowerCase()+String(grade).replace('.','_')):null}))
+  const B=badSet();
+  return L.map(([total,grader,grade,id,title,fb,bo,seller,score,chk])=>({total,grader,grade,id,title,fb,bo,seller,score,chk,r:total/raw,g:grader?(grader.toLowerCase()+String(grade).replace('.','_')):null}))
+   .filter(x=>!B.has('i:'+x.id)&&!(x.seller&&B.has('s:'+x.seller.toLowerCase())))
    .filter(x=>x.grader?gradeOk(x.grade,x.r,raw):x.r<=0.85)
    .sort((a,b)=>(raw-b.total)*(b.grader?gW(b.grade):0.5)-(raw-a.total)*(a.grader?gW(a.grade):0.5))}
+// listings and sellers Taylor reported as fake (cfg.bad: "s:seller,i:itemId"), hidden here and skipped by the eBay job
+function badSet(){return new Set(String((typeof cfg!=='undefined'&&cfg.bad)||'').toLowerCase().split(',').filter(Boolean))}
+function reportFake(x){const e=x.seller?'s:'+x.seller.toLowerCase():'i:'+x.id;let a=String(cfg.bad||'').split(',').filter(Boolean).filter(v=>v!==e);a.push(e);while(a.join(',').length>590)a.shift();cfg.bad=a.join(',');cache();if(typeof refresh==='function')refresh()}
 const liveLink=id=>'https://www.ebay.com/itm/'+encodeURIComponent(id);
 const liveAge=()=>LIVE&&LIVE.t?Math.max(0,Math.round((Date.now()-Date.parse(LIVE.t))/36e5)):null;
 function slabSearch(c,g){const s=S[c[2]];return 'https://www.ebay.com/sch/i.html?_sop=15&_nkw='+encodeURIComponent(`${c[1]} ${c[3]}${s[3]?'/'+s[3]:''} ${s[0]} ${glabel(g)}`)}
@@ -1321,9 +1327,13 @@ function openDetail(c){
 // ---- market comparison and graded sales, from the daily market data ----
 const GL={psa10:'PSA 10',psa9:'PSA 9',psa8:'PSA 8',cgc10:'CGC 10',cgc9_5:'CGC 9.5',cgc9:'CGC 9',bgs10:'BGS 10',bgs9_5:'BGS 9.5',bgs9:'BGS 9',tag10:'TAG 10',sgc10:'SGC 10'};
 const eur=new Intl.NumberFormat('en-US',{style:'currency',currency:'EUR'});
-function fillLive(c){const w=document.getElementById('dvLiveWrap'),L=liveDeals(c).slice(0,6);w.hidden=!L.length;if(!L.length)return;
-  document.getElementById('dvLive').innerHTML=L.map(x=>`<li style="grid-template-columns:minmax(0,1fr) auto"><span class="nm"><b>${x.grader?x.grader+' '+x.grade:'Ungraded'}${x.bo?' · Best Offer':''}</b><small>${esc(x.title)}</small><span class="why"><span class="g">${Math.round((1-x.r)*100)}% under raw</span>${x.grader?'':'<span class="b">check condition</span>'}${x.fb?`<span>seller ${x.fb}%</span>`:''}${x.r<0.55?'<span class="b">unusually low: check carefully</span>':''}</span></span><span class="ch">${usd.format(x.total)}<br><a class="planlink" href="${liveLink(x.id)}" target="_blank" rel="noopener">Open on eBay</a></span></li>`).join('');
-  const h=liveAge();document.getElementById('dvLiveNote').textContent=`Buy It Now listings, price includes shipping. Grade read from the listing title${h!=null?`; checked ${h<1?'within the hour':h+' hour'+(h===1?'':'s')+' ago'}`:''}. Graded 9+ at or below raw, 8–8.5 at 15%+ under, 7s only on pricier cards with a steep discount.`}
+function fillLive(c){const w=document.getElementById('dvLiveWrap'),L=liveDeals(c).slice(0,6),nb=badSet().size;w.hidden=!L.length&&!nb;
+  const chk={nm:'<span class="g">seller marked Near Mint</span>',lp:'<span>seller marked Lightly Played</span>',ok:'<span>checked: no red flags</span>'};
+  document.getElementById('dvLive').innerHTML=L.length?L.map((x,i)=>`<li style="grid-template-columns:minmax(0,1fr) auto"><span class="nm"><b>${x.grader?x.grader+' '+x.grade:'Ungraded'}${x.bo?' · Best Offer':''}</b><small>${esc(x.title)}</small><span class="why"><span class="g">${Math.round((1-x.r)*100)}% under raw</span>${chk[x.chk]||(x.grader?'':'<span class="b">check condition</span>')}${x.fb?`<span>seller ${x.fb}%${x.score?' · '+x.score.toLocaleString()+' reviews':''}</span>`:''}${x.score&&x.score<100?'<span class="b">small seller</span>':''}${x.r<0.6?'<span class="b">unusually low: check carefully</span>':''}</span></span><span class="ch">${usd.format(x.total)}<br><a class="planlink" href="${liveLink(x.id)}" target="_blank" rel="noopener">Open on eBay</a><br><button type="button" class="planlink fakebtn" data-i="${i}" title="Hide it and block ${x.seller?'this seller':'this listing'} from the list and alerts">Fake?</button></span></li>`).join(''):'<li><span class="nm"><small>No listings under raw right now.</small></span></li>';
+  document.querySelectorAll('#dvLive .fakebtn').forEach(b=>b.onclick=()=>{if(b.dataset.armed){reportFake(L[+b.dataset.i]);fillLive(c)}else{b.dataset.armed=1;b.textContent=L[+b.dataset.i].seller?'Tap to block seller':'Tap to hide';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent='Fake?'}},4000)}});
+  const h=liveAge(),note=document.getElementById('dvLiveNote');
+  note.innerHTML=`Buy It Now listings from US sellers with 10+ reviews and 97%+ positive; price includes shipping. Cheap ones get a closer look, and listings with several copies or a description that admits a proxy are dropped. Graded 9+ at or below raw, 8–8.5 at 15%+ under, 7s only on pricier cards with a steep discount${h!=null?`; checked ${h<1?'within the hour':h+' hour'+(h===1?'':'s')+' ago'}`:''}.${nb?` <button type="button" class="planlink" id="dvUnblock">${nb} reported fake${nb===1?'':'s'} hidden · Unblock all</button>`:''}`;
+  const u=document.getElementById('dvUnblock');if(u)u.onclick=()=>{if(u.dataset.armed){cfg.bad='';cache();fillLive(c);if(typeof refresh==='function')refresh()}else{u.dataset.armed=1;u.textContent='Tap again to unblock all'}}}
 async function fillMarket(c){
   fillLive(c);
   const cmpW=document.getElementById('dvCmpWrap'),gW=document.getElementById('dvGradedWrap'),condEl=document.getElementById('dvCond');
