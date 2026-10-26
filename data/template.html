@@ -537,6 +537,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <label>Grade 7s on cards over <span class="pin">$<input id="pLowMin" type="number" inputmode="decimal" min="0" step="10"></span> if <span class="pin"><input id="pLowPct" type="number" inputmode="decimal" min="0" max="90" step="5">%</span> under raw</label>
         <label class="pchk"><input type="checkbox" id="pLpOn"> Lightly Played on cards over <span class="pin">$<input id="pLpMin" type="number" inputmode="decimal" min="0" step="10"></span> if <span class="pin"><input id="pLpPct" type="number" inputmode="decimal" min="0" max="80" step="5">%</span> under NM</label>
         <label class="pchk"><input type="checkbox" id="pAlertOn"> Phone alerts for new eBay deals at least <span class="pin"><input id="pAlertPct" type="number" inputmode="decimal" min="0" max="80" step="5">%</span> under raw</label>
+        <label>Save <span class="pin"><input id="pCheapN" type="number" inputmode="numeric" min="0" max="6" step="1"></span> of each check's 6 alerts for cards under <span class="pin">$<input id="pCheapMax" type="number" inputmode="decimal" min="20" step="5"></span></label>
         <label>Saving for <select id="pGoal"><option value="">Nothing specific</option></select></label>
       </div>
       <details class="planev" id="planEv"><summary id="planEvSum">Reprints and restocks</summary>
@@ -1444,7 +1445,7 @@ saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a 
    autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};if(b.lists){lists={...b.lists};lm={...(b.lm||{})}}cache();refresh();dlg.close();
    document.getElementById('backupMsg').textContent='Restored '+b.owned+' owned cards from '+new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'});}
 // ---- weekly buy plan ----
-function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15}[k]}   // plan setting, or its default
+function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15,cheapN:3,cheapMax:50}[k]}   // plan setting, or its default
 // supply events (reprints/restocks): from data/events.json, plus sets Taylor adds (cfg.rpAdd) or turns off (cfg.rpOff)
 let EVENTS={};fetch('data/events.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.sets){EVENTS=j.sets;if(window.__planReady)renderPlan()}}).catch(()=>{});
 const idsOf=k=>String(cfg[k]||'').split(',').filter(Boolean);
@@ -1486,7 +1487,7 @@ function renderPlan(){
   const el=document.getElementById('plan');if(!el)return;
   if(!cfg.start){cfg.start=ymd(weekStart(new Date()))}
   const set=(id,v)=>{const e=document.getElementById(id);if(e.type==='checkbox')e.checked=!!v;else if(document.activeElement!==e)e.value=v};
-  set('pBudget',pc('budget'));set('pReserve',pc('reserve'));set('pLowMin',pc('lowMin'));set('pLowPct',pc('lowPct'));set('pLpOn',pc('lpOn'));set('pAlertOn',pc('alertOn'));set('pAlertPct',pc('alertPct'));set('pLpMin',pc('lpMin'));set('pLpPct',pc('lpPct'));set('pRoll',pc('roll'));set('pScope',pc('scope'));set('pEtb',pc('etb'));
+  set('pBudget',pc('budget'));set('pReserve',pc('reserve'));set('pLowMin',pc('lowMin'));set('pLowPct',pc('lowPct'));set('pLpOn',pc('lpOn'));set('pAlertOn',pc('alertOn'));set('pAlertPct',pc('alertPct'));set('pCheapN',pc('cheapN'));set('pCheapMax',pc('cheapMax'));set('pLpMin',pc('lpMin'));set('pLpPct',pc('lpPct'));set('pRoll',pc('roll'));set('pScope',pc('scope'));set('pEtb',pc('etb'));
   const M=planMoney(),scope=pc('scope');
   {const sids=[...new Set(Object.keys(EVENTS).concat(idsOf('rpAdd')))].filter(id=>S[id]),on=sids.filter(id=>supplyEvent(id));
    document.getElementById('planEvSum').textContent=`Reprints and restocks (${on.length} set${on.length===1?'':'s'})`;
@@ -1532,7 +1533,7 @@ function renderPlan(){
 }
 {const pl=document.getElementById('plan');
  const num=(id,k)=>document.getElementById(id).addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>=0){cfg[k]=v;cache();renderPlan()}});
- num('pBudget','budget');num('pReserve','reserve');num('pLowMin','lowMin');num('pLowPct','lowPct');num('pLpMin','lpMin');num('pLpPct','lpPct');num('pAlertPct','alertPct');
+ num('pBudget','budget');num('pReserve','reserve');num('pLowMin','lowMin');num('pLowPct','lowPct');num('pLpMin','lpMin');num('pLpPct','lpPct');num('pAlertPct','alertPct');num('pCheapN','cheapN');num('pCheapMax','cheapMax');
  pl.addEventListener('change',e=>{const t=e.target;if(t.id==='pRoll'){cfg.roll=t.checked?1:0}else if(t.id==='pLpOn'){cfg.lpOn=t.checked?1:0}else if(t.id==='pAlertOn'){cfg.alertOn=t.checked?1:0}else if(t.id==='pEtb'){cfg.etb=t.checked?1:0}else if(t.id==='pScope'){cfg.scope=t.value}else if(t.id==='pGoal'){cfg.goal=t.value}else return;cache();renderPlan()});
  pl.addEventListener('click',e=>{
    const ev=e.target.closest('button[data-ev]');if(ev){const id=ev.dataset.ev,add=idsOf('rpAdd'),off=idsOf('rpOff');

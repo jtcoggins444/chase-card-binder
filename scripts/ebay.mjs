@@ -195,34 +195,46 @@ await (async () => {
       deals.push({ c, R, total, grader, grade, id, title, r, chk });
     }
   }
-  // ungraded: only Near Mint or Lightly Played, per the seller's eBay condition
-  const keep = [];
-  for (const d of deals.sort((a, b) => (b.R - b.total) - (a.R - a.total))) {
-    if (!d.grader && (d.chk === 'nm' || d.chk === 'lp')) d.cond = d.chk === 'nm' ? 'Near Mint' : 'Lightly Played';
-    else if (!d.grader) {
-      if (keep.length >= 12) continue;
-      try {
-        const r = await fetch('https://api.ebay.com/buy/browse/v1/item/' + encodeURIComponent('v1|' + d.id + '|0'), { headers: { Authorization: 'Bearer ' + tok, 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' } });
-        if (!r.ok) continue;
-        const it = await r.json();
-        const cond = JSON.stringify(it.conditionDescriptors || []).toLowerCase();
-        if (/near mint or better/.test(cond)) d.cond = 'Near Mint'; else if (/lightly played|excellent/.test(cond)) d.cond = 'Lightly Played'; else continue;
-      } catch (e) { continue; }
+  // two groups so cheaper cards aren't crowded out by big-dollar savings: cards under cheapMax (default $50) and the rest,
+  // each ranked by how far under raw they are. Ungraded: only Near Mint or Lightly Played, per the seller's eBay condition.
+  const cheapMax = cfg.cheapMax ?? 50, cheapN = Math.min(6, cfg.cheapN ?? 3);
+  const done = [];   // deals looked at this run (the rest wait for a later run instead of being skipped)
+  async function pick(list) {
+    const keep = []; let looks = 0;
+    for (const d of list.sort((a, b) => a.r - b.r || (b.R - b.total) - (a.R - a.total))) {
+      if (!d.grader && (d.chk === 'nm' || d.chk === 'lp')) d.cond = d.chk === 'nm' ? 'Near Mint' : 'Lightly Played';
+      else if (!d.grader) {
+        if (looks >= 12 || keep.length >= 10) continue;
+        looks++; done.push(d);
+        try {
+          const r = await fetch('https://api.ebay.com/buy/browse/v1/item/' + encodeURIComponent('v1|' + d.id + '|0'), { headers: { Authorization: 'Bearer ' + tok, 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' } });
+          if (!r.ok) continue;
+          const it = await r.json();
+          const cond = JSON.stringify(it.conditionDescriptors || []).toLowerCase();
+          if (/near mint or better/.test(cond)) d.cond = 'Near Mint'; else if (/lightly played|excellent/.test(cond)) d.cond = 'Lightly Played'; else continue;
+        } catch (e) { continue; }
+      }
+      if (keep.length >= 10) continue;
+      done.push(d); keep.push(d);
     }
-    keep.push(d);
+    return keep;
   }
-  for (const d of deals) seen[d.id] = new Date(now).toISOString().slice(0, 10);
+  const cheap = await pick(deals.filter(d => d.R < cheapMax)), big = await pick(deals.filter(d => d.R >= cheapMax));
+  const keep = [...cheap, ...big];
+  if (first) for (const d of deals) seen[d.id] = new Date(now).toISOString().slice(0, 10);
+  else for (const d of done) seen[d.id] = new Date(now).toISOString().slice(0, 10);
   for (const [id, day] of Object.entries(seen)) if (now - Date.parse(day) > 21 * 864e5) delete seen[id];
   writeFileSync(seenPath, JSON.stringify(seen));
   const send = (title, body, click, prio) => fetch('https://ntfy.sh/' + TOPIC, { method: 'POST', headers: { Title: title, Click: click, Priority: prio || 'default', Tags: 'moneybag' }, body }).catch(() => {});
   const usd = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (first) { await send('Deal alerts are on', `Watching eBay for your unowned chase cards (${owned.size} owned skipped). ${keep.length} current deals noted; you'll get a ping for new ones.`, 'https://jtcoggins444.github.io/chase-card-binder/#movers'); return log(`Alerts: first run, ${keep.length} current deals recorded without pinging.`); }
-  const top = keep.slice(0, 6);
+  // up to 6 pings: cheapN saved for cards under cheapMax, the rest to the biggest discounts on pricier cards (unused slots go to the other group)
+  const nc = Math.min(cheap.length, Math.max(cheapN, 6 - big.length)), top = [...cheap.slice(0, nc), ...big.slice(0, 6 - nc)];
   for (const d of top) {
     const set = S[d.c[2]][0], what = d.grader ? `${d.grader} ${d.grade}` : d.cond;
     await send(`${d.c[1]} · ${what} · ${Math.round((1 - d.r) * 100)}% under`, `${set} #${d.c[3]}: ${usd(d.total)} with shipping vs ${usd(d.R)} raw Near Mint. ${d.title}`, 'https://www.ebay.com/itm/' + d.id, d.r <= 0.7 ? 'high' : 'default');
   }
-  if (keep.length > top.length) await send(`${keep.length - top.length} more eBay deals`, 'Open the app to see them on each card (Slab deals sort).', 'https://jtcoggins444.github.io/chase-card-binder/');
-  log(`Alerts: ${keep.length} new deals, ${top.length} sent.`);
+  if (keep.length > top.length) await send(`${keep.length - top.length} more eBay deals${cheap.length > nc ? ` (${cheap.length - nc} under $${cheapMax})` : ''}`, 'Open the app to see them on each card (Slab deals sort).', 'https://jtcoggins444.github.io/chase-card-binder/');
+  log(`Alerts: ${keep.length} new deals (${cheap.length} under $${cheapMax}), ${top.length} sent (${nc} cheap).`);
 })();
 log(`Searched ${pool.length} cards with ${calls} calls; ${found} cards have listings under raw Near Mint.`);
