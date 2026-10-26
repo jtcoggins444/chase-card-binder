@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-23",
+ "updated": "2026-10-26",
  "note": "Supply events that affect prices: reprints, restock waves and new products containing packs of existing sets. Updated weekly by a scheduled check; you can also add sets in the app. level: confirmed | reported | rumored.",
  "sets": {
   "zsv10pt5": {
@@ -26,9 +26,9 @@
   "sv8pt5": {
    "type": "reprint",
    "level": "confirmed",
-   "when": "ongoing 2026",
-   "note": "Prismatic Evolutions restocks continued through 2026 (Super-Premium Collections, ETBs); The Pokémon Company said it would keep reprinting.",
-   "src": "https://tcginvest.io/blog/pokemon-reprints-2026"
+   "when": "ongoing 2026 (ETB drop Oct 22)",
+   "note": "Prismatic Evolutions ETBs are being reprinted again: Best Buy ran an invite drop on Oct 22, 2026, and distributors report more ETB waves. Restocks have continued all through 2026.",
+   "src": "https://x.com/PokemonRestocks/status/2112924904345477272"
   },
   "me2pt5": {
    "type": "reprint",
@@ -36,6 +36,13 @@
    "when": "2026",
    "note": "Ascended Heroes chase cards fell sharply after heavy printing (top SIRs about $1,300 in May to $850–900 by late Sept 2026).",
    "src": "https://www.wargamer.com/pokemon-trading-card-game/gengar-tree-pikachu-dropping"
+  },
+  "me5": {
+   "type": "reprint",
+   "level": "confirmed",
+   "when": "Oct 23, 2026",
+   "note": "The new $9.99 Deck Crafter's Collection includes 1 Pitch Black booster pack, which adds a small amount of extra supply.",
+   "src": "https://www.pokebeach.com/2026/08/new-pokemon-tcg-deck-crafters-collection-to-release-in-october"
   }
  }
 }
