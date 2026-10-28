@@ -1,5 +1,5 @@
 // Chase Card Binder - live eBay listings priced under the raw Near Mint market (needs EBAY_CLIENT_ID / EBAY_CLIENT_SECRET).
-// For every chase card worth $20+: Buy It Now listings of graded copies (grade read from the title) and ungraded copies,
+// For every chase card in the price range set in the app (default $10-$80 raw): Buy It Now listings of graded copies (grade read from the title) and ungraded copies,
 // cheapest first, up to the raw Near Mint price. Writes data/live.json for the app.
 // Usage: node scripts/ebay.mjs [maxCards]
 import { readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const Root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ID = process.env.EBAY_CLIENT_ID, SECRET = process.env.EBAY_CLIENT_SECRET;
 if (!ID || !SECRET) { console.log('No eBay keys yet (EBAY_CLIENT_ID / EBAY_CLIENT_SECRET); skipping.'); process.exit(0); }
-const MAX = Number(process.argv[2] || 1e9), MIN_PRICE = 20;
+const MAX = Number(process.argv[2] || 1e9);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = m => console.log(new Date().toISOString().slice(11, 19) + '  ' + m);
 const r2 = v => Math.round(v * 100) / 100;
@@ -30,7 +30,6 @@ const raw = c => { const L = c[6] && latest[String(c[6])]; return L && L[3] ? L[
 // what each grade has actually sold for (from the daily market data), to catch fakes and mislabeled slabs
 const sumPath = join(Root, 'data/ppt/summary.json');
 const GDS = existsSync(sumPath) ? JSON.parse(readFileSync(sumPath, 'utf8')).c : {};
-const pool = cards.cards.filter(c => (raw(c) || 0) >= MIN_PRICE).sort((a, b) => raw(b) - raw(a)).slice(0, MAX);
 
 // grade from the title: "PSA 9", "CGC 9.5", "BGS 8.5", "Beckett 9", "TAG 10", "SGC 9", "ACE 10"
 const GR = /\b(PSA|CGC|BGS|BECKETT|TAG|SGC|ACE)\s*(?:GEM\s*MINT|GEM\s*MT|MINT|NM-?MT|PRISTINE)?\s*(10|[1-9](?:\.5)?)\b/i;
@@ -79,6 +78,10 @@ try {
   } else log(`Alerts: can't read the shared settings (HTTP ${r.status}).`);
 } catch (e) { log('Alerts: ' + e.message); }
 log(`${bad.size} reported fakes/blocked sellers.`);
+// which cards to watch: raw Near Mint between liveMin and liveMax (set in the app; default $10 to $80)
+const LO = Math.max(1, cfg.liveMin ?? 10), HI = Math.max(LO, cfg.liveMax ?? 80);
+const pool = cards.cards.filter(c => (raw(c) || 0) >= LO && raw(c) <= HI).sort((a, b) => raw(b) - raw(a)).slice(0, Math.min(MAX, 1000));   // 1,000 cards a check keeps four checks a day inside eBay's daily limit
+log(`Watching ${pool.length} cards worth $${LO} to $${HI} raw.`);
 
 // fake check on the cheap listings: one closer look per listing, remembered between runs
 const chkPath = join(Root, 'data/live-checked.json');

@@ -125,7 +125,7 @@ async function start() {
     if (!uid) return;
     const d = store.get(), owned = Object.keys(d.state).filter(id => d.state[id] === 'owned').sort();
     const c = d.cfg || {}, pick = {};
-    for (const k of ['alertOn', 'alertPct', 'lowMin', 'lowPct', 'lpOn', 'lpMin', 'lpPct', 'bad', 'cheapN', 'cheapMax']) if (c[k] != null) pick[k] = c[k];
+    for (const k of ['alertOn', 'alertPct', 'lowMin', 'lowPct', 'lpOn', 'lpMin', 'lpPct', 'bad', 'cheapN', 'cheapMax', 'liveMin', 'liveMax']) if (c[k] != null) pick[k] = c[k];
     const body = JSON.stringify({ o: owned, c: pick });
     if (body === lastShared) return;
     S.setDoc(S.doc(db, 'alerts', uid), { owned: owned.join(','), cfg: pick, t: S.serverTimestamp() }).then(() => { lastShared = body; }).catch(e => console.warn('Alert settings not shared yet (Firebase rules?)', e && e.code));
