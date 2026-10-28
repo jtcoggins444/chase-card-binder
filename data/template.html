@@ -313,6 +313,9 @@ button.planlink{background:none;border:0;padding:0;cursor:pointer}
 .links{display:flex;flex-wrap:wrap;gap:8px}
 .links a{font:700 .78rem var(--f-body);color:var(--accent);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none}
 .links a:hover{border-color:var(--accent)}
+.lab.sub{display:block;margin:12px 0 6px;font-size:.7rem;opacity:.8}
+.lkcond{display:flex;align-items:center;gap:8px;font:600 .8rem var(--f-body);margin:2px 0 4px}
+.lkcond select{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card,transparent);color:inherit}
 .mv{display:block;font:500 .7rem var(--f-mono);color:var(--muted)}
 .mv.up{color:var(--own)} .mv.down{color:var(--sir)}
 @media (max-width:640px){.dv{grid-template-columns:1fr;padding:14px}.dv>img{max-width:220px;margin:0 auto}.kv{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -664,7 +667,15 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <div class="sec" id="dvLiveWrap" hidden><span class="lab">On eBay now, under raw Near Mint</span><ol class="mvl planl" id="dvLive"></ol><p class="note" id="dvLiveNote"></p></div>
       <div class="sec" id="dvGradedWrap" hidden><span class="lab">Graded sales (eBay + Fanatics)</span><div id="dvGraded"></div><p class="note" id="dvGradedNote"></p></div>
       <div class="sec" id="dvMineWrap" hidden><span class="lab">Your copy</span><div class="kv" id="dvMine"></div></div>
-      <div class="sec"><span class="lab">Recent sales and graded prices</span><div class="links" id="dvLinks"></div></div>
+      <div class="sec"><span class="lab">Look it up</span>
+        <label class="lkcond">Condition <select id="dvLkCond">
+          <optgroup label="Ungraded"><option value="any">Any ungraded</option><option value="NM">Near Mint</option><option value="LP">Lightly Played</option><option value="NMLP">Near Mint or Lightly Played</option><option value="MP">Moderately Played</option><option value="HP">Heavily Played</option></optgroup>
+          <optgroup label="Graded"><option value="g:any">Any graded</option><option value="g:PSA:10">PSA 10</option><option value="g:PSA:9">PSA 9</option><option value="g:PSA:8">PSA 8</option><option value="g:CGC:10">CGC 10</option><option value="g:CGC:9.5">CGC 9.5</option><option value="g:CGC:9">CGC 9</option><option value="g:BGS:10">BGS 10</option><option value="g:BGS:9.5">BGS 9.5</option><option value="g:TAG:10">TAG 10</option></optgroup>
+        </select></label>
+        <span class="lab sub">Sold</span><div class="links" id="dvLinksSold"></div>
+        <span class="lab sub">For sale now</span><div class="links" id="dvLinksNow"></div>
+        <div class="links" id="dvLinks" style="margin-top:10px"></div>
+      </div>
     </div>
   </div></dialog>
   <p class="foot">Card list: the open Pokémon TCG card database (pokemon-tcg-data). Prices: TCGplayer market price for the near-mint holofoil, via TCGCSV, updated __PDATE__. Price history is your own, recorded daily since October 11, 2026. Prices move daily; check the TCGplayer link before buying or selling. Card pictures load from the Pokémon TCG API and Scrydex image servers, so they need an internet connection. "Full Art" here means cards printed as Ultra Rare / Rare Ultra (full-art EX, GX, V and ex, plus Sword &amp; Shield alt arts). Black White Rares are the top chase cards in Black Bolt and White Flare; Mega Hyper Rares are the gold Mega ex cards; Mega Attack Rares are from Ascended Heroes. VMAX/VSTAR covers every version printed in main sets, plus Shining Fates' Shiny Vault and Celebrations; Trainer Gallery covers Brilliant Stars through Silver Tempest. Rainbow covers Sun &amp; Moon GX rainbows; Gold &amp; Secret covers the secret-rare Pokémon from Black &amp; White through Sword &amp; Shield. Trainer cards, promo cards and 30th Celebration aren't included.</p>
@@ -1280,9 +1291,35 @@ function chartSeries(c){
   return daily.filter(p=>p[0].getTime()<first-864e5).concat(own.map(p=>[p[0],p[1],vol.get(p[0].toDateString())]))}
 const fmtD=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 const fmtDY=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+// "Look it up" links: sold vs for sale now, filtered by condition where the site allows it
+const LKC={NM:['Near Mint or Better'],LP:['Lightly Played (Excellent)'],NMLP:['Near Mint or Better','Lightly Played (Excellent)'],MP:['Moderately Played (Very Good)'],HP:['Heavily Played (Poor)']};
+const TCGC={NM:'Near+Mint',LP:'Lightly+Played',NMLP:'Near+Mint|Lightly+Played',MP:'Moderately+Played',HP:'Heavily+Played'};
+const GRADER={PSA:'Professional Sports Authenticator (PSA)',CGC:'Certified Guaranty Company (CGC)',BGS:'Beckett Grading Services (BGS)',TAG:'Technical Authentication & Grading (TAG)'};
+const e2=v=>encodeURIComponent(encodeURIComponent(v).replace(/\(/g,'%28').replace(/\)/g,'%29'));   // eBay's double-encoded filter values
+let lkCond='NM';try{lkCond=localStorage.getItem('binder-lkcond')||'NM'}catch(e){}
+function ebayUrl(c,k,sold){const s=S[c[2]];let u='https://www.ebay.com/sch/i.html?_sacat=183454&LH_PrefLoc=1&Language=English&_nkw='+encodeURIComponent(`${c[1]} ${c[3]}${s[3]&&/^\d+$/.test(c[3])?'/'+s[3]:''}`.replace(/[()]/g,' '));
+  u+=sold?'&LH_Sold=1&LH_Complete=1&_sop=13':'&LH_BIN=1&_sop=15';
+  if(k.startsWith('g:')){const [,g,gr]=k.split(':');u+='&LH_ItemCondition=2750';if(g!=='any')u+='&'+e2('Professional Grader')+'='+e2(GRADER[g])+'&Grade='+e2(gr)}
+  else{u+='&LH_ItemCondition=4000';if(LKC[k])u+='&'+e2('Card Condition')+'='+LKC[k].map(e2).join('%7C')}
+  return u}
+function fillLookups(c){const k=lkCond,graded=k.startsWith('g:'),sel=document.getElementById('dvLkCond');sel.value=k;
+  const a=(u,t,x)=>`<a href="${u}" target="_blank" rel="noopener"${x||''}>${t}</a>`,cp=` data-copy="${esc(srchTxt(c))}"`;
+  const tcg=c[6]?'https://www.tcgplayer.com/product/'+c[6]+'?Language=English':null;
+  const tcgNow=tcg&&TCGC[k]?tcg+'&Condition='+TCGC[k]:tcg;
+  document.getElementById('dvLinksSold').innerHTML=[
+    a(ebayUrl(c,k,true),'eBay sold'),
+    !graded&&tcg?a(tcg,'TCGplayer latest sales'):'',
+    a('https://www.pricecharting.com/search-products?type=prices&q='+q(c),'PriceCharting'),
+    a('https://app.cardladder.com/','Card Ladder',cp),a('https://alt.xyz/browse','Alt',cp)].join('');
+  document.getElementById('dvLinksNow').innerHTML=[
+    a(ebayUrl(c,k,false),'eBay Buy It Now'),
+    !graded&&tcgNow?a(tcgNow,'TCGplayer listings'):''].join('');
+  const lbl=sel.options[sel.selectedIndex].text;
+  document.getElementById('dvLinks').innerHTML=`<p class="note" id="dvCopied">eBay links show ${lbl} copies in English from US sellers${k==='any'||k==='g:any'?'':', using the seller’s own condition or grade'}. ${graded?'TCGplayer only sells ungraded cards. ':'TCGplayer sales can be filtered by condition on the page. '}Card Ladder and Alt copy the card name for you to paste into their search.</p>`}
+document.getElementById('dvLkCond').addEventListener('change',e=>{lkCond=e.target.value;try{localStorage.setItem('binder-lkcond',lkCond)}catch(x){}if(window.__lkCard)fillLookups(window.__lkCard)});
 function q(c){const s=S[c[2]];return encodeURIComponent(c[1]+' '+c[3]+' '+s[0])}
 function srchTxt(c){const s=S[c[2]];return c[4]==='ETB'?c[1]:c[1]+' '+s[0]+' '+c[3]}
-document.getElementById('dvLinks').addEventListener('click',e=>{const a=e.target.closest('a[data-copy]');if(!a)return;const t=a.dataset.copy,n=document.getElementById('dvCopied');
+document.getElementById('dvLinksSold').addEventListener('click',e=>{const a=e.target.closest('a[data-copy]');if(!a)return;const t=a.dataset.copy,n=document.getElementById('dvCopied');
   const done=()=>{if(n)n.textContent='Copied \u201c'+t+'\u201d. Paste it into the search box on '+(a.href.includes('alt.xyz')?'Alt':'Card Ladder')+'.'};
   try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>{});else{const x=document.createElement('textarea');x.value=t;document.body.appendChild(x);x.select();document.execCommand('copy');x.remove();done()}}catch(err){}});
 function openDetail(c){
@@ -1312,14 +1349,7 @@ function openDetail(c){
   const st=state[c[0]],pp=paid[c[0]],mine=document.getElementById('dvMineWrap');
   mine.hidden=st!=='owned';
   if(st==='owned'){const g=(pp!=null&&c[5]!=null)?c[5]-pp:null;document.getElementById('dvMine').innerHTML=kv([['Condition',(CONDS.find(x=>x[0]===cond[c[0]])||['','—'])[1]],['Paid',pp!=null?money(pp):'—'],['Market',money(c[5])],['Gain / loss',g==null?'—':`<span class="${g>=0?'up':'down'}">${sgn(g)}</span>`],['Return',g==null||!pp?'—':`<span class="${g>=0?'up':'down'}">${pct(g/pp*100)}</span>`]])}
-  document.getElementById('dvLinks').innerHTML=[
-    [link(c),'TCGplayer: price history and latest sales'],
-    ['https://www.pricecharting.com/search-products?type=prices&q='+q(c),'PriceCharting: PSA prices and sold listings'],
-    ['https://www.ebay.com/sch/i.html?LH_Sold=1&LH_Complete=1&_nkw='+q(c),'eBay: sold listings']
-  ].map(([u,t])=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')+
-  [['https://app.cardladder.com/','Card Ladder: graded sales (members)'],['https://alt.xyz/browse','Alt: Alt Value and graded sales']]
-    .map(([u,t])=>`<a href="${u}" target="_blank" rel="noopener" data-copy="${esc(srchTxt(c))}">${t}</a>`).join('')+
-  '<p class="note" id="dvCopied">Card Ladder and Alt can\u2019t be opened straight to a card, so these copy the card name for you to paste into their search.</p>';
+  window.__lkCard=c;fillLookups(c);
   if(lb.showModal)lb.showModal();else lb.setAttribute('open','');
   DET=null;chartCond='NM';document.querySelectorAll('#dvCond button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.c==='NM'));
   drawChart();
