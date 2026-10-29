@@ -87,7 +87,7 @@ function gradedOf(e, printing) {
   // daily graded sale history for the main grades (last 6 months)
   const gh = {};
   const ph = (e.salesByPrinting && printing && e.salesByPrinting[printing] && e.salesByPrinting[printing].priceHistory) || e.priceHistory || {};
-  for (const k of ['psa10', 'psa9', 'cgc10', 'bgs9_5']) {
+  for (const k of ['psa10', 'psa9', 'psa8', 'cgc10', 'cgc9_5', 'cgc9', 'bgs10', 'bgs9_5', 'bgs9', 'tag10', 'sgc10']) {
     const h = ph[k]; if (!h) continue;
     const pts = Object.entries(h).map(([dt, v]) => [dnum(dt), r2(v.average), v.count || 0]).filter(p => p[0] >= 0 && p[1] != null).sort((a, b) => a[0] - b[0]);
     if (pts.length) gh[k] = pts;

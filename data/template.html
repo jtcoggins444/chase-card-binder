@@ -299,6 +299,7 @@ button.planlink{background:none;border:0;padding:0;cursor:pointer}
 @media (max-width:560px){.buylist li{grid-template-columns:40px minmax(0,1fr) auto}.buylist .rk{display:none}}
 .chartbox{border:1px solid var(--line);border-radius:10px;padding:10px}
 .rng{display:flex;gap:4px;margin-bottom:6px}
+#dvCond{flex-wrap:wrap}
 .lb .rng button{font:700 .72rem var(--f-body);border:1px solid transparent;background:transparent;color:var(--muted);border-radius:6px;padding:3px 8px;cursor:pointer}
 .lb .rng button[aria-pressed="true"]{background:var(--bg);border-color:var(--line);color:var(--ink)}
 .plot{position:relative}
@@ -1283,6 +1284,10 @@ let cur=null,range=0,DET=null,chartCond='NM';
 function dayDate(b,n){const [y,m,d]=b.split('-').map(Number);return new Date(y,m-1,d+n,12)}
 // chart points [date, price, sold that day]: 6 months of daily prices for the chosen condition, then our own daily prices
 function chartSeries(c){
+  if(DET&&DET.c===c&&GL[chartCond]){   // graded: each day with sales [date, trend line, sales, that day's average]
+    const g=(DET.d.gh||{})[chartCond]||[];const o=[];
+    for(let i=0;i<g.length;i++){const w=g.slice(Math.max(0,i-2),i+3).map(x=>x[1]).sort((a,b)=>a-b);o.push([dayDate(DET.b,g[i][0]),w[w.length>>1],g[i][2],g[i][1]])}
+    return o}
   if(!DET||DET.c!==c||!DET.d.h)return series(c);
   const h=DET.d.h[chartCond];if(!h||!h.length)return chartCond==='NM'?series(c):[];
   const daily=h.map(([n,v,q])=>[dayDate(DET.b,n),v,q]);
@@ -1373,7 +1378,10 @@ async function fillMarket(c){
   if(!PPT)return;
   const f=await pptSet(c[2]);if(cur!==c||!f||!f.c[c[0]])return;
   const d=f.c[c[0]];DET={c,b:f.b,d};
-  condEl.hidden=!(d.h&&d.h.LP&&d.h.LP.length&&d.h.NM&&d.h.NM.length);
+  {const hasLP=!!(d.h&&d.h.LP&&d.h.LP.length&&d.h.NM&&d.h.NM.length),gk=Object.keys(GL).filter(k=>d.gh&&d.gh[k]&&d.gh[k].length>=3);
+   condEl.innerHTML=`<button data-c="NM" type="button">Near Mint</button>${hasLP?'<button data-c="LP" type="button">Lightly Played</button>':''}`+gk.map(k=>`<button data-c="${k}" type="button" class="gbtn">${GL[k]}</button>`).join('');
+   condEl.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.c===chartCond));
+   condEl.hidden=!hasLP&&!gk.length}
   drawChart();
   const kv=a=>a.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
   const t=d.t||[],a=activity(c),mkt=c[5],P=PPT.c[c[0]]||{},flags=[];
@@ -1412,8 +1420,11 @@ function drawChart(){
   const note=document.getElementById('dvNote');
   if(!s.length){note.textContent='No TCGplayer market price for this card yet.';return}
   const first=series(c)[0]?series(c)[0][0]:s[0][0];
-  note.textContent=DET&&DET.c===c?(chartCond==='NM'?'Daily TCGplayer Near Mint prices for 6 months, then the app\u2019s own daily prices. Bars show copies sold each day.':'Daily TCGplayer Lightly Played prices for 6 months. Bars show copies sold each day.'):s.length<14?`Your own tracking started ${fmtDY(first)}. A new point is added each day the price update runs, so this chart fills in over time.`:`Tracked daily since ${fmtDY(first)}.`;
-  let lo=Math.min(...s.map(p=>p[1])),hi=Math.max(...s.map(p=>p[1]));
+  const GR=!!GL[chartCond]&&DET&&DET.c===c;
+  if(GR)note.textContent=`${GL[chartCond]} sales on eBay and Fanatics. Dots are each day’s average sale, the line smooths out one-off sales, and bars show how many sold. The dashed line is today’s raw Near Mint price${s.length<8?'. Only a few sales so far, so treat this as rough':''}.`;
+  else note.textContent=DET&&DET.c===c?(chartCond==='NM'?'Daily TCGplayer Near Mint prices for 6 months, then the app\u2019s own daily prices. Bars show copies sold each day.':'Daily TCGplayer Lightly Played prices for 6 months. Bars show copies sold each day.'):s.length<14?`Your own tracking started ${fmtDY(first)}. A new point is added each day the price update runs, so this chart fills in over time.`:`Tracked daily since ${fmtDY(first)}.`;
+  const vals=s.flatMap(p=>GR?[p[1],p[3]]:[p[1]]);if(GR&&c[5])vals.push(c[5]);
+  let lo=Math.min(...vals),hi=Math.max(...vals);
   if(hi-lo<hi*0.02){const m=(hi+lo)/2||1;lo=m*0.97;hi=m*1.03}
   const pad=(hi-lo)*0.1;lo=Math.max(0,lo-pad);hi=hi+pad;
   const t0=s[0][0].getTime(),t1=s[s.length-1][0].getTime(),span=Math.max(t1-t0,1);
@@ -1433,6 +1444,8 @@ function drawChart(){
     el('path',{d:d+` L${pts[pts.length-1][0].toFixed(1)} ${Ht-pb} L${pts[0][0].toFixed(1)} ${Ht-pb} Z`,fill:'var(--accent)','fill-opacity':.12,stroke:'none'});
     el('path',{d,fill:'none',stroke:'var(--accent)','stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'});
   }
+  if(GR){for(const p of pts)el('circle',{cx:p[0].toFixed(1),cy:Y(p[2][3]).toFixed(1),r:2.6,fill:'var(--ink)','fill-opacity':.45});
+    if(c[5]){const y=Y(c[5]);el('line',{x1:pl,x2:W-pr,y1:y,y2:y,stroke:'var(--muted)','stroke-width':1.2,'stroke-dasharray':'5 4'});const tx=el('text',{x:W-pr-2,y:y-4,'text-anchor':'end','font-size':10,fill:'var(--muted)','font-family':'var(--f-body)'});tx.textContent='raw NM '+tickFmt(c[5])}}
   const lp=pts[pts.length-1];el('circle',{cx:lp[0],cy:lp[1],r:4.5,fill:'var(--accent)',stroke:'var(--panel)','stroke-width':2});
   el('line',{id:'xh',x1:0,x2:0,y1:pt,y2:Ht-pb,stroke:'var(--muted)','stroke-width':1,'stroke-dasharray':'3 3',visibility:'hidden'});
   el('circle',{id:'xd',r:4.5,fill:'var(--accent)',stroke:'var(--panel)','stroke-width':2,visibility:'hidden'});
@@ -1442,7 +1455,7 @@ function hover(e){if(!pts.length)return;const r=svg.getBoundingClientRect(),vb=s
   const xh=svg.querySelector('#xh'),xd=svg.querySelector('#xd');
   xh.setAttribute('x1',b[0]);xh.setAttribute('x2',b[0]);xh.setAttribute('visibility','visible');
   xd.setAttribute('cx',b[0]);xd.setAttribute('cy',b[1]);xd.setAttribute('visibility','visible');
-  tip.textContent=fmtDY(b[2][0])+' · '+usd.format(b[2][1])+(b[2][2]?' · '+b[2][2]+' sold':'');tip.hidden=false;
+  tip.textContent=b[2][3]!=null?fmtDY(b[2][0])+' · '+(b[2][2]>1?b[2][2]+' sold, avg ':'sold ')+usd.format(b[2][3])+' · trend '+usd0.format(b[2][1]):fmtDY(b[2][0])+' · '+usd.format(b[2][1])+(b[2][2]?' · '+b[2][2]+' sold':'');tip.hidden=false;
   const px=b[0]*r.width/vb.width;tip.style.left=Math.min(Math.max(px,70),r.width-70)+'px'}
 svg.addEventListener('pointermove',hover);svg.addEventListener('pointerdown',hover);
 svg.addEventListener('pointerleave',()=>{tip.hidden=true;svg.querySelectorAll('#xh,#xd').forEach(n=>n.setAttribute('visibility','hidden'))});
