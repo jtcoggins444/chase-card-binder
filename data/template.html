@@ -100,7 +100,7 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .nm a{color:var(--ink);text-decoration:none;font-weight:700;overflow-wrap:anywhere}
 .nm a:hover{text-decoration:underline}
 .tag{display:inline-block;font:700 .66rem var(--f-body);letter-spacing:.06em;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px}
-.t-IR{color:var(--ir);background:var(--ir-bg)} .t-SIR{color:var(--sir);background:var(--sir-bg)} .t-VINT{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel))} .t-FA{color:var(--fa);background:var(--fa-bg)} .t-BWR{color:var(--ink);background:var(--line)} .t-VALT{color:var(--sir);background:var(--sir-bg)} .t-VREG{color:var(--fa);background:var(--fa-bg)} .t-RAIN{color:var(--accent);background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)} .t-GOLD,.t-HR{color:var(--want);background:var(--want-bg)} .t-SHINY{color:var(--fa);background:var(--fa-bg)} .t-GG,.t-TG{color:var(--ir);background:var(--ir-bg)} .t-MHR,.t-MAR{color:var(--want);background:var(--want-bg)}
+.t-IR{color:var(--ir);background:var(--ir-bg)} .t-SIR{color:var(--sir);background:var(--sir-bg)} .t-VINT{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel))} .t-FA{color:var(--fa);background:var(--fa-bg)} .t-BWR{color:var(--ink);background:var(--line)} .t-VALT{color:var(--sir);background:var(--sir-bg)} .t-VREG{color:var(--fa);background:var(--fa-bg)} .t-RAIN{color:var(--accent);background:var(--bg);box-shadow:inset 0 0 0 1px var(--line)} .t-GOLD,.t-HR{color:var(--want);background:var(--want-bg)} .t-SHINY{color:var(--fa);background:var(--fa-bg)} .t-GG,.t-TG{color:var(--ir);background:var(--ir-bg)} .t-MHR,.t-MAR{color:var(--want);background:var(--want-bg)} .t-RR,.t-RC{color:var(--sir);background:linear-gradient(110deg,var(--sir-bg),var(--ir-bg),var(--fa-bg))}
 .acts{display:flex;gap:6px}
 .pr{font:500 .86rem var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
 .pr.na{color:var(--muted)}
@@ -501,6 +501,8 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <label><input type="checkbox" value="BWR" checked> BWR <small>(Black White Rare)</small></label>
         <label><input type="checkbox" value="MHR" checked> Mega Hyper <small>(Mega Hyper Rare)</small></label>
         <label><input type="checkbox" value="MAR" checked> Mega Attack <small>(Mega Attack Rare)</small></label>
+        <label><input type="checkbox" value="RR" checked> Radiant Rare</label>
+        <label><input type="checkbox" value="RC" checked> Radiant Collection</label>
       </div>
     </details>
     <details class="rdd" id="setDD">
@@ -815,7 +817,7 @@ function outlook(c){const a=activity(c);if(!a||!a.ready||!a.trend)return null;co
   if(a.trend==='down')return up?['flat','Rally fading','The price is up but sales are slowing; the rise may not hold.']:down?['down','Drying up','Fewer sales and a falling price: interest is fading.']:['flat','Cooling','Sales are slowing at a steady price.'];
   return up?['up','Steady climb','Sales are steady and the price is rising.']:down?['down','Steady slide','Sales are steady and the price is slipping.']:['flat','Stable','Steady sales at a steady price.']}
 function chgOver(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=last[0]-days*864e5;let base=s[0];for(const p of s){if(p[0]<=cut)base=p;else break}if(base===last||!base[1])return null;return (last[1]-base[1])/base[1]*100}
-const LABEL={IR:'IR',SIR:'SIR',FA:'Full Art',VINT:'Vintage Holo',VALT:'VMAX Alt Art',VREG:'VMAX/VSTAR',RAIN:'Rainbow Rare',GOLD:'Gold/Secret Rare',HR:'Gold Hyper Rare',SHINY:'Shiny Vault',GG:'Galarian Gallery',TG:'Trainer Gallery',BWR:'Black White Rare',MHR:'Mega Hyper Rare',MAR:'Mega Attack Rare'};
+const LABEL={IR:'IR',SIR:'SIR',FA:'Full Art',VINT:'Vintage Holo',VALT:'VMAX Alt Art',VREG:'VMAX/VSTAR',RAIN:'Rainbow Rare',GOLD:'Gold/Secret Rare',HR:'Gold Hyper Rare',SHINY:'Shiny Vault',GG:'Galarian Gallery',TG:'Trainer Gallery',BWR:'Black White Rare',MHR:'Mega Hyper Rare',MAR:'Mega Attack Rare',RR:'Radiant Rare',RC:'Radiant Collection'};
 const KINDS=Object.keys(LABEL);
 const byIdL=Object.fromEntries(C.concat(E).map(c=>[c[0],c]));
 let state={}; // id -> 'owned' (older copies may still say 'wanted'; those move to a list on load)
