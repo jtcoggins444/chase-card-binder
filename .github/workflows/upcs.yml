@@ -1,0 +1,47 @@
+name: Add Ultra-Premium Collections
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: 'Only list them (saved to the probe branch)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: price-update
+  cancel-in-progress: false
+
+jobs:
+  upcs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Find Ultra-Premium Collections
+        run: node scripts/upcs.mjs ${{ inputs.dry && '--dry' || '' }}
+      - name: Save the list to the probe branch
+        if: ${{ inputs.dry }}
+        run: |
+          git config user.name "binder-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B probe
+          git add -f probe
+          git commit -m "UPC list" || true
+          git push -f origin probe
+      - name: Rebuild the page and save
+        if: ${{ !inputs.dry }}
+        run: |
+          node scripts/update.mjs --build-only
+          git config user.name "binder-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data index.html
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git commit -m "Add Ultra-Premium Collections"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && break; sleep 10; done
