@@ -1,6 +1,8 @@
 name: Add Ultra-Premium Collections
 
 on:
+  schedule:
+    - cron: '41 15 * * 1'   # Mondays: pick up newly listed UPCs
   workflow_dispatch:
     inputs:
       dry:
