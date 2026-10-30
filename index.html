@@ -157,6 +157,7 @@ h1{font:700 1.9rem/1.1 var(--f-display);margin:0 0 4px;text-wrap:balance}
 .etbview #stats,.etbview #rarDD,.etbview #era,.etbview #status,.etbview .prange,.etbview #colAll,.etbview #expAll,.etbview #sort option[value=move]{display:none!important}
 .etbsum{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:10px 12px;margin:10px 0 4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:.9rem}
 .etbsum .setval{flex-basis:auto;padding-left:0}
+.sealedseg{margin:8px 0 0}.sealedseg small{opacity:.65;font-weight:500}
 .th:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .th.noimg{cursor:default}
 .no{display:block;margin-top:2px}
@@ -459,7 +460,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <button type="button" role="tab" id="tabBtnOwned" data-tab="owned" aria-selected="true">My Binder <span class="tabn" id="nOwned"></span></button>
     <button type="button" role="tab" id="tabBtnWant" data-tab="want" aria-selected="false">Lists <span class="tabn" id="nWant"></span></button>
     <button type="button" role="tab" id="tabBtnAll" data-tab="all" aria-selected="false">All Cards</button>
-    <button type="button" role="tab" id="tabBtnEtb" data-tab="etb" aria-selected="false">ETBs <span class="tabn" id="nEtb"></span></button>
+    <button type="button" role="tab" id="tabBtnEtb" data-tab="etb" aria-selected="false">Sealed <span class="tabn" id="nEtb"></span></button>
     <button type="button" role="tab" id="tabBtnMovers" data-tab="movers" aria-selected="false">Movers</button>
   </nav>
   <div id="tabBinder" role="tabpanel">
@@ -539,7 +540,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <label>To savings fund <span class="pin">$<input id="pReserve" type="number" inputmode="decimal" min="0" step="1"></span></label>
         <label class="pchk"><input type="checkbox" id="pRoll"> Unspent money goes to the fund</label>
         <label>Pick from <select id="pScope"><option value="missing">Chase cards I don't own</option><option value="lists">Cards on my lists</option><option value="all">All chase cards</option></select></label>
-        <label class="pchk"><input type="checkbox" id="pEtb"> Include ETBs</label>
+        <label class="pchk"><input type="checkbox" id="pEtb"> Include sealed (ETBs &amp; UPCs)</label>
         <label>Grade 7s on cards over <span class="pin">$<input id="pLowMin" type="number" inputmode="decimal" min="0" step="10"></span> if <span class="pin"><input id="pLowPct" type="number" inputmode="decimal" min="0" max="90" step="5">%</span> under raw</label>
         <label class="pchk"><input type="checkbox" id="pLpOn"> Lightly Played on cards over <span class="pin">$<input id="pLpMin" type="number" inputmode="decimal" min="0" step="10"></span> if <span class="pin"><input id="pLpPct" type="number" inputmode="decimal" min="0" max="80" step="5">%</span> under NM</label>
         <label class="pchk"><input type="checkbox" id="pAlertOn"> Phone alerts for new eBay deals at least <span class="pin"><input id="pAlertPct" type="number" inputmode="decimal" min="0" max="80" step="5">%</span> under raw</label>
@@ -703,7 +704,9 @@ function series(c){const a=c[6]&&H.m[c[6]];const o=[];if(a)a.forEach((v,i)=>{if(
   const P=PPT&&PPT.c[c[0]];if(P&&P.w){const first=o.length?o[0][0].getTime():Infinity,pre=[];for(const [n,v] of P.w){const d=pptDate(n);if(d.getTime()<first-864e5&&v!=null)pre.push([d,v])}if(pre.length)return pre.concat(o)}
   return o}
 C.forEach(c=>{const s=series(c);c[5]=s.length?s[s.length-1][1]:null});
-const E=DATA.etbs||[];   // Elite Trainer Boxes: same shape as cards, kind 'ETB'
+const E=DATA.etbs||[];   // sealed: Elite Trainer Boxes (kind 'ETB') and Ultra-Premium Collections ('UPC'), same shape as cards
+const isSealed=c=>c[4]==='ETB'||c[4]==='UPC',SEALED_L={ETB:'Elite Trainer Box',UPC:'Ultra-Premium Collection'};
+let sealedKind='';try{sealedKind=localStorage.getItem('binder-sealed')||''}catch(e){}
 E.forEach(c=>{const s=series(c);c[5]=s.length?s[s.length-1][1]:null});
 function winStats(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=last[0]-days*864e5;const w=s.filter(p=>p[0]>=cut&&p!==last);if(!w.length)return null;const vs=w.map(p=>p[1]);return {n:w.length,avg:vs.reduce((a,b)=>a+b,0)/vs.length,hi:Math.max(...vs),lo:Math.min(...vs),cur:last[1]}}
 function buySignals(c){
@@ -876,23 +879,27 @@ function renderStats(){
   const g=pv-pd;
   document.getElementById('stats').innerHTML=t('Owned',own+' / '+n,n?own/n*100:0)+t('Owned value',usd0.format(ov))+t('Total paid',usd0.format(pd))+t('Gain / loss',pd?sgn(g).replace(/\.\d\d$/,''):'—',null,pd?(g>=0?'up':'down'):'')+t('On your lists',usd0.format(wv))+t('Cost to complete',usd0.format(mv));
 }
+document.addEventListener('click',e=>{const b=e.target.closest('.sealedseg button[data-sk]');if(!b)return;sealedKind=b.dataset.sk;try{localStorage.setItem('binder-sealed',sealedKind)}catch(x){}renderEtb()});
 function renderEtb(){
   const q=f.q.trim().toLowerCase(),el=document.getElementById('binder');
-  let list=E.filter(c=>(!f.sets||f.sets.has(c[2]))&&(!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q)||S[c[2]][1].toLowerCase().includes(q)));
-  if(!E.length){el.innerHTML='<p class="empty">The Elite Trainer Box list is being collected. Check back in a few minutes.</p>';return}
-  if(!list.length){el.innerHTML='<p class="empty">No Elite Trainer Boxes match your search.</p>';return}
+  let list=E.filter(c=>(!sealedKind||c[4]===sealedKind)&&(!f.sets||f.sets.has(c[2]))&&(!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q)||S[c[2]][1].toLowerCase().includes(q)));
+  if(!E.length){el.innerHTML='<p class="empty">The sealed product list is being collected. Check back in a few minutes.</p>';return}
+  const nE=E.filter(c=>c[4]==='ETB').length,nU=E.length-nE;
+  const seg=`<div class="rng sealedseg" role="group" aria-label="Product type">${[['','All'],['ETB','ETBs'],['UPC','UPCs']].map(([k,t])=>`<button type="button" data-sk="${k}" aria-pressed="${sealedKind===k}">${t} <small>${k===''?E.length:k==='ETB'?nE:nU}</small></button>`).join('')}</div>`;
+  if(!list.length){el.innerHTML=seg+'<p class="empty">Nothing matches your search.</p>';return}
   const sum=a=>a.reduce((x,c)=>x+(c[5]||0),0),owned=a=>a.filter(c=>state[c[0]]==='owned');
   const vals=a=>{const o=owned(a),vo=sum(o),va=sum(a);return `<span class="setval"><span><em>Owned</em> ${money(vo)}</span><span><em>Unowned</em> ${money(va-vo)}</span><span><em>All</em> ${money(va)}</span></span>`};
   const bySet=(a,b)=>S[b[2]][2].localeCompare(S[a[2]][2])||a[1].localeCompare(b[1]);
-  let h=`<div class="etbsum"><b>${owned(E).length} of ${E.length}</b> Elite Trainer Boxes owned ${vals(E)}</div>`;
+  const all=sealedKind?E.filter(c=>c[4]===sealedKind):E,what=sealedKind==='ETB'?'Elite Trainer Boxes':sealedKind==='UPC'?'Ultra-Premium Collections':'sealed products';
+  let h=seg+`<div class="etbsum"><b>${owned(all).length} of ${all.length}</b> ${what} owned ${vals(all)}</div>`;
   if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'||f.sort==='psa10'||f.sort==='upside'||f.sort==='slab'||f.sort==='lp'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
     list.sort(cmpFor(f.sort)||(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1)));
-    el.innerHTML=h+'<section class="set"><h2>'+list.length+' boxes</h2><div class="list">'+list.map(c=>row(c,true)).join('')+'</div></section>';return;
+    el.innerHTML=h+'<section class="set"><h2>'+list.length+' products</h2><div class="list">'+list.map(c=>row(c,true)).join('')+'</div></section>';return;
   }
   const eras=new Map();for(const c of list.sort(bySet)){const e=S[c[2]][1];if(!eras.has(e))eras.set(e,[]);eras.get(e).push(c)}
   for(const [era,a] of eras){const key='etb:'+era,open=!!q||!collapsed.has(key);
-    h+=`<section class="set${open?'':' closed'}" data-set="${esc(key)}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(era)}<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${owned(a).length}/${a.length} owned</span>${vals(a)}</button></h2><div class="list"${open?'':' hidden'}>`+withinSort(a).map(c=>row(c,true)).join('')+'</div></section>'}
+    h+=`<section class="set${open?'':' closed'}" data-set="${esc(key)}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(era)}<small>${a.length} product${a.length===1?'':'s'}</small><span class="prog">${owned(a).length}/${a.length} owned</span>${vals(a)}</button></h2><div class="list"${open?'':' hidden'}>`+withinSort(a).map(c=>row(c,true)).join('')+'</div></section>'}
   el.innerHTML=h;
 }
 function etbExtra(){
@@ -901,7 +908,7 @@ function etbExtra(){
   const a=E.filter(c=>(want==='owned'?state[c[0]]==='owned':inList(curList,c[0]))&&(!q||c[1].toLowerCase().includes(q)||S[c[2]][0].toLowerCase().includes(q))).sort((x,y)=>S[y[2]][2].localeCompare(S[x[2]][2]));
   if(!a.length)return '';
   const v=a.reduce((x,c)=>x+(c[5]||0),0),key='etb:'+want,open=!!q||!collapsed.has(key);
-  return `<section class="set${open?'':' closed'}" data-set="${key}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>Elite Trainer Boxes<small>${a.length} box${a.length===1?'':'es'}</small><span class="prog">${money(v)}</span></button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>';
+  return `<section class="set${open?'':' closed'}" data-set="${key}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>Sealed products<small>${a.length} item${a.length===1?'':'s'}</small><span class="prog">${money(v)}</span></button></h2><div class="list"${open?'':' hidden'}>`+a.map(c=>row(c,true)).join('')+'</div></section>';
 }
 // order of cards inside a set (or an ETB era) when viewing By set
 // graded values from the market data summary
@@ -987,7 +994,7 @@ function render(){
 function row(c,showSet){
   const s=S[c[2]],st=state[c[0]]||'';
   const pp=paid[c[0]],d=(st==='owned'&&pp!=null&&c[5]!=null)?c[5]-pp:null;
-  return `<div class="row ${st}${c[4]==='ETB'?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}${actChip(c)}${slabTxt(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button>${(()=>{const ls=listsOf(c[0]);return `<button data-l="1" class="${ls.length?'on-list':''}" title="${ls.length?esc(ls.map(l=>lists[l]).join(', ')):'Add to a list'}">${ls.length?(ls.length===1?'\u2713 '+esc(lists[ls[0]].length>14?lists[ls[0]].slice(0,13)+'\u2026':lists[ls[0]]):'\u2713 '+ls.length+' lists'):'+ List'}</button>`})()}${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st==='owned'?`<label class="paid">Condition <select class="cond" aria-label="Condition of your copy for ${esc(c[1])}"><option value="">Not set</option>${CONDS.map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${n}</option>`).join('')}</select></label>`:''}</span></div>`;
+  return `<div class="row ${st}${isSealed(c)?' etb':''}" data-id="${c[0]}"><button class="th" type="button" aria-label="View ${esc(c[1])}"><img loading="lazy" decoding="async" src="${img(c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a>${c[4]==='ETB'?`<span class="no">${esc(s[0])} · ${s[2].slice(0,4)}</span>`:`<span class="tag t-${c[4]}">${LABEL[c[4]]}</span><span class="no">#${esc(c[3])}${s[3]?'/'+s[3]:''}${showSet?' · '+esc(s[0]):''}</span>`}</span><span class="pr${c[5]==null?' na':''}">${money(c[5])}<span class="delta ${d==null?'':(d>=0?'up':'down')}">${d==null?'':sgn(d)}</span>${mvTxt(c)}${actChip(c)}${slabTxt(c)}</span><span class="acts"><button data-a="owned" class="${st==='owned'?'on-own':''}" aria-pressed="${st==='owned'}">Owned</button>${(()=>{const ls=listsOf(c[0]);return `<button data-l="1" class="${ls.length?'on-list':''}" title="${ls.length?esc(ls.map(l=>lists[l]).join(', ')):'Add to a list'}">${ls.length?(ls.length===1?'\u2713 '+esc(lists[ls[0]].length>14?lists[ls[0]].slice(0,13)+'\u2026':lists[ls[0]]):'\u2713 '+ls.length+' lists'):'+ List'}</button>`})()}${st==='owned'?`<label class="paid">Paid <input type="number" inputmode="decimal" min="0" step="0.01" id="paid-${c[0]}" value="${pp??''}" placeholder="$0.00" aria-label="What you paid for ${esc(c[1])}"></label>${c[5]!=null?`<button class="usemkt" type="button" data-use="1">Use market</button>`:''}`:''}${st==='owned'?`<label class="paid">Condition <select class="cond" aria-label="Condition of your copy for ${esc(c[1])}"><option value="">Not set</option>${CONDS.map(([k,n])=>`<option value="${k}"${cond[c[0]]===k?' selected':''}>${n}</option>`).join('')}</select></label>`:''}</span></div>`;
 }
 let view='all';
 function viewStatus(){return view==='owned'?'owned':view==='want'?'list':f.status}
@@ -1029,7 +1036,7 @@ let ldCard=null;
 function ldDraw(){const ids=listIds(),ul=document.getElementById('ldList');
   ul.innerHTML=ids.length?ids.map(l=>`<li><label><input type="checkbox" data-list="${l}"${inList(l,ldCard)?' checked':''}>${esc(lists[l])}<small>${listCount(l)} card${listCount(l)===1?'':'s'}</small></label></li>`).join(''):'<li class="none">No lists yet. Name one below to start.</li>'}
 function openListPicker(id){const c=byIdL[id];if(!c)return;ldCard=id;
-  document.getElementById('ldCard').textContent=c[1]+(c[4]==='ETB'?'':' · #'+c[3])+' · '+S[c[2]][0];
+  document.getElementById('ldCard').textContent=c[1]+(isSealed(c)?'':' · #'+c[3])+' · '+S[c[2]][0];
   document.getElementById('ldNew').value='';ldDraw();document.getElementById('listDlg').showModal()}
 window.openListPicker=openListPicker;
 document.getElementById('ldList').addEventListener('change',e=>{const i=e.target.closest('input[data-list]');if(!i||!ldCard)return;const k=i.dataset.list+':'+ldCard;if(i.checked)lm[k]=1;else delete lm[k];cache();ldDraw();refresh()});
@@ -1326,7 +1333,7 @@ function fillLookups(c){const k=lkCond,graded=k.startsWith('g:'),sel=document.ge
   document.getElementById('dvLinks').innerHTML=`<p class="note" id="dvCopied">eBay links show ${lbl} copies in English from US sellers${k==='any'||k==='g:any'?'':', using the seller’s own condition or grade'}. ${graded?'TCGplayer only sells ungraded cards. ':'TCGplayer sales can be filtered by condition on the page. '}Card Ladder and Alt copy the card name for you to paste into their search.</p>`}
 document.getElementById('dvLkCond').addEventListener('change',e=>{lkCond=e.target.value;try{localStorage.setItem('binder-lkcond',lkCond)}catch(x){}if(window.__lkCard)fillLookups(window.__lkCard)});
 function q(c){const s=S[c[2]];return encodeURIComponent(c[1]+' '+c[3]+' '+s[0])}
-function srchTxt(c){const s=S[c[2]];return c[4]==='ETB'?c[1]:c[1]+' '+s[0]+' '+c[3]}
+function srchTxt(c){const s=S[c[2]];return isSealed(c)?c[1]:c[1]+' '+s[0]+' '+c[3]}
 document.getElementById('dvLinksSold').addEventListener('click',e=>{const a=e.target.closest('a[data-copy]');if(!a)return;const t=a.dataset.copy,n=document.getElementById('dvCopied');
   const done=()=>{if(n)n.textContent='Copied \u201c'+t+'\u201d. Paste it into the search box on '+(a.href.includes('alt.xyz')?'Alt':'Card Ladder')+'.'};
   try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>{});else{const x=document.createElement('textarea');x.value=t;document.body.appendChild(x);x.select();document.execCommand('copy');x.remove();done()}}catch(err){}});
@@ -1334,7 +1341,7 @@ function openDetail(c){
   cur=c;const s=S[c[2]],im=document.getElementById('lbImg');
   im.src='';im.alt=c[1];im.src=img(c,true);
   document.getElementById('lbName').textContent=c[1];
-  document.getElementById('lbMeta').textContent=c[4]==='ETB'?s[0]+' · Elite Trainer Box · '+s[2].slice(0,4):s[0]+' · #'+c[3]+(s[3]?'/'+s[3]:'')+' · '+LABEL[c[4]];
+  document.getElementById('lbMeta').textContent=isSealed(c)?(c[3]==='d'?s[1]+' era':s[0])+' · '+SEALED_L[c[4]]+(c[3]==='d'?'':' · '+s[2].slice(0,4)):s[0]+' · #'+c[3]+(s[3]?'/'+s[3]:'')+' · '+LABEL[c[4]];
   document.getElementById('dvMkt').textContent=money(c[5]);
   {const a=activity(c),el=document.getElementById('dvAct');
    if(!a||!a.n){el.innerHTML='<p class="note">No price history yet.</p>'}
@@ -1520,7 +1527,7 @@ function planScore(c){
   // supply: a reprint/restock holds prices down while product is on shelves; sets still being printed get a small nudge down
   const ev=supplyEvent(c[2]);let reprint=false;
   if(ev){reprint=true;sc-=15;why.unshift(['b',`reprint ${ev.level==='yours'?'expected':ev.level}${ev.when?' ('+ev.when+')':''}`])}
-  else{const rel=new Date(S[c[2]][2].replace(/\//g,'-')+'T12:00:00'),mo=(Date.now()-rel)/(30.4*864e5);if(mo<15){sc-=4;why.push(['','still in print'])}else if(mo>30&&c[4]!=='ETB'){sc+=3}}
+  else{const rel=new Date(S[c[2]][2].replace(/\//g,'-')+'T12:00:00'),mo=(Date.now()-rel)/(30.4*864e5);if(mo<15){sc-=4;why.push(['','still in print'])}else if(mo>30&&!isSealed(c)){sc+=3}}
   const spike=(c7!=null&&c7>=12)||(a30&&(cur-a30)/a30>=0.15);
   // spiked or still dropping fast: good card maybe, bad moment. These go to Watch instead of picks.
   return {c,price:cur,sc:Math.round(sc),why,spike:spike||falling||reprint,slide,reprint}}
@@ -1605,7 +1612,7 @@ fetch('data/ppt/summary.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).th
    const list=pick();if(!list.length)return;
    const pics=document.getElementById('phPics').checked,price=document.getElementById('phPrice').checked,cut=document.getElementById('phCut').checked;
    const day=DT[DT.length-1].toLocaleDateString('en-US',{month:'short',day:'numeric'});
-   const card=c=>{const s=S[c[2]],etb=c[4]==='ETB';
+   const card=c=>{const s=S[c[2]],etb=isSealed(c);
      return `<div class="phcard${cut?' cut':''}">${pics?`<div class="phimg" style="background-image:url('${img(c,true)}')"></div>`:''}<div class="phset">${esc(s[0])} · ${esc(s[2].slice(0,4))}</div><div class="phname">${esc(c[1])}</div>${etb?'':`<div class="phnum">#${esc(c[3])}${s[3]?'/'+s[3]:''}</div><span class="phkind">${esc(LABEL[c[4]]||c[4])}</span>`}<div class="phfoot">PLACEHOLDER · NEED THIS CARD${price&&c[5]!=null?`<div class="phprice">${usd.format(c[5])} on ${day}</div>`:''}</div></div>`};
    let h='';for(let i=0;i<list.length;i+=9)h+='<section class="phpage">'+list.slice(i,i+9).map(card).join('')+'</section>';
    const out=document.getElementById('phPrint');if(out.parentNode!==document.body)document.body.appendChild(out);out.innerHTML=h;

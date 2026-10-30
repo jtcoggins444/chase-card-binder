@@ -26,6 +26,8 @@ const days = (await import('node:fs')).readdirSync(join(Data, 'days')).filter(f 
 const lastDayPath = join(Data, 'days', days[days.length - 1]);
 const lastDay = JSON.parse(readFileSync(lastDayPath, 'utf8'));
 const groups = (await get(`${Base}/tcgplayer/3/groups`)).results || [];
+// UPCs in the catch-all group carry no useful release date: place these by hand (era is what matters)
+const PLACE = [[/greninja ex ultra/i, 'sv7'], [/team rocket.s moltres ex ultra/i, 'sv10'], [/mega charizard x ex ultra/i, 'me2']];
 const found = [];
 for (const g of groups) {
   let prods;
@@ -41,11 +43,12 @@ for (const g of groups) {
   await sleep(120);
   for (const p of upcs) {
     const rel = String((p.presaleInfo && p.presaleInfo.releasedOn) || g.publishedOn || '').slice(0, 10);
-    const sid = voted || setBefore(rel);
+    const hand = (PLACE.find(([re]) => re.test(p.name)) || [])[1];
+    const sid = voted || (hand && cards.sets[hand] ? hand : setBefore(rel));
     const r = prices[p.productId];
     found.push({ pid: p.productId, name: p.name, group: g.name, groupId: g.groupId, released: rel, set: sid, setName: cards.sets[sid][0], how: voted ? 'group' : 'date', price: r ? r.marketPrice : null, have: have.has(p.productId) });
     if (DRY || have.has(p.productId)) continue;
-    cards.etbs.push(['upc-' + p.productId, String(p.name).trim(), sid, '', 'UPC', null, p.productId, 't']);
+    cards.etbs.push(['upc-' + p.productId, String(p.name).trim(), sid, voted ? '' : 'd', 'UPC', null, p.productId, 't']);
     have.add(p.productId);
     if (!pids.includes(p.productId)) pids.push(p.productId);
     if (!known.has(g.groupId)) { groupsFile.groups.push(g.groupId); known.add(g.groupId); }
