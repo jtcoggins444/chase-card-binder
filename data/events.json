@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-26",
+ "updated": "2026-11-02",
  "note": "Supply events that affect prices: reprints, restock waves and new products containing packs of existing sets. Updated weekly by a scheduled check; you can also add sets in the app. level: confirmed | reported | rumored.",
  "sets": {
   "zsv10pt5": {
@@ -32,17 +32,24 @@
   },
   "me2pt5": {
    "type": "reprint",
-   "level": "reported",
-   "when": "2026",
-   "note": "Ascended Heroes chase cards fell sharply after heavy printing (top SIRs about $1,300 in May to $850–900 by late Sept 2026).",
-   "src": "https://www.wargamer.com/pokemon-trading-card-game/gengar-tree-pikachu-dropping"
+   "level": "confirmed",
+   "when": "2026 (tins Aug 28, 2026)",
+   "note": "Ascended Heroes chase cards fell sharply after heavy printing (top SIRs about $1,300 in May to $850–900 by late Sept 2026), and Ascended Heroes tins added more packs on Aug 28, 2026.",
+   "src": "https://www.beckett.com/news/pokemon-tcg-ascended-heroes-tins-arrive-august-28-what-collectors-need-to-know/"
   },
   "me5": {
    "type": "reprint",
    "level": "confirmed",
-   "when": "Oct 23, 2026",
-   "note": "The new $9.99 Deck Crafter's Collection includes 1 Pitch Black booster pack, which adds a small amount of extra supply.",
-   "src": "https://www.pokebeach.com/2026/08/new-pokemon-tcg-deck-crafters-collection-to-release-in-october"
+   "when": "Oct 23, 2026 + Feb 12, 2027",
+   "note": "The $9.99 Deck Crafter's Collection (Oct 23, 2026) has 1 Pitch Black pack, and the Mega Rayquaza ex Premium Tournament Collection (Feb 12, 2027, $49.99) is reported to include 4 Pitch Black packs.",
+   "src": "https://www.wargamer.com/pokemon-trading-card-game/mega-rayquaza-premium-tournament-collection"
+  },
+  "g24831": {
+   "type": "reprint",
+   "level": "reported",
+   "when": "Feb 12, 2027",
+   "note": "The Mega Rayquaza ex Premium Tournament Collection (Feb 12, 2027, $49.99) is reported to include 4 Delta Reign packs, adding supply about three months after the set's Nov 6 launch.",
+   "src": "https://www.wargamer.com/pokemon-trading-card-game/mega-rayquaza-premium-tournament-collection"
   }
  }
 }
