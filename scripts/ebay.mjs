@@ -186,6 +186,9 @@ await (async () => {
   const seenPath = join(Root, 'data/alerts-seen.json'), first = !existsSync(seenPath);
   const seen = first ? {} : JSON.parse(readFileSync(seenPath, 'utf8'));
   const now = Date.now(), byId = Object.fromEntries(cards.cards.map(c => [c[0], c]));
+  // Lightly Played copies are judged against the Lightly Played price (TCGplayer LP, capped at NM; 90% of NM when there's none)
+  const LP_TITLE = /\b(lp|lightly played|light(ly)? play(ed)?|excellent|ex condition)\b/i;
+  const lpBase = (c, R) => { const l = GDS[c[0]] && GDS[c[0]].lp && GDS[c[0]].lp[0]; return Math.min(R, l > 0 ? l : 0.9 * R); };
   const deals = [];
   for (const [cid, rows] of Object.entries(out.c)) {
     if (owned.has(cid)) continue;
@@ -195,7 +198,10 @@ await (async () => {
       const r = total / R;
       if (r > 1 - pct) continue;
       if (grader ? !gradeOk(grade, r, R) : r > 0.8) continue;
-      deals.push({ c, R, total, grader, grade, id, title, r, chk });
+      const isLp = !grader && (chk === 'lp' || LP_TITLE.test(title));
+      const d = { c, R, total, grader, grade, id, title, r, chk, lpB: lpBase(c, R) };
+      if (isLp) { d.lp = 1; d.r = total / d.lpB; if (d.r > 0.8) continue; }
+      deals.push(d);
     }
   }
   // two groups so cheaper cards aren't crowded out by big-dollar savings: cards under cheapMax (default $50) and the rest,
@@ -217,6 +223,7 @@ await (async () => {
           if (/near mint or better/.test(cond)) d.cond = 'Near Mint'; else if (/lightly played|excellent/.test(cond)) d.cond = 'Lightly Played'; else continue;
         } catch (e) { continue; }
       }
+      if (d.cond === 'Lightly Played' && !d.lp) { d.lp = 1; d.r = d.total / d.lpB; if (d.r > 0.8) continue; }   // the listing turned out to be LP
       if (keep.length >= 10) continue;
       done.push(d); keep.push(d);
     }
@@ -235,7 +242,7 @@ await (async () => {
   const nc = Math.min(cheap.length, Math.max(cheapN, 6 - big.length)), top = [...cheap.slice(0, nc), ...big.slice(0, 6 - nc)];
   for (const d of top) {
     const set = S[d.c[2]][0], what = d.grader ? `${d.grader} ${d.grade}` : d.cond;
-    await send(`${d.c[1]} · ${what} · ${Math.round((1 - d.r) * 100)}% under`, `${set} #${d.c[3]}: ${usd(d.total)} with shipping vs ${usd(d.R)} raw Near Mint. ${d.title}`, 'https://www.ebay.com/itm/' + d.id, d.r <= 0.7 ? 'high' : 'default');
+    await send(`${d.c[1]} · ${what} · ${Math.round((1 - d.r) * 100)}% under ${d.lp ? 'LP' : 'NM'}`, `${set} #${d.c[3]}: ${usd(d.total)} with shipping vs ${d.lp ? usd(d.lpB) + ' Lightly Played' : usd(d.R) + ' raw Near Mint'}. ${d.title}`, 'https://www.ebay.com/itm/' + d.id, d.r <= 0.7 ? 'high' : 'default');
   }
   if (keep.length > top.length) await send(`${keep.length - top.length} more eBay deals${cheap.length > nc ? ` (${cheap.length - nc} under $${cheapMax})` : ''}`, 'Open the app to see them on each card (Slab deals sort).', 'https://jtcoggins444.github.io/chase-card-binder/');
   log(`Alerts: ${keep.length} new deals (${cheap.length} under $${cheapMax}), ${top.length} sent (${nc} cheap).`);
