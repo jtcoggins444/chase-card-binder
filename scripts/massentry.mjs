@@ -23,6 +23,7 @@ for (const g of groups) {
     const id = want.get(Number(p.productId)); if (!id || !code) continue;
     const ed = Object.fromEntries((p.extendedData || []).map(e => [e.name, e.value]));
     const num = String(ed.Number || '').trim();
+    if (/[\[\]]/.test(p.name)) continue;   // square brackets in the name confuse Mass Entry (e.g. "Elite Trainer Box [Mewtwo X]"): added by hand
     out[id] = `${String(p.name).trim()} [${code}]${num ? ' ' + num : ''}`;
   }
   await sleep(120);
