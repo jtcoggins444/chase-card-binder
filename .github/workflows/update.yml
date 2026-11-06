@@ -37,6 +37,9 @@ jobs:
           node scripts/allcards.mjs
           node scripts/scanall.mjs 3000
         continue-on-error: true
+      - name: TCGplayer Mass Entry lines (cart button)
+        run: node scripts/massentry.mjs
+        continue-on-error: true
       - name: Save to the repository
         run: |
           git config user.name "binder-bot"

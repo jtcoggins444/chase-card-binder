@@ -425,6 +425,9 @@ dialog.scan::backdrop{background:rgb(0 0 0 / .75)}
 .phcard .phprice{position:relative;font-size:8pt;color:#333;text-align:center;margin-top:2pt;font-weight:600;letter-spacing:0}
 dialog.sd{border:0;border-radius:14px;padding:22px;background:var(--panel);color:var(--ink);width:min(92vw,400px);box-sizing:border-box}
 dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
+.cartsteps{margin:8px 0 12px 18px;padding:0;font-size:.86rem;line-height:1.45}.cartsteps li{margin:4px 0}
+.cartbtns{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px}.cartbtns a{display:block;text-align:center;font:700 .92rem var(--f-body);color:var(--accent-ink);background:var(--accent);border-radius:10px;padding:11px 12px;text-decoration:none}
+.cartbtns a.done{opacity:.55}#cartMiss .note{margin:6px 0}#cartMiss ul{margin:4px 0 0 18px;padding:0;font-size:.84rem}
 .safelist{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px;max-height:50vh;overflow:auto}
 .safelist li{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.88rem}
 .safelist small{display:block;color:var(--muted)}
@@ -556,6 +559,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <div class="planstats" id="planStats"></div>
       <h3 class="planh">This week's picks</h3>
       <ol class="mvl planl" id="planPicks"></ol>
+      <button type="button" class="planlink" id="planCart" hidden>Send this week's picks to a TCGplayer cart</button>
       <h3 class="planh">Bigger buys for your fund</h3>
       <ol class="mvl planl" id="planBig"></ol>
       <h3 class="planh">Graded deals (near mint or better)</h3>
@@ -611,6 +615,21 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <p class="sdp" id="ldCard"></p>
       <ul class="lpick" id="ldList"></ul>
       <div class="lnewrow"><input id="ldNew" type="text" maxlength="40" placeholder="New list name" aria-label="New list name" autocomplete="off"><button type="button" id="ldCreate">Create</button></div>
+      <div class="sdrow"><button type="submit" class="pri">Done</button></div>
+      <button type="submit" class="sdx" aria-label="Close">×</button>
+    </form>
+  </dialog>
+  <dialog class="sd" id="cartDlg" aria-labelledby="cartTitle">
+    <form method="dialog">
+      <h2 id="cartTitle">Send to a TCGplayer cart</h2>
+      <p class="sdp" id="cartSum"></p>
+      <ol class="cartsteps">
+        <li>Sign in to TCGplayer first, so the cart stays with your account.</li>
+        <li>On the Mass Entry page, tap <b>Options</b> and leave only <b id="cartCond">Near Mint and Lightly Played</b> ticked. It starts with Moderately Played ticked too.</li>
+        <li>Tap <b>Add to Cart</b>. TCGplayer picks the cheapest listing for each card; check the cart (and its Optimize button) before you pay.</li>
+      </ol>
+      <div class="cartbtns" id="cartBtns"></div>
+      <div id="cartMiss"></div>
       <div class="sdrow"><button type="submit" class="pri">Done</button></div>
       <button type="submit" class="sdx" aria-label="Close">×</button>
     </form>
@@ -1022,12 +1041,13 @@ function setCur(l){curList=l;try{localStorage.setItem('binder-curList',l)}catch(
 function renderListBar(){const bar=document.getElementById('listBar');if(!bar)return;bar.hidden=view!=='want';if(view!=='want')return;
   const ids=listIds();if(!lists[curList]&&ids.length)setCur(ids[0]);
   document.getElementById('listChips').innerHTML=ids.map(l=>`<button type="button" class="lchip" data-list="${l}" aria-pressed="${l===curList}">${esc(lists[l])}<small>${listCount(l)}</small></button>`).join('')+'<button type="button" class="lnew" id="listNew">+ New list</button>';
-  document.getElementById('listTools').innerHTML=lists[curList]?`<button type="button" id="listRename">Rename</button><button type="button" id="listClear">Remove all cards</button><button type="button" class="danger" id="listDel">Delete list</button>`:''}
+  document.getElementById('listTools').innerHTML=lists[curList]?`<button type="button" id="listCart">TCGplayer cart</button><button type="button" id="listRename">Rename</button><button type="button" id="listClear">Remove all cards</button><button type="button" class="danger" id="listDel">Delete list</button>`:''}
 function askName(title,val){const v=prompt(title,val||'');return v==null?null:v.trim().slice(0,40)}
 document.getElementById('listBar').addEventListener('click',e=>{
   const ch=e.target.closest('.lchip');if(ch){setCur(ch.dataset.list);refresh();return}
   const t=e.target.closest('button');if(!t)return;
   if(t.id==='listNew'){const n=askName('Name your new list');if(!n)return;const id=makeList(n);if(id){setCur(id);cache();refresh()}return}
+  if(t.id==='listCart'){openCart(C.concat(E).filter(c=>inList(curList,c[0])&&state[c[0]]!=='owned'),'the unowned cards on '+lists[curList]);return}
   if(t.id==='listRename'){const n=askName('Rename this list',lists[curList]);if(!n)return;lists[curList]=n;cache();refresh();return}
   if(t.id==='listClear'||t.id==='listDel'){
     if(!t.classList.contains('armed')){t.classList.add('armed');t.dataset.txt=t.textContent;t.textContent=t.id==='listDel'?'Tap again to delete':'Tap again to remove all';setTimeout(()=>{if(t.isConnected){t.classList.remove('armed');t.textContent=t.dataset.txt}},4000);return}
@@ -1501,6 +1521,24 @@ saveEl.textContent='Your checklist saves in this browser. Use Back up to keep a 
  ul.addEventListener('click',e=>{const bt=e.target.closest('button[data-i]');if(!bt)return;const b=load()[+bt.dataset.i];if(!b)return;
    autoBackup('before undo');window.binderBulk=Date.now();state={...b.state};paid={...(b.paid||{})};cond={...(b.cond||{})};if(b.lists){lists={...b.lists};lm={...(b.lm||{})}}cache();refresh();dlg.close();
    document.getElementById('backupMsg').textContent='Restored '+b.owned+' owned cards from '+new Date(b.t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.'});}
+
+// ---- TCGplayer cart via Mass Entry: a link that pre-fills TCGplayer's Mass Entry page with the cards ----
+let ME=null;
+async function meLines(){if(!ME){try{ME=await fetch('data/massentry.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{})}catch(e){ME={}}}return ME}
+async function openCart(cards,what){
+  const me=await meLines(),dlg=document.getElementById('cartDlg');
+  const ok=[],miss=[];for(const c of cards)(me[c[0]]?ok:miss).push(c);
+  const base='https://www.tcgplayer.com/massentry?productline=Pokemon&c=',parts=[];let cur=[],len=0;
+  for(const c of ok){const t=encodeURIComponent('1 '+me[c[0]]);if(cur.length&&(len+t.length+6>5200||cur.length>=60)){parts.push(cur);cur=[];len=0}cur.push(c);len+=t.length+6}
+  if(cur.length)parts.push(cur);
+  const val=a=>a.reduce((x,c)=>x+(c[5]||0),0);
+  document.getElementById('cartSum').textContent=cards.length?`${cards.length} item${cards.length===1?'':'s'} from ${what}, about ${usd.format(val(cards))} at market price.`:`There's nothing to buy in ${what}.`;
+  document.getElementById('cartCond').textContent=buyCond()==='NM'?'Near Mint':buyCond()==='any'?'the conditions you’ll accept':'Near Mint and Lightly Played';
+  document.getElementById('cartBtns').innerHTML=parts.map((p,i)=>`<a href="${base+p.map(c=>encodeURIComponent('1 '+me[c[0]])).join('%7C%7C')}" target="_blank" rel="noopener">${parts.length>1?`Part ${i+1} of ${parts.length}: `:'Open Mass Entry with '}${p.length} card${p.length===1?'':'s'} · ~${usd0.format(val(p))}</a>`).join('');
+  document.getElementById('cartBtns').onclick=e=>{const a=e.target.closest('a');if(a)setTimeout(()=>a.classList.add('done'),300)};
+  document.getElementById('cartMiss').innerHTML=miss.length?`<p class="note">${miss.length===1?'This one needs':'These need'} adding by hand (sealed products and a few cards Mass Entry can’t match):</p><ul>${miss.map(c=>`<li><a href="${link(c)}" target="_blank" rel="noopener">${esc(c[1])}</a> <small>${esc(S[c[2]][0])}</small></li>`).join('')}</ul>`:'';
+  if(parts.length>1)document.getElementById('cartBtns').insertAdjacentHTML('afterbegin','<p class="note" style="margin:0">Big lists go in parts. Open each one and tap Add to Cart; they all land in the same cart.</p>');
+  if(dlg.showModal)dlg.showModal();else dlg.setAttribute('open','')}
 // ---- weekly buy plan ----
 function liveCount(){const lo=pc('liveMin'),hi=pc('liveMax'),n=C.filter(c=>c[5]!=null&&c[5]>=lo&&c[5]<=hi).length,el=document.getElementById('pLiveN');if(el)el.textContent=n>1000?`(${n.toLocaleString()} cards: only the 1,000 priciest fit in eBay’s daily limit)`:`(${n.toLocaleString()} cards; the next check picks it up)`}
 function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15,cheapN:3,cheapMax:50,liveMin:10,liveMax:80}[k]}   // plan setting, or its default
@@ -1572,6 +1610,7 @@ function renderPlan(){
   const watch=scored.filter(x=>x.spike&&(x.sc>=55||(x.reprint&&x.sc>=40))).slice(0,6);
   const item=(x,btn)=>{const s=S[x.c[2]];return `<li data-id="${x.c[0]}"><button class="th" type="button" aria-label="View ${esc(x.c[1])}"><img loading="lazy" src="${img(x.c)}" alt="" onerror="this.parentNode.classList.add('noimg');this.remove()"></button><span class="nm"><b>${esc(x.c[1])}</b><small>${esc(s[0])}${x.c[4]==='ETB'?'':' · #'+esc(x.c[3])} · <span class="score">score ${x.sc}</span></small><span class="why">${x.why.slice(0,4).map(([k,t])=>`<span class="${k}">${t}</span>`).join('')}</span></span><span class="ch">${money(x.price)}${btn?`<br><button type="button" data-buy="${x.c[0]}">I bought it</button>`:''}</span></li>`};
   document.getElementById('planPicks').innerHTML=picks.length?picks.map(x=>item(x,1)).join('')+`<li class="none">${picks.length} pick${picks.length===1?'':'s'} · ${usd.format(M.left-left)} of ${usd.format(M.left)} left this week.</li>`:`<li class="none">${M.left<3?'This week’s spending money is used up. New picks on Monday.':scored.length?'Nothing scores well enough within this week’s budget right now. Holding the money is fine'+(pc('roll')?' (it rolls into your fund).':'.'):'Market data is still loading, or no cards match these settings.'}</li>`;
+  {const pb=document.getElementById('planCart');pb.hidden=!picks.length;pb.onclick=()=>openCart(picks.map(x=>x.c),"this week's picks")}
   document.getElementById('planBig').innerHTML=big.length?big.map(x=>item(x,1)).join(''):bigLater.length?bigLater.map(x=>item(x,0)).join('')+`<li class="none">Your fund (${usd.format(M.fund)}) isn’t big enough for these yet.</li>`:'<li class="none">Nothing over this week’s budget scores well right now.</li>';
   watch.sort((a,b)=>(a.reprint?1:0)-(b.reprint?1:0)||b.sc-a.sc);
   const held=scored.filter(x=>x.reprint&&x.sc>=50&&x.price<=M.spend+M.fund),hs=[...new Set(held.map(x=>S[x.c[2]][0]))];

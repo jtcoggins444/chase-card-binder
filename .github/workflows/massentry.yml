@@ -1,0 +1,30 @@
+name: TCGplayer cart lines
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: price-update
+  cancel-in-progress: false
+
+jobs:
+  lines:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/massentry.mjs
+      - name: Save
+        run: |
+          git config user.name "binder-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/massentry.json
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git commit -m "TCGplayer Mass Entry lines"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && break; sleep 10; done
