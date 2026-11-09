@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-02",
+ "updated": "2026-11-09",
  "note": "Supply events that affect prices: reprints, restock waves and new products containing packs of existing sets. Updated weekly by a scheduled check; you can also add sets in the app. level: confirmed | reported | rumored.",
  "sets": {
   "zsv10pt5": {
@@ -19,16 +19,16 @@
   "sv10": {
    "type": "reprint",
    "level": "reported",
-   "when": "summer–fall 2026",
-   "note": "Destined Rivals ETB reprint wave, reportedly over 1 million units to big-box and online stores.",
+   "when": "summer–fall 2026 (still restocking Nov)",
+   "note": "Destined Rivals reprint wave, reportedly over 1 million units to big-box and online stores; Target ran a Destined Rivals 3-pack drawing on Nov 4, 2026.",
    "src": "https://collectorstation.com/pokemon-tcg-schedule-upcoming-sets"
   },
   "sv8pt5": {
    "type": "reprint",
    "level": "confirmed",
-   "when": "ongoing 2026 (ETB drop Oct 22)",
-   "note": "Prismatic Evolutions ETBs are being reprinted again: Best Buy ran an invite drop on Oct 22, 2026, and distributors report more ETB waves. Restocks have continued all through 2026.",
-   "src": "https://x.com/PokemonRestocks/status/2112924904345477272"
+   "when": "ongoing 2026 (ETB drops Oct 22–Nov 8)",
+   "note": "Prismatic Evolutions ETBs keep getting reprinted: Best Buy ran more invite drops on Oct 30 and Nov 8, 2026, and Walmart included Prismatic products in its Nov 4 drawing.",
+   "src": "https://restockd.app/pokemon-news"
   },
   "me2pt5": {
    "type": "reprint",
@@ -41,15 +41,22 @@
    "type": "reprint",
    "level": "confirmed",
    "when": "Oct 23, 2026 + Feb 12, 2027",
-   "note": "The $9.99 Deck Crafter's Collection (Oct 23, 2026) has 1 Pitch Black pack, and the Mega Rayquaza ex Premium Tournament Collection (Feb 12, 2027, $49.99) is reported to include 4 Pitch Black packs.",
-   "src": "https://www.wargamer.com/pokemon-trading-card-game/mega-rayquaza-premium-tournament-collection"
+   "note": "The $9.99 Deck Crafter's Collection (Oct 23, 2026) has 1 Pitch Black pack, and the Mega Rayquaza ex Premium Tournament Collection (Feb 12, 2027, $49.99) is officially listed with 4 Pitch Black packs.",
+   "src": "https://www.pokemon.com/us/pokemon-tcg/product-gallery/mega-rayquaza-ex-premium-tournament-collection"
   },
   "g24831": {
    "type": "reprint",
-   "level": "reported",
+   "level": "confirmed",
    "when": "Feb 12, 2027",
-   "note": "The Mega Rayquaza ex Premium Tournament Collection (Feb 12, 2027, $49.99) is reported to include 4 Delta Reign packs, adding supply about three months after the set's Nov 6 launch.",
-   "src": "https://www.wargamer.com/pokemon-trading-card-game/mega-rayquaza-premium-tournament-collection"
+   "note": "The Mega Rayquaza ex Premium Tournament Collection (Feb 12, 2027, $49.99) has 8 packs, half Delta Reign and half Pitch Black, per its official Pokémon product page; that adds supply about three months after the Nov 6 launch.",
+   "src": "https://www.pokemon.com/us/pokemon-tcg/product-gallery/mega-rayquaza-ex-premium-tournament-collection"
+  },
+  "sv3pt5": {
+   "type": "reprint",
+   "level": "rumored",
+   "when": "Nov 8, 2026",
+   "note": "151 Mini Tins were spotted back in stock at Sam's Club on Nov 8, 2026 (single restock-tracker report).",
+   "src": "https://restockd.app/pokemon-news"
   }
  }
 }
