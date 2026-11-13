@@ -1,17 +1,17 @@
 {
  "after": 24688,
- "ignore": [
-  24722,
-  24837
- ],
+ "ignore": [],
  "sets": {
-  "24831": "g24831"
+  "24722": "30c",
+  "24831": "g24831",
+  "24837": "30ccc"
  },
  "log": [
   "2026-10-15: added Delta Reign Elite Trainer Box.",
   "2026-10-15: added Delta Reign Pokemon Center Elite Trainer Box (Exclusive).",
   "2026-10-28: added 12 cards from Delta Reign (11 IR, 1 SIR).",
   "2026-10-29: added 6 cards from Delta Reign (1 IR, 4 FA, 1 SIR).",
-  "2026-10-30: added 8 cards from Delta Reign (2 IR, 3 FA, 2 SIR, 1 MHR)."
+  "2026-10-30: added 8 cards from Delta Reign (2 IR, 3 FA, 2 SIR, 1 MHR).",
+  "2026-11-13: added 63 cards from 30th Celebration (IR, SIR, Futuristic, RGB, Classic Collection)."
  ]
 }
