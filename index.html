@@ -498,6 +498,8 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <select id="sfCond" aria-label="Condition"><option value="NM">Near Mint only</option><option value="LP" selected>Near Mint or Lightly Played</option></select>
         <span class="prange">Worth<input id="sfMin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum market price">to<input id="sfMax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" value="5" aria-label="Maximum market price"></span>
         <span class="prange">Up to<input id="sfN" type="number" inputmode="numeric" min="1" max="10" step="1" value="3" aria-label="Most shops">shops</span>
+        <span class="prange">Each order up to<input id="sfCards" type="number" inputmode="numeric" min="1" step="5" placeholder="any" aria-label="Most cards per order">cards</span>
+        <span class="prange">and $<input id="sfDollars" type="number" inputmode="decimal" min="1" step="25" placeholder="any" aria-label="Most dollars per order"></span>
         <span class="prange">Skip if over market by<input id="sfOver" type="number" inputmode="decimal" min="0" step="5" value="30" aria-label="Most over market, percent">%</span>
       </div>
       <p class="note" style="margin:6px 0 0">Uses the card types and sets picked in the filters above.</p>
@@ -1172,15 +1174,18 @@ async function renderSF(){
   const out=document.getElementById('sfOut');if(!out||document.getElementById('sfBody').hidden)return;
   const D=await sfLoad();const v=id=>document.getElementById(id).value;
   const scope=v('sfScope'),okC=v('sfCond')==='NM'?['NM']:['NM','LP'],mn=parseFloat(v('sfMin')),mx=parseFloat(v('sfMax')),maxN=Math.max(1,Math.min(10,parseInt(v('sfN'))||3)),over=parseFloat(v('sfOver'));
-  const lo=isNaN(mn)?0:mn,hi=isNaN(mx)?Infinity:mx,cap=isNaN(over)?Infinity:1+over/100;
+  const lo=isNaN(mn)?0:mn,hi=isNaN(mx)?Infinity:mx,cap=isNaN(over)?Infinity:1+over/100,maxC=parseInt(v('sfCards'))||Infinity,maxD=parseFloat(v('sfDollars'))||Infinity;
   const want=C.filter(c=>f.r.has(c[4])&&(!f.sets||f.sets.has(c[2]))&&(!f.era||S[c[2]][1]===f.era)&&(scope==='all'||(scope==='want'?inList(curList,c[0]):state[c[0]]!=='owned'))&&c[5]!=null&&c[5]>=lo&&c[5]<=hi);
   // best offer per shop per card: cheapest allowed condition, not too far over market
   const offers=new Map();   // shop index -> Map(cardId -> {price,cond,handle})
   for(const c of want){for(const [si,cond,price,handle,vid] of (D.c[c[0]]||[])){if(!okC.includes(cond)||price>c[5]*cap)continue;let m=offers.get(si);if(!m)offers.set(si,m=new Map());const o=m.get(c[0]);if(!o||price<o.price)m.set(c[0],{price,cond,handle,vid})}}
   const left=new Set(want.map(c=>c[0])),picks=[];
+  // each order: the shop's best-value cards (lowest price vs market first) until the card or dollar limit is reached
+  const take=m=>{const all=[...m].filter(([id])=>left.has(id)).map(([id,o])=>({c:byId[id],...o})).sort((a,b)=>a.price/a.c[5]-b.price/b.c[5]||a.price-b.price);
+    const out=[];let t=0;for(const x of all){if(out.length>=maxC)break;if(t+x.price>maxD)continue;out.push(x);t+=x.price}return out};
   while(picks.length<maxN){let best=null;
-    for(const [si,m] of offers){if(picks.some(p=>p.si===si))continue;let n=0,t=0;for(const [id,o] of m)if(left.has(id)){n++;t+=o.price}if(n&&(!best||n>best.n||(n===best.n&&t<best.t)))best={si,n,t}}
-    if(!best)break;const items=[...offers.get(best.si)].filter(([id])=>left.has(id)).map(([id,o])=>({c:byId[id],...o}));items.forEach(x=>left.delete(x.c[0]));picks.push({si:best.si,items})}
+    for(const [si,m] of offers){if(picks.some(p=>p.si===si))continue;const it=take(m),n=it.length,t=it.reduce((a,x)=>a+x.price,0);if(n&&(!best||n>best.n||(n===best.n&&t<best.t)))best={si,n,t,it}}
+    if(!best)break;best.it.forEach(x=>left.delete(x.c[0]));picks.push({si:best.si,items:best.it})}
   const sum=a=>a.reduce((x,y)=>x+y,0),found=picks.reduce((n,p)=>n+p.items.length,0),miss=want.filter(c=>left.has(c[0]));
   const shopsN=(D.s||[]).length,age=D.t?Math.max(0,Math.round((Date.now()-Date.parse(D.t))/36e5)):null;
   document.getElementById('sfSub').textContent=` · ${want.length} cards wanted · ${found} found at ${picks.length} shop${picks.length===1?'':'s'}`;
@@ -1190,7 +1195,7 @@ async function renderSF(){
       return `<div class="sfshop"><h4>${i+1}. <a href="https://${esc(dom)}" target="_blank" rel="noopener">${esc(s[1])}</a><small>${esc(s[2]||dom)}${s[6]?' · selling online since '+s[6].slice(0,4):''} · ${p.items.length} cards · ${usd.format(tot)} <span class="${tot>mk?'over':''}">(${tot>=mk?'+':''}${Math.round((tot/mk-1)*100)}% vs market)</span></small></h4>
       <details${p.items.length<=30?' open':''}><summary class="note" style="cursor:pointer">${p.items.length} cards</summary><ol>${p.items.map(x=>`<li><a href="https://${esc(dom)}/products/${esc(x.handle)}" target="_blank" rel="noopener">${esc(x.c[1])}</a> <small>${esc(S[x.c[2]][0])} #${esc(x.c[3])} · ${x.cond} ${usd.format(x.price)}${x.price>x.c[5]*1.05?` <span class="over">(mkt ${usd.format(x.c[5])})</span>`:''}</small></li>`).join('')}</ol></details>
       <div class="sfbtns">${sfCartLinks(dom,p.items)}<button type="button" data-copy="${p.si}">Copy list</button></div></div>`}).join('')+
-    (miss.length?`<div class="sfshop"><h4>Not in stock at these shops<small>${miss.length} cards · ~${usd.format(sum(miss.map(c=>c[5])))} at market</small></h4><div class="sfbtns"><button type="button" id="sfCart">Send these to a TCGplayer cart</button></div></div>`:'');
+    (miss.length?`<div class="sfshop"><h4>${maxC<Infinity||maxD<Infinity?'Left for another order':'Not in stock at these shops'}<small>${miss.length} cards · ~${usd.format(sum(miss.map(c=>c[5])))} at market</small></h4><div class="sfbtns"><button type="button" id="sfCart">Send these to a TCGplayer cart</button></div></div>`:'');
   out.onclick=e=>{const b=e.target.closest('button');if(!b)return;
     if(b.id==='sfCart'){openCart(miss,'cards the shops don’t have');return}
     if(b.dataset.copy!=null){const p=picks.find(x=>x.si===+b.dataset.copy);const t=p.items.map(x=>`${x.c[1]} - ${S[x.c[2]][0]} #${x.c[3]} (${x.cond}) ${usd.format(x.price)}`).join('\n');
@@ -1208,7 +1213,7 @@ function sfShops(D){const mine=sfMine(),known=new Map((D.s||[]).map(s=>[s[0],s])
  const open=o=>{tg.setAttribute('aria-expanded',o);body.hidden=!o;try{localStorage.setItem('binder-sfOpen',o?'1':'0')}catch(e){}if(o)renderSF()};
  try{if(localStorage.getItem('binder-sfOpen')==='1')open(true)}catch(e){}
  tg.addEventListener('click',()=>open(tg.getAttribute('aria-expanded')!=='true'));
- ['sfScope','sfCond','sfMin','sfMax','sfN','sfOver'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
+ ['sfScope','sfCond','sfMin','sfMax','sfN','sfOver','sfCards','sfDollars'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
    el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{try{localStorage.setItem('binder-'+id,el.value)}catch(e){}renderSF()})});
  const add=()=>{const i=document.getElementById('sfAdd'),d=sfDom(i.value);if(!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d))return;const m=sfMine();if(!m.includes(d))m.push(d);cfg.stores=m.join(',');cache();i.value='';sfShops(SF||{s:[],c:{}})};
  document.getElementById('sfAddBtn').addEventListener('click',add);document.getElementById('sfAdd').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();add()}});
