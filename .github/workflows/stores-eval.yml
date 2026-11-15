@@ -1,0 +1,33 @@
+name: Check candidate card shops
+
+on:
+  workflow_dispatch:
+    inputs:
+      stores:
+        description: 'Comma-separated shop domains'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: mkdir -p probe && node scripts/stores.mjs
+        env:
+          STORES: ${{ inputs.stores }}
+          OUT: probe/stores-eval.json
+      - name: Save to the probe branch
+        run: |
+          git config user.name "binder-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B probe
+          git add -f probe
+          git commit -m "store eval" || true
+          git push -f origin probe

@@ -28,20 +28,22 @@ try {
   const j = await (await fetch(`https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents/alerts?key=${key}`)).json();
   for (const d of j.documents || []) { const v = d.fields && d.fields.cfg && d.fields.cfg.mapValue && d.fields.cfg.mapValue.fields && d.fields.cfg.mapValue.fields.stores; if (v && v.stringValue) extra.push(...v.stringValue.split(',')); }
 } catch (e) { log('Could not read stores added in the app: ' + e.message); }
+if (process.env.STORES) { DEFAULT.length = 0; extra = process.env.STORES.split(','); }
 const domains = [...new Set(DEFAULT.concat(extra).map(s => s.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')).filter(s => /^[a-z0-9.-]+\.[a-z]{2,}$/.test(s)))];
 
 const COND = [['near mint', 'NM'], ['lightly played', 'LP'], ['moderately played', 'MP'], ['heavily played', 'HP'], ['damaged', 'DMG']];
 const out = { t: new Date().toISOString(), s: [], c: {} };
 for (const dom of domains) {
-  const si = out.s.length, info = [dom, dom, '', 0, ''];
+  const si = out.s.length, info = [dom, dom, '', 0, '', '', ''];   // domain, name, city, singles, error, country, selling online since
   out.s.push(info);
-  try { const m = await get(`https://${dom}/meta.json`); if (m) { info[1] = m.name || dom; info[2] = [m.city, m.province].filter(Boolean).join(', '); } } catch (e) {}
+  try { const m = await get(`https://${dom}/meta.json`); if (m) { info[1] = m.name || dom; info[2] = [m.city, m.province].filter(Boolean).join(', '); info[5] = m.country || ''; } } catch (e) {}
   let singles = 0, matched = 0, pages = 0;
   try {
     for (let page = 1; page <= 400; page++) {
       const j = await get(`https://${dom}/products.json?limit=250&page=${page}`);
       const ps = (j && j.products) || []; if (!ps.length) break; pages = page;
       for (const p of ps) {
+        const pub = String(p.created_at || p.published_at || '').slice(0, 10); if (pub && (!info[6] || pub < info[6])) info[6] = pub;
         const tags = (p.tags || []).join(' '), all = p.title + ' ' + p.product_type + ' ' + tags;
         if (!/pok[eé]mon/i.test(all) || /japan|chinese|korean|graded|\bslab\b|\bpsa\b|\bcgc\b|\bbgs\b|sealed|booster|elite trainer|\bbox\b|\btin\b|bundle|sleeve|binder|playmat|deck/i.test(all)) continue;
         // which card: TCGplayer product id in the SKU ("name-208378-nm-holo"), else "(190/202) - Set Name" in the title
@@ -70,5 +72,6 @@ for (const dom of domains) {
   info[3] = singles;
   log(`${info[1]} (${dom}): ${pages} pages, ${singles} Pokémon singles, ${matched} match cards in the binder.`);
 }
-writeFileSync(join(Data, 'stores.json.tmp'), JSON.stringify(out)); renameSync(join(Data, 'stores.json.tmp'), join(Data, 'stores.json'));
+const OUT = process.env.OUT || join(Data, 'stores.json');
+writeFileSync(OUT + '.tmp', JSON.stringify(out)); renameSync(OUT + '.tmp', OUT);
 log(`${Object.keys(out.c).length} binder cards in stock at ${domains.length} store(s).`);
