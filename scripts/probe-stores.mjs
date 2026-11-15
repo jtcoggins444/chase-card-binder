@@ -1,25 +1,16 @@
-// One-off: sample how card shops on Shopify list Pokémon singles (titles, types, tags, variants), plus catalog size.
+// One-off: how shops title their Pokémon singles, where page-by-page reading stops, and whether in-stock collections exist.
 import { writeFileSync, mkdirSync } from 'node:fs';
 mkdirSync('probe', { recursive: true });
-const SITES = (process.env.SITES || 'common-lands.com,onestoptcg.com').split(',');
+const SITES = (process.env.SITES || '').split(',').filter(Boolean);
 const H = { 'User-Agent': 'Mozilla/5.0 (personal collection tool)' };
 const out = {};
 for (const s of SITES) {
-  const o = out[s] = { singles: 0, pages: 0, products: 0, types: {}, vendors: {}, poke: [], t0: Date.now() };
-  for (let page = 1; page <= 400; page++) {
-    let j;
-    try { const r = await fetch(`https://${s}/products.json?limit=250&page=${page}`, { headers: H, signal: AbortSignal.timeout(30000) }); if (!r.ok) { o.err = r.status + ' at page ' + page; break; } j = await r.json(); } catch (e) { o.err = String(e); break; }
-    const ps = j.products || []; if (!ps.length) break;
-    o.pages = page; o.products += ps.length;
-    for (const p of ps) {
-      if (/pok/i.test(p.product_type) && !/sealed|slab|plush|PSA|CGC|BGS/i.test(p.title + ' ' + (p.tags || []).join(' '))) o.singles++;
-      o.types[p.product_type] = (o.types[p.product_type] || 0) + 1; o.vendors[p.vendor] = (o.vendors[p.vendor] || 0) + 1;
-      if (/pok/i.test(p.product_type + ' ' + p.vendor + ' ' + (p.tags || []).join(' ')) && !/sealed|slab|plush|PSA|CGC|BGS/i.test(p.title + ' ' + (p.tags || []).join(' ')) && o.poke.length < 40)
-        o.poke.push({ title: p.title, type: p.product_type, vendor: p.vendor, tags: p.tags, body: String(p.body_html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 250), variants: (p.variants || []).map(v => [v.title, v.price, v.available, v.sku]).slice(0, 6), handle: p.handle });
-    }
-    await new Promise(r => setTimeout(r, 400));
+  const o = out[s] = { lastOk: 0, stop: null, samples: [], cols: {} };
+  for (const page of [1, 50, 100, 101, 120]) {
+    try { const r = await fetch(`https://${s}/products.json?limit=250&page=${page}`, { headers: H }); if (r.ok) { o.lastOk = page; const j = await r.json(); if (page === 1) for (const p of (j.products || []).filter(p => /pok/i.test(p.product_type + ' ' + (p.tags || []).join(' ') + ' ' + p.vendor)).slice(0, 8)) o.samples.push({ t: p.title, type: p.product_type, vendor: p.vendor, tags: (p.tags || []).slice(0, 8), v: (p.variants || []).slice(0, 3).map(v => [v.title, v.price, v.available, v.sku]), b: String(p.body_html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200) }); } else { o.stop = o.stop || (page + ':' + r.status + ' ' + (await r.text()).slice(0, 120)); } } catch (e) { o.stop = String(e); }
   }
-  o.secs = Math.round((Date.now() - o.t0) / 1000);
+  for (const c of ['pokemon-singles-instock', 'pokemon-singles-in-stock', 'pokemon-singles', 'pokemon']) {
+    try { const r = await fetch(`https://${s}/collections/${c}/products.json?limit=250&page=1`, { headers: H }); const j = r.ok ? await r.json() : null; o.cols[c] = r.status + ' ' + (j ? (j.products || []).length : '') + (j && j.products && j.products[0] ? ' | ' + j.products[0].title : ''); if (j && j.products && j.products.length && o.samples.length < 8) for (const p of j.products.slice(0, 8)) o.samples.push({ t: p.title, type: p.product_type, tags: (p.tags || []).slice(0, 8), v: (p.variants || []).slice(0, 3).map(v => [v.title, v.price, v.available, v.sku]), b: String(p.body_html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200) }); } catch (e) { o.cols[c] = String(e); }
+  }
 }
 writeFileSync('probe/stores.json', JSON.stringify(out, null, 1));
-for (const [s, o] of Object.entries(out)) console.log(s, o.pages, o.products, o.err || '', o.secs + 's');
