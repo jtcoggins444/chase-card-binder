@@ -6,7 +6,8 @@ import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const Root = join(dirname(fileURLToPath(import.meta.url)), '..'), Data = join(Root, 'data');
-const DEFAULT = ['onestoptcg.com'];
+// US shops with real storefronts and large in-stock Pokémon singles (checked Nov 2026: Google ratings, TCGplayer seller history)
+const DEFAULT = ['magicandmonsters.com', 'eternalgameschesterfield.com', 'levelupgamesmd.com', 'sparkysgaming.com', 'tradingcardworld.store', 'onestoptcg.com', 'zulusgames.com', 'retrogamingofdenver.com', 'blackswampgames.com', 'poke-collect.com'];
 const H = { 'User-Agent': 'Mozilla/5.0 (ChaseCardBinder personal collection tool; reads the public catalog once a day)' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = m => console.log(new Date().toISOString().slice(11, 19) + '  ' + m);
