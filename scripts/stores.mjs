@@ -1,7 +1,7 @@
 // Chase Card Binder - in-stock singles at card shops that sell online on Shopify (e.g. OneStopTCG), for the app's
 // Store finder: which shops have the most of the cards you want, so a bulk order needs as few shops as possible.
 // Stores: DEFAULT below plus any Taylor adds in the app (cfg.stores, shared through the Firestore "alerts" document).
-// Writes data/stores.json: {t, s: [[domain, name, city, singles]], c: {cardId: [[store, condition, price, handle], ...]}}
+// Writes data/stores.json: {t, s: [[domain, name, city, singles]], c: {cardId: [[store, condition, price, handle, variant id], ...]}}
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -95,7 +95,7 @@ for (const dom of domains) {
             const price = Math.round(Number(v.price) * 100) / 100; if (!(price > 0)) continue;
             const L = out.c[id] = out.c[id] || [];
             const ex = L.find(x => x[0] === si && x[1] === cond);
-            if (ex) { if (price < ex[2]) { ex[2] = price; ex[3] = p.handle; } } else L.push([si, cond, price, p.handle]);
+            if (ex) { if (price < ex[2]) { ex[2] = price; ex[3] = p.handle; ex[4] = v.id; } } else L.push([si, cond, price, p.handle, v.id]);   // v.id: for a cart link
           }
         }
         await sleep(400);
