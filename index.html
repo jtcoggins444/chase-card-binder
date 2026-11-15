@@ -549,6 +549,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <label>Grade 7s on cards over <span class="pin">$<input id="pLowMin" type="number" inputmode="decimal" min="0" step="10"></span> if <span class="pin"><input id="pLowPct" type="number" inputmode="decimal" min="0" max="90" step="5">%</span> under raw</label>
         <label class="pchk"><input type="checkbox" id="pLpOn"> Lightly Played on cards over <span class="pin">$<input id="pLpMin" type="number" inputmode="decimal" min="0" step="10"></span> if <span class="pin"><input id="pLpPct" type="number" inputmode="decimal" min="0" max="80" step="5">%</span> under NM</label>
         <label class="pchk"><input type="checkbox" id="pAlertOn"> Phone alerts for new eBay deals at least <span class="pin"><input id="pAlertPct" type="number" inputmode="decimal" min="0" max="80" step="5">%</span> under raw</label>
+        <label>Skip cards from sets released in the last <span class="pin"><input id="pNewMo" type="number" inputmode="numeric" min="0" max="24" step="1"></span> months</label>
         <label style="flex-wrap:wrap">Watch eBay for cards worth <span class="pin">$<input id="pLiveMin" type="number" inputmode="decimal" min="1" step="5"></span> to <span class="pin">$<input id="pLiveMax" type="number" inputmode="decimal" min="1" step="10"></span> raw <small class="note" id="pLiveN" style="flex-basis:100%;margin:0"></small></label>
         <label>Save <span class="pin"><input id="pCheapN" type="number" inputmode="numeric" min="0" max="6" step="1"></span> of each check's 6 alerts for cards under <span class="pin">$<input id="pCheapMax" type="number" inputmode="decimal" min="20" step="5"></span></label>
         <label>Saving for <select id="pGoal"><option value="">Nothing specific</option></select></label>
@@ -749,7 +750,7 @@ function renderBuy(){
   for(const c of C){
     if(!f.r.has(c[4]))continue;if(f.sets&&!f.sets.has(c[2]))continue;if(f.era&&S[c[2]][1]!==f.era)continue;
     const st=state[c[0]];if(scope==='want'&&!inList(curList,c[0]))continue;if(scope==='missing'&&st==='owned')continue;
-    if(c[5]==null||c[5]<lo||c[5]>hi)continue;
+    if(c[5]==null||c[5]<lo||c[5]>hi)continue;if(tooNew(c))continue;
     const sg=buySignals(c);if(sg.score>=0.08)picks.push([c,sg]);
   }
   picks.sort((a,b)=>b[1].score-a[1].score);
@@ -1543,7 +1544,10 @@ async function openCart(cards,what){
   if(dlg.showModal)dlg.showModal();else dlg.setAttribute('open','')}
 // ---- weekly buy plan ----
 function liveCount(){const lo=pc('liveMin'),hi=pc('liveMax'),n=C.filter(c=>c[5]!=null&&c[5]>=lo&&c[5]<=hi).length,el=document.getElementById('pLiveN');if(el)el.textContent=n>1000?`(${n.toLocaleString()} cards: only the 1,000 priciest fit in eBay’s daily limit)`:`(${n.toLocaleString()} cards; the next check picks it up)`}
-function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15,cheapN:3,cheapMax:50,liveMin:10,liveMax:80}[k]}   // plan setting, or its default
+// sets released in the last few months (cfg.newMo, default 3) swing too much to buy into: their cards stay off the buy lists
+function setMonths(sid){const d=S[sid]&&S[sid][2];if(!d)return 99;return (Date.now()-new Date(d.replace(/\//g,'-')+'T12:00:00'))/(30.4*864e5)}
+function tooNew(c){return !isSealed(c)&&setMonths(c[2])<(+pc('newMo')||0)}
+function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15,cheapN:3,cheapMax:50,liveMin:10,liveMax:80,newMo:3}[k]}   // plan setting, or its default
 // supply events (reprints/restocks): from data/events.json, plus sets Taylor adds (cfg.rpAdd) or turns off (cfg.rpOff)
 let EVENTS={};fetch('data/events.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.sets){EVENTS=j.sets;if(window.__planReady)renderPlan()}}).catch(()=>{});
 const idsOf=k=>String(cfg[k]||'').split(',').filter(Boolean);
@@ -1585,7 +1589,7 @@ function renderPlan(){
   const el=document.getElementById('plan');if(!el)return;
   if(!cfg.start){cfg.start=ymd(weekStart(new Date()))}
   const set=(id,v)=>{const e=document.getElementById(id);if(e.type==='checkbox')e.checked=!!v;else if(document.activeElement!==e)e.value=v};
-  set('pBudget',pc('budget'));set('pReserve',pc('reserve'));set('pLowMin',pc('lowMin'));set('pLowPct',pc('lowPct'));set('pLpOn',pc('lpOn'));set('pAlertOn',pc('alertOn'));set('pAlertPct',pc('alertPct'));set('pCheapN',pc('cheapN'));set('pLiveMin',pc('liveMin'));set('pLiveMax',pc('liveMax'));liveCount();set('pCheapMax',pc('cheapMax'));set('pLpMin',pc('lpMin'));set('pLpPct',pc('lpPct'));set('pRoll',pc('roll'));set('pScope',pc('scope'));set('pEtb',pc('etb'));
+  set('pBudget',pc('budget'));set('pReserve',pc('reserve'));set('pLowMin',pc('lowMin'));set('pLowPct',pc('lowPct'));set('pLpOn',pc('lpOn'));set('pAlertOn',pc('alertOn'));set('pAlertPct',pc('alertPct'));set('pCheapN',pc('cheapN'));set('pNewMo',pc('newMo'));set('pLiveMin',pc('liveMin'));set('pLiveMax',pc('liveMax'));liveCount();set('pCheapMax',pc('cheapMax'));set('pLpMin',pc('lpMin'));set('pLpPct',pc('lpPct'));set('pRoll',pc('roll'));set('pScope',pc('scope'));set('pEtb',pc('etb'));
   const M=planMoney(),scope=pc('scope');
   {const sids=[...new Set(Object.keys(EVENTS).concat(idsOf('rpAdd')))].filter(id=>S[id]),on=sids.filter(id=>supplyEvent(id));
    document.getElementById('planEvSum').textContent=`Reprints and restocks (${on.length} set${on.length===1?'':'s'})`;
@@ -1604,6 +1608,7 @@ function renderPlan(){
   let pool=C.slice();if(pc('etb'))pool=pool.concat(E);
   pool=pool.filter(c=>state[c[0]]!=='owned'&&!bd[c[0]]&&(scope!=='lists'||onAnyList(c[0]))&&(c[5]??0)>=3);
   if(scope==='all')pool=C.concat(pc('etb')?E:[]).filter(c=>!bd[c[0]]&&(c[5]??0)>=3);
+  pool=pool.filter(c=>!tooNew(c));   // sets released in the last few months
   const scored=pool.map(planScore).filter(Boolean).sort((a,b)=>b.sc-a.sc);
   const picks=[];let left=M.left;
   for(const x of scored){if(picks.length>=6)break;if(x.spike||x.sc<60)continue;if(x.price<=left){picks.push(x);left-=x.price}}
@@ -1632,7 +1637,7 @@ function renderPlan(){
 }
 {const pl=document.getElementById('plan');
  const num=(id,k)=>document.getElementById(id).addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>=0){cfg[k]=v;cache();renderPlan()}});
- num('pBudget','budget');num('pReserve','reserve');num('pLowMin','lowMin');num('pLowPct','lowPct');num('pLpMin','lpMin');num('pLpPct','lpPct');num('pAlertPct','alertPct');num('pCheapN','cheapN');num('pLiveMin','liveMin');num('pLiveMax','liveMax');['pLiveMin','pLiveMax'].forEach(id=>document.getElementById(id).addEventListener('input',liveCount));num('pCheapMax','cheapMax');
+ num('pBudget','budget');num('pReserve','reserve');num('pLowMin','lowMin');num('pLowPct','lowPct');num('pLpMin','lpMin');num('pLpPct','lpPct');num('pAlertPct','alertPct');num('pCheapN','cheapN');num('pNewMo','newMo');num('pLiveMin','liveMin');num('pLiveMax','liveMax');['pLiveMin','pLiveMax'].forEach(id=>document.getElementById(id).addEventListener('input',liveCount));num('pCheapMax','cheapMax');
  pl.addEventListener('change',e=>{const t=e.target;if(t.id==='pRoll'){cfg.roll=t.checked?1:0}else if(t.id==='pLpOn'){cfg.lpOn=t.checked?1:0}else if(t.id==='pAlertOn'){cfg.alertOn=t.checked?1:0}else if(t.id==='pEtb'){cfg.etb=t.checked?1:0}else if(t.id==='pScope'){cfg.scope=t.value}else if(t.id==='pGoal'){cfg.goal=t.value}else return;cache();renderPlan()});
  pl.addEventListener('click',e=>{
    const ev=e.target.closest('button[data-ev]');if(ev){const id=ev.dataset.ev,add=idsOf('rpAdd'),off=idsOf('rpOff');
