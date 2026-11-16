@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09",
+ "updated": "2026-11-16",
  "note": "Supply events that affect prices: reprints, restock waves and new products containing packs of existing sets. Updated weekly by a scheduled check; you can also add sets in the app. level: confirmed | reported | rumored.",
  "sets": {
   "zsv10pt5": {
@@ -57,6 +57,13 @@
    "when": "Nov 8, 2026",
    "note": "151 Mini Tins were spotted back in stock at Sam's Club on Nov 8, 2026 (single restock-tracker report).",
    "src": "https://restockd.app/pokemon-news"
+  },
+  "30c": {
+   "type": "reprint",
+   "level": "confirmed",
+   "when": "Dec 4, 2026",
+   "note": "More 30th Celebration packs land Dec 4, 2026: the Binder Collection ($31.99, 5 packs) and the Sylveon ex and Greninja ex Tins ($21.99, 4 packs each).",
+   "src": "https://icv2.com/articles/news/view/63260/new-pokemon-tcg-30th-celebration-products-announced"
   }
  }
 }
