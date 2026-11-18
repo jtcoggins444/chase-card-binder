@@ -1,9 +1,16 @@
-// One-off: read a few shop pages (membership products, shipping policies, rewards pages) as text.
+// One-off: what a Common Lands singles card page contains (variant ids, add-to-cart form or endpoint).
 import { writeFileSync, mkdirSync } from 'node:fs';
 mkdirSync('probe', { recursive: true });
 const H = { 'User-Agent': 'Mozilla/5.0 (personal collection tool)' };
-const URLS = ['https://tradingcardworld.store/products/monthly-subscription.json', 'https://tradingcardworld.store/products/facebook-group-membership-yearly.json', 'https://tradingcardworld.store/products/pokemon-world-membership.json', 'https://tradingcardworld.store/policies/shipping-policy', 'https://www.retrogamingofdenver.com/pages/reward', 'https://magicandmonsters.com/policies/shipping-policy', 'https://levelupgamesmd.com/policies/shipping-policy', 'https://eternalgameschesterfield.com/policies/shipping-policy', 'https://sparkysgaming.com/policies/shipping-policy', 'https://zulusgames.com/policies/shipping-policy', 'https://onestoptcg.com/policies/shipping-policy', 'https://common-lands.com/policies/shipping-policy', 'https://common-lands.com/pages/vip-status'];
 const out = {};
-for (const u of URLS) { try { const r = await fetch(u, { headers: H }); let t = await r.text(); if (u.endsWith('.json')) { try { const p = JSON.parse(t).product; t = p.title + ' | ' + (p.variants || []).map(v => v.title + ' $' + v.price).join(', ') + ' | ' + String(p.body_html || '').replace(/<[^>]+>/g, ' '); } catch (e) {} } else t = t.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&amp;/g, ' ').replace(/\s+/g, ' ');
-  const m = t.match(/(shipping policy|rewards program|vip|tier|free shipping|points?).{0,2500}/i); out[u] = r.status + ' ' + (u.endsWith('.json') ? t.slice(0, 2500) : (m ? m[0] : t.slice(0, 1500))); } catch (e) { out[u] = String(e); } }
+const list = await (await fetch('https://common-lands.com/apps/search?f_game=Pokemon&tab=raw&frame=4&page=1', { headers: H })).text();
+const href = (list.match(/href="(\/apps\/search\/card\/[^"]+)"/) || [])[1].replace(/&amp;/g, '&');
+out.href = href;
+const li = list.split('<li class="grid__item">')[1]; out.li = li.slice(0, 3000);
+const page = await (await fetch('https://common-lands.com' + href, { headers: H })).text();
+out.len = page.length;
+out.hits = [...new Set((page.match(/.{0,160}(variant|cart\/add|add-to-cart|data-id|product_id|sku|form action|quick-add|sign in|customer_authentication).{0,200}/gi) || []))].slice(0, 40);
+out.forms = (page.match(/<form[^>]*>/gi) || []).slice(0, 10);
+out.scripts = [...new Set((page.match(/<script[^>]*src="[^"]+"/gi) || []))].slice(0, 30);
+const pj = await fetch('https://common-lands.com' + href.split('?')[0] + '.js', { headers: H }); out.js = pj.status + ' ' + (await pj.text()).slice(0, 500);
 writeFileSync('probe/stores.json', JSON.stringify(out, null, 1));
