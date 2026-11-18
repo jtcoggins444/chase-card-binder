@@ -7,5 +7,5 @@ const card = await (await fetch('https://common-lands.com' + home.match(/href="(
 writeFileSync('probe/card.html', card);
 const srcs = [...new Set([...(home + card).matchAll(/src="((?:https:)?\/\/[^"]+\.js[^"]*)"/g)].map(m => m[1]).concat(['//common-lands.com/cdn/shop/t/12/assets/card-view.js', '//common-lands.com/cdn/shop/t/12/assets/cluster-rails.js']))];
 writeFileSync('probe/srcs.txt', srcs.join('\n'));
-for (const u of srcs) { const t = await (await fetch('https:' + u, { headers: H })).text(); if (/apps\/search|kiosk|cart\/add/.test(t)) writeFileSync('probe/' + u.split('/').pop().split('?')[0], t); }
+for (const u of srcs) { let t = ''; try { t = await (await fetch(u.startsWith('//') ? 'https:' + u : u, { headers: H })).text(); } catch (e) { continue; } if (/apps\/search|kiosk|cart\/add/.test(t)) writeFileSync('probe/' + u.split('/').pop().split('?')[0], t); }
 writeFileSync('probe/page.html', home);
