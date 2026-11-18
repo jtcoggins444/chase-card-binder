@@ -1,0 +1,33 @@
+name: Check a shop page's data source
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Page to open'
+        default: 'https://common-lands.com/'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm i --no-save --no-package-lock playwright@1.48.2 >/dev/null 2>&1 && npx playwright install --with-deps chromium >/dev/null 2>&1 && node scripts/probe-net.mjs
+        env:
+          URL0: ${{ inputs.url }}
+      - name: Save to the probe branch
+        run: |
+          rm -rf node_modules
+          git config user.name "binder-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B probe
+          git add -f probe
+          git commit -m "net probe" || true
+          git push -f origin probe
