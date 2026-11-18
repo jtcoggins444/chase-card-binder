@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const Root = join(dirname(fileURLToPath(import.meta.url)), '..'), Data = join(Root, 'data');
 // US shops with real storefronts and large in-stock Pokémon singles (checked Nov 2026: Google ratings, TCGplayer seller history)
-const DEFAULT = ['magicandmonsters.com', 'eternalgameschesterfield.com', 'levelupgamesmd.com', 'sparkysgaming.com', 'tradingcardworld.store', 'onestoptcg.com', 'zulusgames.com', 'retrogamingofdenver.com', 'blackswampgames.com', 'poke-collect.com'];
+const DEFAULT = ['common-lands.com', 'magicandmonsters.com', 'eternalgameschesterfield.com', 'levelupgamesmd.com', 'sparkysgaming.com', 'tradingcardworld.store', 'onestoptcg.com', 'zulusgames.com', 'retrogamingofdenver.com', 'blackswampgames.com', 'poke-collect.com'];
 const H = { 'User-Agent': 'Mozilla/5.0 (ChaseCardBinder personal collection tool; reads the public catalog once a day)' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = m => console.log(new Date().toISOString().slice(11, 19) + '  ' + m);
@@ -45,6 +45,32 @@ function identify(p) {
   for (const [n, t] of nums) { if (!t) continue; const hits = (byNumTot.get(normNum(n) + '/' + normNum(t)) || []).filter(pid => nameOk(pid, title)); if (hits.length === 1) return hits[0]; }
   return null;
 }
+// shops whose raw singles live in a search app (e.g. Common Lands: /apps/search?tab=raw), one card per entry with its TCGplayer id
+const unesc = s => String(s).replace(/&amp;/g, '&').replace(/&#39;|&#x27;/g, "'").replace(/&quot;/g, '"');
+async function appSearch(dom, si, out, info) {
+  let first; try { const r = await fetch(`https://${dom}/apps/search?f_game=Pokemon&tab=raw&frame=4&page=1`, { headers: H, signal: AbortSignal.timeout(30000) }); if (!r.ok) return false; first = await r.text(); } catch (e) { return false; }
+  if (!/data-raw-card/.test(first)) return false;
+  const pages = Math.min(80, Number((first.match(/"pages":\s*(\d+)/) || [])[1] || 1));
+  let singles = 0, matched = 0;
+  for (let page = 1; page <= pages; page++) {
+    const html = page === 1 ? first : await (await fetch(`https://${dom}/apps/search?f_game=Pokemon&tab=raw&frame=4&page=${page}`, { headers: H, signal: AbortSignal.timeout(30000) })).text();
+    for (const li of html.split('<li class="grid__item">').slice(1)) {
+      const a = k => { const m = li.match(new RegExp('data-' + k + '="([^"]*)"')); return m ? unesc(m[1]) : ''; };
+      const name = a('name'), set = a('set'), cond = a('cond').toUpperCase(), variant = a('variant'), tcg = Number(a('tcg'));
+      const price = Number((li.match(/price-item--regular[^>]*>\s*\$([\d,.]+)/) || [])[1]?.replace(/,/g, '')), href = unesc((li.match(/href="(\/apps\/search\/card\/[^"]+)"/) || [])[1] || '');
+      if (!name || /\(JP\)|japanese/i.test(name + ' ' + set)) continue;
+      singles++;
+      if (/reverse/i.test(variant) || !byPid.has(tcg) || !(price > 0)) continue;
+      const id = byPid.get(tcg), c = { NM: 'NM', LP: 'LP', MP: 'MP', HP: 'HP', DMG: 'DMG' }[cond]; if (!c) continue; matched++;
+      const L = out.c[id] = out.c[id] || []; const ex = L.find(x => x[0] === si && x[1] === c);
+      if (ex) { if (price < ex[2]) { ex[2] = price; ex[3] = href; } } else L.push([si, c, price, href]);   // href is a path on their site; no cart link (sign-in needed)
+    }
+    await sleep(500);
+  }
+  info[3] = singles; info[7] = matched; info[8] = 'app';
+  log(`${info[1]} (${dom}): ${pages} search pages, ${singles} Pokémon singles in stock, ${matched} match cards in the binder.`);
+  return true;
+}
 // where a shop lists in-stock Pokémon singles: an in-stock collection if it has one (a whole catalog can only be read up to 25,000 products)
 async function sources(dom) {
   const cols = [];
@@ -74,6 +100,7 @@ for (const dom of domains) {
   try { const m = await get(`https://${dom}/meta.json`); if (m) { info[1] = m.name || dom; info[2] = [m.city, m.province].filter(Boolean).join(', '); info[5] = m.country || ''; } } catch (e) {}
   let singles = 0, matched = 0, pages = 0;
   const seenP = new Set();
+  if (await appSearch(dom, si, out, info).catch(e => { log(`${dom} search app: ${e.message}`); return false; })) continue;
   try {
     for (const src of await sources(dom)) {
       for (let page = 1; page <= 100; page++) {
