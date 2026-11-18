@@ -673,6 +673,22 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       <button type="submit" class="sdx" aria-label="Close">×</button>
     </form>
   </dialog>
+  <dialog class="sd" id="loaderDlg" aria-labelledby="loaderTitle">
+    <form method="dialog">
+      <h2 id="loaderTitle">Set up the Cart loader</h2>
+      <p class="sdp">A one-time setup. The bookmark adds the app's card list to your cart on Common Lands, using your own signed-in session there.</p>
+      <ol class="cartsteps">
+        <li>Tap <b>Copy bookmark code</b>.</li>
+        <li>In Safari, bookmark any page (Share, then Add Bookmark) and name it <b>Cart loader</b>.</li>
+        <li>Open your bookmarks, tap Edit, open <b>Cart loader</b>, and replace its address with the copied code. Save.</li>
+        <li>Next time: tap <b>Load cart at Common Lands</b> in the Store finder, sign in if asked, then open your bookmarks and tap <b>Cart loader</b> on that page. It adds the cards one by one and then shows your cart.</li>
+      </ol>
+      <div class="cartbtns"><a href="#" id="loaderCopy">Copy bookmark code</a></div>
+      <p class="note" id="loaderMsg"></p>
+      <div class="sdrow"><button type="submit" class="pri">Done</button></div>
+      <button type="submit" class="sdx" aria-label="Close">×</button>
+    </form>
+  </dialog>
   <dialog class="sd" id="phDlg" aria-labelledby="phTitle">
     <form method="dialog" id="phForm">
       <h2 id="phTitle">Print placeholders</h2>
@@ -1191,6 +1207,8 @@ renderBuy();
 let SF=null;
 function sfLoad(){if(SF)return Promise.resolve(SF);return fetch('data/stores.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>SF=j||{s:[],c:{}}).catch(()=>SF={s:[],c:{}})}
 const sfDom=s=>String(s).trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,'');
+document.getElementById('loaderCopy').addEventListener('click',e=>{e.preventDefault();const m=document.getElementById('loaderMsg');
+  (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(CL_LOADER):Promise.reject()).then(()=>{m.textContent='Copied. Paste it as the bookmark\u2019s address.'},()=>{m.textContent='Couldn\u2019t copy automatically. Long-press to copy: '+CL_LOADER})});
 // Store finder's own era and set filters (saved on this device)
 let sfEra='',sfSets=null;try{sfEra=localStorage.getItem('binder-sfEra')||'';const j=JSON.parse(localStorage.getItem('binder-sfSets')||'null');sfSets=Array.isArray(j)?new Set(j.filter(id=>S[id])):null}catch(e){}
 function sfSaveF(){try{localStorage.setItem('binder-sfEra',sfEra);localStorage.setItem('binder-sfSets',JSON.stringify(sfSets?[...sfSets]:null))}catch(e){}}
@@ -1212,7 +1230,7 @@ async function renderSF(){
   // best offer per shop per card: cheapest allowed condition, not too far over market
   const offers=new Map();   // shop index -> Map(cardId -> {price,cond,handle})
   const disc=sfDisc();
-  for(const c of want){for(const [si,cond,list,handle,vid] of (D.c[c[0]]||[])){const dp=disc[(D.s[si]||[])[0]]||0,price=Math.round(list*(1-dp/100)*100)/100;if(!okC.includes(cond)||price>c[5]*cap)continue;let m=offers.get(si);if(!m)offers.set(si,m=new Map());const o=m.get(c[0]);if(!o||price<o.price)m.set(c[0],{price,cond,handle,vid})}}
+  for(const c of want){for(const [si,cond,list,handle,vid,add] of (D.c[c[0]]||[])){const dp=disc[(D.s[si]||[])[0]]||0,price=Math.round(list*(1-dp/100)*100)/100;if(!okC.includes(cond)||price>c[5]*cap)continue;let m=offers.get(si);if(!m)offers.set(si,m=new Map());const o=m.get(c[0]);if(!o||price<o.price)m.set(c[0],{price,cond,handle,vid,add})}}
   const left=new Set(want.map(c=>c[0])),picks=[];
   // each order: the shop's best-value cards (lowest price vs market first) until the card or dollar limit is reached
   const take=m=>{const all=[...m].filter(([id])=>left.has(id)).map(([id,o])=>({c:byId[id],...o})).sort((a,b)=>a.price/a.c[5]-b.price/b.c[5]||a.price-b.price);
@@ -1232,6 +1250,7 @@ async function renderSF(){
       <div class="sfbtns">${sfCartLinks(dom,p.items)}<button type="button" data-copy="${p.si}">Copy list</button><button type="button" data-bought="${p.si}">I bought these</button></div></div>`}).join('')+
     (miss.length?`<div class="sfshop"><h4>${maxC<Infinity||maxD<Infinity?'Left for another order':'Not in stock at these shops'}<small>${miss.length} cards · ~${usd.format(sum(miss.map(c=>c[5])))} at market</small></h4><div class="sfbtns"><button type="button" id="sfCart">Send these to a TCGplayer cart</button></div></div>`:'');
   out.onclick=e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.loader!=null){const d=document.getElementById('loaderDlg');if(d.showModal)d.showModal();else d.setAttribute('open','');return}
     if(b.dataset.bought!=null){const shop=b.closest('.sfshop'),picks=[...shop.querySelectorAll('.sfpick:checked')];if(!picks.length){b.textContent='Tick the cards you bought';return}
       if(!b.dataset.armed){b.dataset.armed=1;b.textContent=`Tap again: mark ${picks.length} card${picks.length===1?'':'s'} owned`;setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent='I bought these'}},5000);return}
       sfMarkBought(picks.map(x=>({id:x.dataset.id,price:+x.dataset.price,cond:x.dataset.cond})),D.s[+b.dataset.bought][1]);return}
@@ -1241,7 +1260,12 @@ async function renderSF(){
   sfShops(D)}
 // a Shopify cart link ("/cart/variant:1,..."): opens that shop's cart with the cards in it. Each link replaces the cart,
 // and very long links are refused, so big orders go in parts of up to 180 cards.
-function sfCartLinks(dom,items){const v=items.filter(x=>x.vid);if(!v.length)return '<small class="note" style="flex-basis:100%;margin:0">This shop needs you signed in to add cards, so add them from each card\u2019s link.</small>';const parts=[];for(let i=0;i<v.length;i+=180)parts.push(v.slice(i,i+180));
+// Common Lands-style shops: adding needs you signed in, so the app hands the list to a "cart loader" bookmark you run on their site
+const CL_LOADER="javascript:(async()=>{const m=location.hash.match(/ccb=(.*)/);if(!m){alert('Open this from the Chase Card Binder app first (Load cart button), then tap the bookmark.');return}const L=JSON.parse(decodeURIComponent(m[1]));let ok=0,bad=[];for(const [n,s,c,v,t] of L){try{const r=await fetch('/apps/search/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_name:n,set_name:s,condition:c,variant:v,tcgplayer_id:String(t)})});const j=await r.json().catch(()=>({}));if(!r.ok||!j.variant_id)throw Error(j.error||('error '+r.status));const a=await fetch('/cart/add.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[{id:Number(j.variant_id),quantity:1}]})});if(!a.ok)throw Error('cart');try{const k=JSON.parse(localStorage.getItem('kioskCartVariants')||'[]');k.push(String(j.variant_id));localStorage.setItem('kioskCartVariants',JSON.stringify(k))}catch(e){}ok++}catch(e){bad.push(n+' ('+e.message+')')}await new Promise(r=>setTimeout(r,700))}alert('Added '+ok+' of '+L.length+' cards to your cart.'+(bad.length?' Not added: '+bad.join('; '):''));location.href='/cart'})()";
+function sfLoaderBtn(dom,items){const a=items.filter(x=>x.add);if(!a.length)return '';
+  const list=a.map(x=>[x.add[0],x.add[1],x.cond,x.add[2],x.c[6]]);
+  return `<a class="pri" href="https://${esc(dom)}/cart#ccb=${encodeURIComponent(JSON.stringify(list))}" target="_blank" rel="noopener">Load cart at ${esc(dom.replace(/\..*$/,'').replace(/-/g,' ').replace(/\b\w/g,x=>x.toUpperCase()))} (${a.length})</a><small class="note" style="flex-basis:100%;margin:0">Sign in on their site, then tap your <b>Cart loader</b> bookmark on the page that opens. Adding sets each copy aside for you, so only load what you\u2019ll buy. <button type="button" class="planlink" data-loader>Set up the Cart loader</button></small>`}
+function sfCartLinks(dom,items){const v=items.filter(x=>x.vid);if(!v.length)return sfLoaderBtn(dom,items)||'<small class="note" style="flex-basis:100%;margin:0">This shop needs you signed in to add cards, so add them from each card\u2019s link.</small>';const parts=[];for(let i=0;i<v.length;i+=180)parts.push(v.slice(i,i+180));
   return parts.map((p,i)=>`<a class="pri" href="https://${esc(dom)}/cart/${p.map(x=>x.vid+':1').join(',')}?storefront=true" target="_blank" rel="noopener">${parts.length>1?`Cart part ${i+1} of ${parts.length} (${p.length})`:`Open cart (${p.length} cards)`}</a>`).join('')+(parts.length>1?'<small class="note" style="flex-basis:100%;margin:0">Each part replaces the cart on their site, so check out one part before opening the next.</small>':'')}
 // record a Store finder order in one go: owned, what you paid (the shop's price), condition, and today's date (counts toward this week's budget)
 let sfUndo=null;

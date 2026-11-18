@@ -63,7 +63,8 @@ async function appSearch(dom, si, out, info) {
       if (/reverse/i.test(variant) || !byPid.has(tcg) || !(price > 0)) continue;
       const id = byPid.get(tcg), c = { NM: 'NM', LP: 'LP', MP: 'MP', HP: 'HP', DMG: 'DMG' }[cond]; if (!c) continue; matched++;
       const L = out.c[id] = out.c[id] || []; const ex = L.find(x => x[0] === si && x[1] === c);
-      if (ex) { if (price < ex[2]) { ex[2] = price; ex[3] = href; } } else L.push([si, c, price, href]);   // href is a path on their site; no cart link (sign-in needed)
+      const add = [name, set, variant];   // what their signed-in "add" needs (with the TCGplayer id) for the app's cart loader
+      if (ex) { if (price < ex[2]) { ex[2] = price; ex[3] = href; ex[5] = add; } } else L.push([si, c, price, href, null, add]);   // href is a path on their site
     }
     await sleep(500);
   }
