@@ -1,16 +1,10 @@
-// One-off: what a Common Lands singles card page contains (variant ids, add-to-cart form or endpoint).
+// One-off: read Common Lands' card-view script to see how a signed-in "add" works.
 import { writeFileSync, mkdirSync } from 'node:fs';
 mkdirSync('probe', { recursive: true });
 const H = { 'User-Agent': 'Mozilla/5.0 (personal collection tool)' };
 const out = {};
-const list = await (await fetch('https://common-lands.com/apps/search?f_game=Pokemon&tab=raw&frame=4&page=1', { headers: H })).text();
-const href = (list.match(/href="(\/apps\/search\/card\/[^"]+)"/) || [])[1].replace(/&amp;/g, '&');
-out.href = href;
-const li = list.split('<li class="grid__item">')[1]; out.li = li.slice(0, 3000);
-const page = await (await fetch('https://common-lands.com' + href, { headers: H })).text();
-out.len = page.length;
-out.hits = [...new Set((page.match(/.{0,160}(variant|cart\/add|add-to-cart|data-id|product_id|sku|form action|quick-add|sign in|customer_authentication).{0,200}/gi) || []))].slice(0, 40);
-out.forms = (page.match(/<form[^>]*>/gi) || []).slice(0, 10);
-out.scripts = [...new Set((page.match(/<script[^>]*src="[^"]+"/gi) || []))].slice(0, 30);
-const pj = await fetch('https://common-lands.com' + href.split('?')[0] + '.js', { headers: H }); out.js = pj.status + ' ' + (await pj.text()).slice(0, 500);
+for (const u of ['https://common-lands.com/cdn/shop/t/12/assets/card-view.js', 'https://common-lands.com/cdn/shop/t/12/assets/cluster-rails.js']) {
+  const t = await (await fetch(u, { headers: H })).text();
+  out[u] = { len: t.length, hits: [...new Set((t.match(/.{0,220}(fetch\(|\/apps\/|cart\/add|\/cart|reserve|hold|variant|method:|POST).{0,260}/g) || []))].slice(0, 40) };
+}
 writeFileSync('probe/stores.json', JSON.stringify(out, null, 1));
