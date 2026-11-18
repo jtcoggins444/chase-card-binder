@@ -506,6 +506,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <select id="sfCond" aria-label="Condition"><option value="NM">Near Mint only</option><option value="LP" selected>Near Mint or Lightly Played</option></select>
         <span class="prange">Worth<input id="sfMin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum market price">to<input id="sfMax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" value="5" aria-label="Maximum market price"></span>
         <span class="prange">Up to<input id="sfN" type="number" inputmode="numeric" min="1" max="10" step="1" value="3" aria-label="Most shops">shops</span>
+        <span class="prange">Start with<select id="sfFirst" aria-label="Shop to fill first"><option value="">best coverage</option><option value="common-lands.com" selected>Common Lands</option></select></span>
         <span class="prange">Each order up to<input id="sfCards" type="number" inputmode="numeric" min="1" step="5" placeholder="any" aria-label="Most cards per order">cards</span>
         <span class="prange">and $<input id="sfDollars" type="number" inputmode="decimal" min="1" step="25" placeholder="any" aria-label="Most dollars per order"></span>
         <span class="prange">Skip if over market by<input id="sfOver" type="number" inputmode="decimal" min="0" step="5" value="30" aria-label="Most over market, percent">%</span>
@@ -1232,9 +1233,14 @@ async function renderSF(){
   const disc=sfDisc();
   for(const c of want){for(const [si,cond,list,handle,vid,add] of (D.c[c[0]]||[])){const dp=disc[(D.s[si]||[])[0]]||0,price=Math.round(list*(1-dp/100)*100)/100;if(!okC.includes(cond)||price>c[5]*cap)continue;let m=offers.get(si);if(!m)offers.set(si,m=new Map());const o=m.get(c[0]);if(!o||price<o.price)m.set(c[0],{price,cond,handle,vid,add})}}
   const left=new Set(want.map(c=>c[0])),picks=[];
+  // a preferred shop gets every card it has first; the other shops fill in the rest
+  const fs=document.getElementById('sfFirst'),firstDom=fs.value,firstOpts=(D.s||[]).map((x,i)=>[x[0],x[1]]).filter(([d])=>d).sort((a,b)=>a[1].localeCompare(b[1]));
+  if(fs.options.length!==firstOpts.length+1){const keep=firstDom;fs.innerHTML='<option value="">best coverage</option>'+firstOpts.map(([d,n])=>`<option value="${esc(d)}">${esc(n)}</option>`).join('');fs.value=keep;if(fs.value!==keep)fs.value=''}
   // each order: the shop's best-value cards (lowest price vs market first) until the card or dollar limit is reached
   const take=m=>{const all=[...m].filter(([id])=>left.has(id)).map(([id,o])=>({c:byId[id],...o})).sort((a,b)=>a.price/a.c[5]-b.price/b.c[5]||a.price-b.price);
     const out=[];let t=0;for(const x of all){if(out.length>=maxC)break;if(t+x.price>maxD)continue;out.push(x);t+=x.price}return out};
+  const fsi=(D.s||[]).findIndex(x=>x[0]===fs.value);
+  if(fsi>=0&&offers.has(fsi)){const it=take(offers.get(fsi));if(it.length){it.forEach(x=>left.delete(x.c[0]));picks.push({si:fsi,items:it})}}
   while(picks.length<maxN){let best=null;
     for(const [si,m] of offers){if(picks.some(p=>p.si===si))continue;const it=take(m),n=it.length,t=it.reduce((a,x)=>a+x.price,0);if(n&&(!best||n>best.n||(n===best.n&&t<best.t)))best={si,n,t,it}}
     if(!best)break;best.it.forEach(x=>left.delete(x.c[0]));picks.push({si:best.si,items:best.it})}
@@ -1294,7 +1300,7 @@ function sfShops(D){const ae=document.activeElement;if(ae&&ae.closest&&ae.closes
   document.getElementById('sfSetFind').addEventListener('input',sfDrawSets);
   document.getElementById('sfSetList').addEventListener('change',e=>{const i=e.target;if(!i.matches('input'))return;const ids=sfSetIds();if(!sfSets)sfSets=new Set(Object.keys(S));if(i.checked)sfSets.add(i.value);else sfSets.delete(i.value);if(ids.every(id=>sfSets.has(id)))sfSets=null;sfSaveF();sfDrawSets();renderSF()});
   document.querySelector('#sfSetDD .rtop').addEventListener('click',e=>{const b=e.target.closest('[data-sfall]');if(!b)return;if(b.dataset.sfall==='1')sfSets=null;else{sfSets=new Set(Object.keys(S));for(const id of sfSetIds())sfSets.delete(id)}sfSaveF();sfDrawSets();renderSF()})}
- ['sfScope','sfCond','sfMin','sfMax','sfN','sfOver','sfCards','sfDollars'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
+ ['sfScope','sfCond','sfMin','sfMax','sfN','sfFirst','sfOver','sfCards','sfDollars'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
    el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{try{localStorage.setItem('binder-'+id,el.value)}catch(e){}renderSF()})});
  const add=()=>{const i=document.getElementById('sfAdd'),d=sfDom(i.value);if(!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d))return;const m=sfMine();if(!m.includes(d))m.push(d);cfg.stores=m.join(',');cache();i.value='';sfShops(SF||{s:[],c:{}})};
  document.getElementById('sfAddBtn').addEventListener('click',add);document.getElementById('sfAdd').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();add()}});
