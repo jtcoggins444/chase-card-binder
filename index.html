@@ -292,6 +292,7 @@ button.planlink{background:none;border:0;padding:0;cursor:pointer}
 .sfshop ol{margin:6px 0 0 18px;padding:0;font-size:.84rem;columns:2 220px;column-gap:18px}.sfshop li{break-inside:avoid;margin:2px 0}.sfshop li small{color:var(--muted)}.sfshop .over{color:var(--down)}
 .sfmsg{background:var(--want-bg);color:var(--ink);border-radius:8px;padding:8px 10px;margin:8px 0 0}.sfshop li input{margin:0 4px 0 0;vertical-align:middle}
 .sfsum{margin:10px 0 2px;font-size:.9rem}.sfbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.sfbtns a.pri{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}.sfbtns button,.sfbtns a{font:700 .8rem var(--f-body);color:var(--accent);background:none;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;text-decoration:none}
+.sfsetera{font:700 .7rem var(--f-body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:8px 0 2px}#sfSetDD{min-width:0}
 .sfdisc{margin-left:6px;font-size:.8rem}.sfdisc input{width:3.4em;margin:0 3px}
 .sfstores{margin-top:12px;font-size:.88rem}.sfstores summary{cursor:pointer;font-weight:700}#sfShops div{margin:4px 0}
 .buyctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
@@ -500,6 +501,8 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
     <div id="sfBody" hidden>
       <div class="buyctl">
         <select id="sfScope" aria-label="Which cards"><option value="missing" selected>Cards I don't own</option><option value="want">This list</option><option value="all">All cards</option></select>
+        <select id="sfEra" aria-label="Era"><option value="">All eras</option></select>
+        <details class="rdd" id="sfSetDD"><summary id="sfSetSum">All sets</summary><div class="rpanel spanel"><div class="rtop"><button type="button" data-sfall="1">Select all</button><button type="button" data-sfall="0">Clear all</button></div><input type="search" id="sfSetFind" placeholder="Find a set" aria-label="Find a set" autocomplete="off"><div id="sfSetList"></div></div></details>
         <select id="sfCond" aria-label="Condition"><option value="NM">Near Mint only</option><option value="LP" selected>Near Mint or Lightly Played</option></select>
         <span class="prange">Worth<input id="sfMin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum market price">to<input id="sfMax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" value="5" aria-label="Maximum market price"></span>
         <span class="prange">Up to<input id="sfN" type="number" inputmode="numeric" min="1" max="10" step="1" value="3" aria-label="Most shops">shops</span>
@@ -507,7 +510,7 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <span class="prange">and $<input id="sfDollars" type="number" inputmode="decimal" min="1" step="25" placeholder="any" aria-label="Most dollars per order"></span>
         <span class="prange">Skip if over market by<input id="sfOver" type="number" inputmode="decimal" min="0" step="5" value="30" aria-label="Most over market, percent">%</span>
       </div>
-      <p class="note" style="margin:6px 0 0">Uses the card types and sets picked in the filters above.</p>
+      <p class="note" style="margin:6px 0 0">Card types follow the card-type filter above.</p>
       <p class="note sfmsg" id="sfMsg" hidden></p>
       <div id="sfOut"></div>
       <details class="sfstores"><summary>Shops checked <small id="sfShopsN"></small></summary>
@@ -1188,6 +1191,15 @@ renderBuy();
 let SF=null;
 function sfLoad(){if(SF)return Promise.resolve(SF);return fetch('data/stores.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>SF=j||{s:[],c:{}}).catch(()=>SF={s:[],c:{}})}
 const sfDom=s=>String(s).trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,'');
+// Store finder's own era and set filters (saved on this device)
+let sfEra='',sfSets=null;try{sfEra=localStorage.getItem('binder-sfEra')||'';const j=JSON.parse(localStorage.getItem('binder-sfSets')||'null');sfSets=Array.isArray(j)?new Set(j.filter(id=>S[id])):null}catch(e){}
+function sfSaveF(){try{localStorage.setItem('binder-sfEra',sfEra);localStorage.setItem('binder-sfSets',JSON.stringify(sfSets?[...sfSets]:null))}catch(e){}}
+function sfSetIds(){return Object.keys(S).filter(id=>C.some(c=>c[2]===id)&&(!sfEra||S[id][1]===sfEra)).sort((a,b)=>S[b][2].localeCompare(S[a][2]))}
+function sfDrawSets(){const q=(document.getElementById('sfSetFind').value||'').trim().toLowerCase(),ids=sfSetIds();let h='',last=null;
+  for(const id of ids){if(q&&!S[id][0].toLowerCase().includes(q))continue;if(S[id][1]!==last){last=S[id][1];h+=`<div class="sfsetera">${esc(last)}</div>`}
+    h+=`<label><input type="checkbox" value="${id}"${!sfSets||sfSets.has(id)?' checked':''}> ${esc(S[id][0])}</label>`}
+  document.getElementById('sfSetList').innerHTML=h||'<p class="note">No sets match.</p>';
+  const n=sfSets?ids.filter(id=>sfSets.has(id)).length:ids.length;document.getElementById('sfSetSum').textContent=!sfSets||n===ids.length?'All sets':n===1?S[ids.find(id=>sfSets.has(id))][0]:n+' sets'}
 // member discounts at shops (cfg.disc "domain=3,domain=5"); Common Lands' 3% is filled in to start
 function sfDisc(){const raw=cfg.disc==null?'common-lands.com=3':String(cfg.disc),m={};for(const x of raw.split(',')){const [d,v]=x.split('=');const n=parseFloat(v);if(d&&n>0)m[sfDom(d)]=Math.min(50,n)}return m}
 function sfMine(){return String(cfg.stores||'').split(',').map(sfDom).filter(Boolean)}
@@ -1196,7 +1208,7 @@ async function renderSF(){
   const D=await sfLoad();const v=id=>document.getElementById(id).value;
   const scope=v('sfScope'),okC=v('sfCond')==='NM'?['NM']:['NM','LP'],mn=parseFloat(v('sfMin')),mx=parseFloat(v('sfMax')),maxN=Math.max(1,Math.min(10,parseInt(v('sfN'))||3)),over=parseFloat(v('sfOver'));
   const lo=isNaN(mn)?0:mn,hi=isNaN(mx)?Infinity:mx,cap=isNaN(over)?Infinity:1+over/100,maxC=parseInt(v('sfCards'))||Infinity,maxD=parseFloat(v('sfDollars'))||Infinity;
-  const want=C.filter(c=>f.r.has(c[4])&&(!f.sets||f.sets.has(c[2]))&&(!f.era||S[c[2]][1]===f.era)&&(scope==='all'||(scope==='want'?inList(curList,c[0]):state[c[0]]!=='owned'))&&c[5]!=null&&c[5]>=lo&&c[5]<=hi);
+  const want=C.filter(c=>f.r.has(c[4])&&(!sfSets||sfSets.has(c[2]))&&(!sfEra||S[c[2]][1]===sfEra)&&(scope==='all'||(scope==='want'?inList(curList,c[0]):state[c[0]]!=='owned'))&&c[5]!=null&&c[5]>=lo&&c[5]<=hi);
   // best offer per shop per card: cheapest allowed condition, not too far over market
   const offers=new Map();   // shop index -> Map(cardId -> {price,cond,handle})
   const disc=sfDisc();
@@ -1252,6 +1264,11 @@ function sfShops(D){const ae=document.activeElement;if(ae&&ae.closest&&ae.closes
  const open=o=>{tg.setAttribute('aria-expanded',o);body.hidden=!o;try{localStorage.setItem('binder-sfOpen',o?'1':'0')}catch(e){}if(o)renderSF()};
  try{if(localStorage.getItem('binder-sfOpen')==='1')open(true)}catch(e){}
  tg.addEventListener('click',()=>open(tg.getAttribute('aria-expanded')!=='true'));
+ {const es=document.getElementById('sfEra');for(const e of [...new Set(Object.keys(S).sort((a,b)=>S[b][2].localeCompare(S[a][2])).map(id=>S[id][1]))])es.insertAdjacentHTML('beforeend',`<option>${esc(e)}</option>`);es.value=sfEra;
+  es.addEventListener('change',()=>{sfEra=es.value;sfSaveF();sfDrawSets();renderSF()});sfDrawSets();
+  document.getElementById('sfSetFind').addEventListener('input',sfDrawSets);
+  document.getElementById('sfSetList').addEventListener('change',e=>{const i=e.target;if(!i.matches('input'))return;const ids=sfSetIds();if(!sfSets)sfSets=new Set(Object.keys(S));if(i.checked)sfSets.add(i.value);else sfSets.delete(i.value);if(ids.every(id=>sfSets.has(id)))sfSets=null;sfSaveF();sfDrawSets();renderSF()});
+  document.querySelector('#sfSetDD .rtop').addEventListener('click',e=>{const b=e.target.closest('[data-sfall]');if(!b)return;if(b.dataset.sfall==='1')sfSets=null;else{sfSets=new Set(Object.keys(S));for(const id of sfSetIds())sfSets.delete(id)}sfSaveF();sfDrawSets();renderSF()})}
  ['sfScope','sfCond','sfMin','sfMax','sfN','sfOver','sfCards','sfDollars'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
    el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{try{localStorage.setItem('binder-'+id,el.value)}catch(e){}renderSF()})});
  const add=()=>{const i=document.getElementById('sfAdd'),d=sfDom(i.value);if(!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d))return;const m=sfMine();if(!m.includes(d))m.push(d);cfg.stores=m.join(',');cache();i.value='';sfShops(SF||{s:[],c:{}})};
