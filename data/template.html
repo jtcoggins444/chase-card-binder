@@ -505,8 +505,8 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <details class="rdd" id="sfSetDD"><summary id="sfSetSum">All sets</summary><div class="rpanel spanel"><div class="rtop"><button type="button" data-sfall="1">Select all</button><button type="button" data-sfall="0">Clear all</button></div><input type="search" id="sfSetFind" placeholder="Find a set" aria-label="Find a set" autocomplete="off"><div id="sfSetList"></div></div></details>
         <select id="sfCond" aria-label="Condition"><option value="NM">Near Mint only</option><option value="LP" selected>Near Mint or Lightly Played</option></select>
         <span class="prange">Worth<input id="sfMin" type="number" inputmode="decimal" min="0" step="any" placeholder="Min $" aria-label="Minimum market price">to<input id="sfMax" type="number" inputmode="decimal" min="0" step="any" placeholder="Max $" value="5" aria-label="Maximum market price"></span>
-        <span class="prange">Up to<input id="sfN" type="number" inputmode="numeric" min="1" max="10" step="1" value="3" aria-label="Most shops">shops</span>
-        <span class="prange">Start with<select id="sfFirst" aria-label="Shop to fill first"><option value="">best coverage</option><option value="common-lands.com" selected>Common Lands</option></select></span>
+        <select id="sfMode" aria-label="How to list shops"><option value="each" selected>Each shop's own list</option><option value="fewest">Fewest shops for everything</option></select>
+        <span class="prange" id="sfNWrap">Up to<input id="sfN" type="number" inputmode="numeric" min="1" max="10" step="1" value="3" aria-label="Most shops">shops</span>
         <span class="prange">Each order up to<input id="sfCards" type="number" inputmode="numeric" min="1" step="5" placeholder="any" aria-label="Most cards per order">cards</span>
         <span class="prange">and $<input id="sfDollars" type="number" inputmode="decimal" min="1" step="25" placeholder="any" aria-label="Most dollars per order"></span>
         <span class="prange">Skip if over market by<input id="sfOver" type="number" inputmode="decimal" min="0" step="5" value="30" aria-label="Most over market, percent">%</span>
@@ -1233,22 +1233,21 @@ async function renderSF(){
   const disc=sfDisc();
   for(const c of want){for(const [si,cond,list,handle,vid,add] of (D.c[c[0]]||[])){const dp=disc[(D.s[si]||[])[0]]||0,price=Math.round(list*(1-dp/100)*100)/100;if(!okC.includes(cond)||price>c[5]*cap)continue;let m=offers.get(si);if(!m)offers.set(si,m=new Map());const o=m.get(c[0]);if(!o||price<o.price)m.set(c[0],{price,cond,handle,vid,add})}}
   const left=new Set(want.map(c=>c[0])),picks=[];
-  // a preferred shop gets every card it has first; the other shops fill in the rest
-  const fs=document.getElementById('sfFirst'),firstDom=fs.value,firstOpts=(D.s||[]).map((x,i)=>[x[0],x[1]]).filter(([d])=>d).sort((a,b)=>a[1].localeCompare(b[1]));
-  if(fs.options.length!==firstOpts.length+1){const keep=firstDom;fs.innerHTML='<option value="">best coverage</option>'+firstOpts.map(([d,n])=>`<option value="${esc(d)}">${esc(n)}</option>`).join('');fs.value=keep;if(fs.value!==keep)fs.value=''}
+  const each=v('sfMode')!=='fewest';document.getElementById('sfNWrap').hidden=each;
   // each order: the shop's best-value cards (lowest price vs market first) until the card or dollar limit is reached
   const take=m=>{const all=[...m].filter(([id])=>left.has(id)).map(([id,o])=>({c:byId[id],...o})).sort((a,b)=>a.price/a.c[5]-b.price/b.c[5]||a.price-b.price);
     const out=[];let t=0;for(const x of all){if(out.length>=maxC)break;if(t+x.price>maxD)continue;out.push(x);t+=x.price}return out};
-  const fsi=(D.s||[]).findIndex(x=>x[0]===fs.value);
-  if(fsi>=0&&offers.has(fsi)){const it=take(offers.get(fsi));if(it.length){it.forEach(x=>left.delete(x.c[0]));picks.push({si:fsi,items:it})}}
-  while(picks.length<maxN){let best=null;
+  // each shop on its own: every wanted card it has, regardless of the other shops; your discounted shops first, then by how many it has
+  if(each){for(const [si,m] of offers){const it=take(m);if(it.length)picks.push({si,items:it})}
+    picks.sort((a,b)=>(disc[D.s[b.si][0]]?1:0)-(disc[D.s[a.si][0]]?1:0)||b.items.length-a.items.length);picks.forEach(p=>p.items.forEach(x=>left.delete(x.c[0])))}
+  else while(picks.length<maxN){let best=null;
     for(const [si,m] of offers){if(picks.some(p=>p.si===si))continue;const it=take(m),n=it.length,t=it.reduce((a,x)=>a+x.price,0);if(n&&(!best||n>best.n||(n===best.n&&t<best.t)))best={si,n,t,it}}
     if(!best)break;best.it.forEach(x=>left.delete(x.c[0]));picks.push({si:best.si,items:best.it})}
-  const sum=a=>a.reduce((x,y)=>x+y,0),found=picks.reduce((n,p)=>n+p.items.length,0),miss=want.filter(c=>left.has(c[0]));
+  const sum=a=>a.reduce((x,y)=>x+y,0),found=new Set(picks.flatMap(p=>p.items.map(x=>x.c[0]))).size,miss=want.filter(c=>left.has(c[0]));
   const shopsN=(D.s||[]).length,age=D.t?Math.max(0,Math.round((Date.now()-Date.parse(D.t))/36e5)):null;
   document.getElementById('sfSub').textContent=` · ${want.length} cards wanted · ${found} found at ${picks.length} shop${picks.length===1?'':'s'}`;
   if(!shopsN){out.innerHTML='<p class="note">Shop stock is being collected. Check back after the next daily check.</p>';sfShops(D);return}
-  out.innerHTML=`<p class="sfsum"><b>${found} of ${want.length}</b> cards from ${picks.length} shop${picks.length===1?'':'s'}, ${usd.format(sum(picks.flatMap(p=>p.items.map(x=>x.price))))} in all (TCGplayer market ${usd.format(sum(picks.flatMap(p=>p.items.map(x=>x.c[5]))))}). Stock checked ${age==null?'recently':age<1?'within the hour':age+' hour'+(age===1?'':'s')+' ago'}. Shipping isn\u2019t included; most shops charge a few dollars or ship free over a set amount. Open cart fills that shop\u2019s cart on their site; you review it and check out there. A card that sold out since the daily check will be missing from the cart.</p>`+
+  out.innerHTML=(each?`<p class="sfsum"><b>${found} of ${want.length}</b> cards are in stock across ${picks.length} shop${picks.length===1?'':'s'}. Each shop\u2019s list stands on its own, so a card can show up at several shops; pick the shop you want, and after you mark cards bought they drop off every list. Stock checked ${age==null?'recently':age<1?'within the hour':age+' hour'+(age===1?'':'s')+' ago'}. Shipping isn\u2019t included.</p>`:`<p class="sfsum"><b>${found} of ${want.length}</b> cards from ${picks.length} shop${picks.length===1?'':'s'}, ${usd.format(sum(picks.flatMap(p=>p.items.map(x=>x.price))))} in all (TCGplayer market ${usd.format(sum(picks.flatMap(p=>p.items.map(x=>x.c[5]))))}). Stock checked ${age==null?'recently':age<1?'within the hour':age+' hour'+(age===1?'':'s')+' ago'}. Shipping isn\u2019t included; most shops charge a few dollars or ship free over a set amount. Open cart fills that shop\u2019s cart on their site; you review it and check out there. A card that sold out since the daily check will be missing from the cart.</p>`)+
     picks.map((p,i)=>{const s=D.s[p.si],dom=s[0],tot=sum(p.items.map(x=>x.price)),mk=sum(p.items.map(x=>x.c[5]));p.items.sort((a,b)=>S[a.c[2]][2].localeCompare(S[b.c[2]][2])||a.c[1].localeCompare(b.c[1]));
       const dp=disc[dom]||0;
       return `<div class="sfshop"><h4>${i+1}. <a href="https://${esc(dom)}" target="_blank" rel="noopener">${esc(s[1])}</a><small>${dp?`your ${dp}% discount included · `:''}${esc(s[2]||dom)}${s[6]?' · selling online since '+s[6].slice(0,4):''} · ${p.items.length} cards · ${usd.format(tot)} <span class="${tot>mk?'over':''}">(${tot>=mk?'+':''}${Math.round((tot/mk-1)*100)}% vs market)</span></small></h4>
@@ -1300,7 +1299,7 @@ function sfShops(D){const ae=document.activeElement;if(ae&&ae.closest&&ae.closes
   document.getElementById('sfSetFind').addEventListener('input',sfDrawSets);
   document.getElementById('sfSetList').addEventListener('change',e=>{const i=e.target;if(!i.matches('input'))return;const ids=sfSetIds();if(!sfSets)sfSets=new Set(Object.keys(S));if(i.checked)sfSets.add(i.value);else sfSets.delete(i.value);if(ids.every(id=>sfSets.has(id)))sfSets=null;sfSaveF();sfDrawSets();renderSF()});
   document.querySelector('#sfSetDD .rtop').addEventListener('click',e=>{const b=e.target.closest('[data-sfall]');if(!b)return;if(b.dataset.sfall==='1')sfSets=null;else{sfSets=new Set(Object.keys(S));for(const id of sfSetIds())sfSets.delete(id)}sfSaveF();sfDrawSets();renderSF()})}
- ['sfScope','sfCond','sfMin','sfMax','sfN','sfFirst','sfOver','sfCards','sfDollars'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
+ ['sfScope','sfCond','sfMin','sfMax','sfMode','sfN','sfOver','sfCards','sfDollars'].forEach(id=>{const el=document.getElementById(id);try{const v=localStorage.getItem('binder-'+id);if(v!=null)el.value=v}catch(e){}
    el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{try{localStorage.setItem('binder-'+id,el.value)}catch(e){}renderSF()})});
  const add=()=>{const i=document.getElementById('sfAdd'),d=sfDom(i.value);if(!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d))return;const m=sfMine();if(!m.includes(d))m.push(d);cfg.stores=m.join(',');cache();i.value='';sfShops(SF||{s:[],c:{}})};
  document.getElementById('sfAddBtn').addEventListener('click',add);document.getElementById('sfAdd').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();add()}});
