@@ -1,10 +1,9 @@
-// One-off: read Common Lands' card-view script to see how a signed-in "add" works.
+// One-off: save Common Lands' card-view and cart scripts in full, to see the whole signed-in "add" flow.
 import { writeFileSync, mkdirSync } from 'node:fs';
 mkdirSync('probe', { recursive: true });
 const H = { 'User-Agent': 'Mozilla/5.0 (personal collection tool)' };
-const out = {};
-for (const u of ['https://common-lands.com/cdn/shop/t/12/assets/card-view.js', 'https://common-lands.com/cdn/shop/t/12/assets/cluster-rails.js']) {
-  const t = await (await fetch(u, { headers: H })).text();
-  out[u] = { len: t.length, hits: [...new Set((t.match(/.{0,220}(fetch\(|\/apps\/|cart\/add|\/cart|reserve|hold|variant|method:|POST).{0,260}/g) || []))].slice(0, 40) };
-}
-writeFileSync('probe/stores.json', JSON.stringify(out, null, 1));
+const home = await (await fetch('https://common-lands.com/apps/search?f_game=Pokemon&tab=raw&frame=4&page=1', { headers: H })).text();
+const srcs = [...new Set((home.match(/\/\/common-lands\.com\/cdn\/shop\/t\/\d+\/assets\/[a-z0-9_.-]+\.js/gi) || []))];
+writeFileSync('probe/srcs.txt', srcs.join('\n'));
+for (const u of srcs) { const t = await (await fetch('https:' + u, { headers: H })).text(); if (/apps\/search|kiosk|cart\/add/.test(t)) writeFileSync('probe/' + u.split('/').pop(), t); }
+writeFileSync('probe/page.html', home);
