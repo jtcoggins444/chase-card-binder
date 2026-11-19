@@ -1,11 +1,14 @@
-// One-off: can a script read TCGplayer's per-seller listings for a card (seller, rating, price, shipping)?
+// One-off: 30th Celebration Pikachus and the promo sets' cards (names, numbers, rarity, prices) from tcgcsv.
 import { writeFileSync, mkdirSync } from 'node:fs';
 mkdirSync('probe', { recursive: true });
-const H = { 'User-Agent': 'Mozilla/5.0 (personal collection tool)', 'Content-Type': 'application/json', Accept: 'application/json', Origin: 'https://www.tcgplayer.com', Referer: 'https://www.tcgplayer.com/' };
-const out = {};
-for (const pid of [226581, 523891]) {
-  const body = { filters: { term: { sellerStatus: 'Live', channelId: 0, language: ['English'] }, range: { quantity: { gte: 1 } }, exclude: { channelExclusion: 0 } }, from: 0, size: 50, sort: { field: 'price+shipping', order: 'asc' }, context: { shippingCountry: 'US', cart: {} }, aggregations: ['listingType'] };
-  try { const r = await fetch(`https://mp-search-api.tcgplayer.com/v1/product/${pid}/listings`, { method: 'POST', headers: H, body: JSON.stringify(body) }); const t = await r.text(); out[pid] = { status: r.status, len: t.length, head: t.slice(0, 2500) }; }
-  catch (e) { out[pid] = { err: String(e) }; }
+const get = async u => (await (await fetch(u)).json());
+const groups = (await get('https://tcgcsv.com/tcgplayer/3/groups')).results;
+const promo = groups.filter(g => /promo/i.test(g.name) && !/japan/i.test(g.name));
+const out = { promoGroups: promo.map(g => [g.groupId, g.name, g.publishedOn]), groups: {} };
+for (const g of [...promo.map(g => g.groupId), 24722, 24837]) {
+  const P = (await get(`https://tcgcsv.com/tcgplayer/3/${g}/products`)).results;
+  const pr = new Map(); for (const x of (await get(`https://tcgcsv.com/tcgplayer/3/${g}/prices`)).results) { const o = pr.get(x.productId); if (!o || x.subTypeName === 'Holofoil') pr.set(x.productId, x.marketPrice); }
+  out.groups[g] = P.filter(p => (p.extendedData || []).some(e => e.name === 'Number')).map(p => { const e = Object.fromEntries((p.extendedData || []).map(x => [x.name, x.value])); return [p.productId, p.name, e.Number, e.Rarity, e.CardType, e.HP ? 1 : 0, pr.get(p.productId) ?? null, p.imageUrl ? 1 : 0, (e.Stage || '')]; });
+  await new Promise(r => setTimeout(r, 300));
 }
-writeFileSync('probe/stores.json', JSON.stringify(out, null, 1));
+writeFileSync('probe/stores.json', JSON.stringify(out));
