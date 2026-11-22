@@ -546,7 +546,6 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
         <label><input type="checkbox" value="RC" checked> Radiant Collection</label>
         <label><input type="checkbox" value="FUT" checked> Futuristic Rare</label>
         <label><input type="checkbox" value="CC" checked> Classic Collection</label>
-        <label><input type="checkbox" value="PROMO" checked> Promo</label>
         <label><input type="checkbox" value="PIKA" checked> Pikachu Rare</label>
       </div>
     </details>
@@ -898,7 +897,7 @@ function outlook(c){const a=activity(c);if(!a||!a.ready||!a.trend)return null;co
   if(a.trend==='down')return up?['flat','Rally fading','The price is up but sales are slowing; the rise may not hold.']:down?['down','Drying up','Fewer sales and a falling price: interest is fading.']:['flat','Cooling','Sales are slowing at a steady price.'];
   return up?['up','Steady climb','Sales are steady and the price is rising.']:down?['down','Steady slide','Sales are steady and the price is slipping.']:['flat','Stable','Steady sales at a steady price.']}
 function chgOver(c,days){const s=series(c);if(s.length<2)return null;const last=s[s.length-1],cut=last[0]-days*864e5;let base=s[0];for(const p of s){if(p[0]<=cut)base=p;else break}if(base===last||!base[1])return null;return (last[1]-base[1])/base[1]*100}
-const LABEL={IR:'IR',SIR:'SIR',FA:'Full Art',VINT:'Vintage Holo',VALT:'VMAX Alt Art',VREG:'VMAX/VSTAR',RAIN:'Rainbow Rare',GOLD:'Gold/Secret Rare',HR:'Gold Hyper Rare',SHINY:'Shiny Vault',GG:'Galarian Gallery',TG:'Trainer Gallery',BWR:'Black White Rare',MHR:'Mega Hyper Rare',MAR:'Mega Attack Rare',RR:'Radiant Rare',RC:'Radiant Collection',FUT:'Futuristic Rare',RGB:'RGB Rare',CC:'Classic Collection',PROMO:'Promo',PIKA:'Pikachu Rare'};
+const LABEL={IR:'IR',SIR:'SIR',FA:'Full Art',VINT:'Vintage Holo',VALT:'VMAX Alt Art',VREG:'VMAX/VSTAR',RAIN:'Rainbow Rare',GOLD:'Gold/Secret Rare',HR:'Gold Hyper Rare',SHINY:'Shiny Vault',GG:'Galarian Gallery',TG:'Trainer Gallery',BWR:'Black White Rare',MHR:'Mega Hyper Rare',MAR:'Mega Attack Rare',RR:'Radiant Rare',RC:'Radiant Collection',FUT:'Futuristic Rare',RGB:'RGB Rare',CC:'Classic Collection',PIKA:'Pikachu Rare'};
 const KINDS=Object.keys(LABEL);
 const byIdL=Object.fromEntries(C.concat(E).map(c=>[c[0],c]));
 let state={}; // id -> 'owned' (older copies may still say 'wanted'; those move to a list on load)
