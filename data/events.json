@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-16",
+ "updated": "2026-11-23",
  "note": "Supply events that affect prices: reprints, restock waves and new products containing packs of existing sets. Updated weekly by a scheduled check; you can also add sets in the app. level: confirmed | reported | rumored.",
  "sets": {
   "zsv10pt5": {
@@ -47,9 +47,9 @@
   "g24831": {
    "type": "reprint",
    "level": "confirmed",
-   "when": "Feb 12, 2027",
-   "note": "The Mega Rayquaza ex Premium Tournament Collection (Feb 12, 2027, $49.99) has 8 packs, half Delta Reign and half Pitch Black, per its official Pokémon product page; that adds supply about three months after the Nov 6 launch.",
-   "src": "https://www.pokemon.com/us/pokemon-tcg/product-gallery/mega-rayquaza-ex-premium-tournament-collection"
+   "when": "Jan 29 + Feb 12, 2027",
+   "note": "The Pokémon Day 2027 Collection ($14.99, Jan 29, 2027) reportedly has 3 Delta Reign packs, and the Mega Rayquaza ex Premium Tournament Collection (Feb 12, 2027) has 4 Delta Reign packs per its official product page.",
+   "src": "https://www.cbr.com/pokemon-day-2027-first-release-officilly-confirmed/"
   },
   "sv3pt5": {
    "type": "reprint",
@@ -61,9 +61,9 @@
   "30c": {
    "type": "reprint",
    "level": "confirmed",
-   "when": "Dec 4, 2026",
-   "note": "More 30th Celebration packs land Dec 4, 2026: the Binder Collection ($31.99, 5 packs) and the Sylveon ex and Greninja ex Tins ($21.99, 4 packs each).",
-   "src": "https://icv2.com/articles/news/view/63260/new-pokemon-tcg-30th-celebration-products-announced"
+   "when": "Nov 2026 restocks + Dec 4, 2026",
+   "note": "30th Celebration Ultra-Premium Collections keep restocking (Target Nov 6, Amazon Nov 18, 2026), and the Binder Collection plus Sylveon ex and Greninja ex Tins add more packs on Dec 4, 2026.",
+   "src": "https://restockd.app/products/pokemon-tcg-30th-celebration-ultra-premium-collection"
   }
  }
 }
