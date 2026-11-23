@@ -47,7 +47,8 @@ async function search(reqs) {
   if (!r.ok) throw new Error('search HTTP ' + r.status);
   return (await r.json()).results || [];
 }
-const ATTR = ['name', 'number', 'set_name', 'lowest_ask', 'active_asks_count', 'slug', 'language', 'available_conditions', 'era', 'rarity'];
+const ATTR = ['name', 'number', 'set_name', 'lowest_ask', 'active_asks_count', 'language', 'available_conditions', 'has_raw_listings', 'era', 'rarity'];
+const OKC = new Set(['NM', 'LP']);   // only count a card when every copy listed is Near Mint or Lightly Played, so its lowest ask is one Taylor would buy
 const norm = s => String(s || '').toLowerCase().replace(/&/g, 'and').replace(/^pokemon\s+/, '').replace(/[^a-z0-9]/g, '');
 const numN = s => String(s || '').toUpperCase().split('/')[0].replace(/^([A-Z]*)0*(\d)/, '$1$2');
 // Double Holo keeps Trainer Gallery, Galarian Gallery, Shiny Vault and Radiant Collection cards inside the main set
@@ -87,11 +88,10 @@ async function asks(list) {
       const n = chunk[j], hits = r.hits || []; setNames.set(n, hits.length);
       const idx = new Map(); for (const h of hits) idx.set(numN(h.number), [...(idx.get(numN(h.number)) || []), h]);
       for (const c of bySet.get(n)) {
-        const cand = (idx.get(numN(c[3])) || []).filter(h => h.lowest_ask > 0);
+        const cand = (idx.get(numN(c[3])) || []).filter(h => h.lowest_ask > 0 && h.has_raw_listings !== false && (h.available_conditions || []).length && h.available_conditions.every(x => OKC.has(x)));
         const words = c[1].toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(w => w.length >= 3);
         const h = cand.filter(h => words.every(w => String(h.name).toLowerCase().includes(w)))[0] || (cand.length === 1 ? cand[0] : null);
-        if (h && !globalThis.__s) globalThis.__s = h;
-        if (h) out.set(c[0], { ask: h.lowest_ask, n: h.active_asks_count || 1, slug: h.slug || '', id: h.objectID, cond: (h.available_conditions || []).join('/') });
+                if (h) out.set(c[0], { ask: h.lowest_ask, n: h.active_asks_count || 1, slug: h.slug || '', id: h.objectID, cond: (h.available_conditions || []).join('/') });
       }
     });
     await sleep(700);
@@ -99,6 +99,7 @@ async function asks(list) {
   return out;
 }
 
+const byIdAll = new Map(cards.cards.map(c => [c[0], c]));
 const out = { t: new Date().toISOString(), cap: live.monthly_cap ?? null, premium: PREMIUM, promos: [] };
 for (const p of promos) {
   const live_ = Date.parse(p.starts_at) <= Date.now();
@@ -110,16 +111,25 @@ for (const p of promos) {
     for (const c of list) {
       const a = A.get(c[0]); if (!a) continue;
       const m = mkt(c), eff = r2(a.ask * (1 - rate));
-      if (eff <= m * 1.02) P.deals.push([c[0], a.ask, eff, r2(m), a.slug, a.n, a.cond]);
+      if (eff <= m * 1.02) P.deals.push([c[0], a.ask, eff, r2(m), '', a.n, a.cond, a.id]);
     }
-    P.deals.sort((x, y) => x[2] / x[3] - y[2] / y[3]);
+    P.deals.sort((x, y) => (y[3] - y[2]) - (x[3] - x[2]));   // biggest dollar savings first
+    P.deals = P.deals.slice(0, 150);
+    // the card page link (and a check that it's the same TCGplayer product) for each find
+    for (const d of P.deals) {
+      try { const j = await (await fetch('https://api.doubleholo.com/api/v1/cards/' + d[7], { headers: H })).json(); const k = j.card || {};
+        const c = byIdAll.get(d[0]); if (k.tcgplayer_product_id && c[6] && Number(k.tcgplayer_product_id) !== Number(c[6])) { d[0] = null; continue; }
+        if (k.slug) d[4] = `/card/${k.id}/${k.slug}`; } catch (e) {}
+      await sleep(250);
+    }
+    P.deals = P.deals.filter(d => d[0]).map(d => d.slice(0, 7));
     P.listed = A.size;
     log(`${p.name}: ${list.length} wanted cards covered, ${A.size} listed on Double Holo, ${P.deals.length} at or under market after ${Math.round(rate * 100)}% back.`);
   } else log(`${p.name}: ${list.length} wanted cards covered${live_ || soon ? '' : ' (starts later; prices checked closer to the start)'}.`);
   out.promos.push(P);
 }
 if (missingSets.size) log(`Sets not found on Double Holo: ${[...missingSets].join(', ')}`);
-out.info = { owned: owned.size, want: want.length, unmatchedSets: [...missingSets], sample: globalThis.__s || null };
+out.info = { owned: owned.size, want: want.length, unmatchedSets: [...missingSets], };
 writeFileSync(join(Root, 'data/dh.json'), JSON.stringify(out));
 
 // ---- phone alerts: once when an event is announced, once when it goes live (with the best finds) ----
