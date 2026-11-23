@@ -28,7 +28,7 @@ try {
     for (const [k, v] of Object.entries((f.cfg && f.cfg.mapValue && f.cfg.mapValue.fields) || {})) if (k !== 'bad' && k !== 'stores') cfg[k] = Number(v.integerValue ?? v.doubleValue ?? v.stringValue);
   } else log(`Can't read the shared settings (HTTP ${r.status}).`);
 } catch (e) { log('Settings: ' + e.message); }
-const PREMIUM = cfg.dhPrem == null || isNaN(cfg.dhPrem) ? 1 : cfg.dhPrem;   // Taylor's Double Holo plan (set in the app); premium earns the full rate
+const PREMIUM = cfg.dhPrem == null || isNaN(cfg.dhPrem) ? 0 : cfg.dhPrem;   // Taylor's Double Holo plan (set in the app); premium earns the full rate
 const HI = cfg.liveMax ?? 80, NEWMO = cfg.newMo ?? 3;
 const months = sid => { const d = S[sid] && S[sid][2]; return d ? (Date.now() - new Date(d.replace(/\//g, '-') + 'T12:00:00')) / (30.4 * 864e5) : 99; };
 const want = cards.cards.filter(c => !owned.has(c[0]) && mkt(c) && mkt(c) <= HI && months(c[2]) >= NEWMO);

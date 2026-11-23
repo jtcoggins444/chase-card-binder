@@ -1764,7 +1764,7 @@ function liveCount(){const lo=pc('liveMin'),hi=pc('liveMax'),n=C.filter(c=>c[5]!
 // sets released in the last few months (cfg.newMo, default 3) swing too much to buy into: their cards stay off the buy lists
 function setMonths(sid){const d=S[sid]&&S[sid][2];if(!d)return 99;return (Date.now()-new Date(d.replace(/\//g,'-')+'T12:00:00'))/(30.4*864e5)}
 function tooNew(c){return !isSealed(c)&&setMonths(c[2])<(+pc('newMo')||0)}
-function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15,cheapN:3,cheapMax:50,liveMin:10,liveMax:80,newMo:3,dhPrem:1}[k]}   // plan setting, or its default
+function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15,cheapN:3,cheapMax:50,liveMin:10,liveMax:80,newMo:3,dhPrem:0}[k]}   // plan setting, or its default
 // supply events (reprints/restocks): from data/events.json, plus sets Taylor adds (cfg.rpAdd) or turns off (cfg.rpOff)
 let EVENTS={};fetch('data/events.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.sets){EVENTS=j.sets;if(window.__planReady)renderPlan()}}).catch(()=>{});
 const idsOf=k=>String(cfg[k]||'').split(',').filter(Boolean);
