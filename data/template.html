@@ -521,6 +521,16 @@ dialog.sd::backdrop{background:rgb(0 0 0 / .6)}
       </details>
     </div>
   </section>
+  <section class="buy" id="dh">
+    <div class="buyhd">
+      <button class="sethd" type="button" id="dhToggle" aria-expanded="false"><span class="chev" aria-hidden="true"></span><span class="buyt">Double Holo cashback</span><small id="dhSub"> · store-credit events</small></button>
+    </div>
+    <div id="dhBody" hidden>
+      <label class="note" style="display:flex;gap:6px;align-items:center;margin:4px 0 8px"><input type="checkbox" id="dhPrem"> I have Double Holo premium (Smart Collector or Serious Collector), which earns the full rate</label>
+      <div id="dhOut"><p class="note">Loading…</p></div>
+      <p class="note">Checked every 3 hours. Prices are Double Holo's lowest ask for the card (any condition listed); credit lands 3–7 days after delivery, can't be cashed out, and expires after 90 days. Shipping isn't included.</p>
+    </div>
+  </section>
   <div class="filters">
     <input id="q" type="search" placeholder="Search Pokémon or set" aria-label="Search cards">
     <details class="rdd" id="rarDD">
@@ -1207,6 +1217,29 @@ document.getElementById('buyList').addEventListener('click',e=>{const th=e.targe
 renderBuy();
 
 // ---- Store finder: which card shops (from data/stores.json, checked daily) cover the most of the cards you want ----
+// ---- Double Holo cashback events ----
+let DH=null;
+function dhLoad(){if(DH)return Promise.resolve(DH);return fetch('data/dh.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>DH=j||{promos:[]}).catch(()=>DH={promos:[]})}
+const dhWhen=s=>new Date(s).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+async function renderDH(){const out=document.getElementById('dhOut'),sub=document.getElementById('dhSub');const D=await dhLoad();
+  const prem=pc('dhPrem')!==0&&pc('dhPrem')!=='0';document.getElementById('dhPrem').checked=prem;
+  const now=Date.now(),P=(D.promos||[]).filter(p=>Date.parse(p.end)>now);
+  const rate=p=>prem?p.rate:p.free;
+  const liveP=P.find(p=>Date.parse(p.start)<=now&&rate(p));
+  sub.textContent=liveP?` · ${Math.round(rate(liveP)*100)}% back on ${liveP.label} now`:P.length?` · next: ${P[0].label}, ${dhWhen(P[0].start)}`:' · no events right now';
+  if(document.getElementById('dhBody').hidden)return;
+  if(!P.length){out.innerHTML='<p class="note">No Double Holo events running or announced right now. New ones are revealed at midnight Eastern the day before.</p>';return}
+  out.innerHTML=P.map(p=>{const r=rate(p),on=Date.parse(p.start)<=now;
+    const deals=(p.deals||[]).filter(d=>byId[d[0]]&&state[d[0]]!=='owned').map(d=>({c:byId[d[0]],ask:d[1],eff:Math.round(d[1]*(1-r)*100)/100,m:d[3],n:d[5],cond:d[6]})).filter(x=>x.eff<=x.m*1.02&&/^(NM|LP)(\/(NM|LP))*$/.test(x.cond||'')).sort((a,b)=>a.eff/a.m-b.eff/b.m);
+    const url=x=>'https://doubleholo.com/marketplace?preset=cards&has_listings=true&query='+encodeURIComponent(x.c[1]+' '+String(x.c[3]).split('/')[0]);
+    return `<div class="sfshop"><h4>${on?'On now':'Coming up'}: ${esc(p.name)}<small>${r?Math.round(r*100)+'% back in store credit':'No credit on a free account'+(p.rate?' (premium gets '+Math.round(p.rate*100)+'%)':'')} on ${esc(p.label)} · ${on?'ends '+dhWhen(p.end):dhWhen(p.start)+' to '+dhWhen(p.end)}${p.max?' · credit capped at $'+p.max+' this event':''}${D.cap?' · $'+D.cap+' a month at most':''}</small></h4>
+      <p class="note" style="margin:2px 0 6px">Covers ${p.wanted} card${p.wanted===1?'':'s'} you still need${p.listed!=null?`; ${p.listed} listed on Double Holo, ${deals.length} at or under the TCGplayer market once the credit is counted.`:'. Prices get checked closer to the start.'}</p>
+      ${deals.length?`<details${deals.length<=15?' open':''}><summary class="note" style="cursor:pointer">${deals.length} card${deals.length===1?'':'s'} worth buying</summary><ol>${deals.map(x=>`<li><a href="${url(x)}" target="_blank" rel="noopener">${esc(x.c[1])}</a> <small>${esc(S[x.c[2]][0])} #${esc(x.c[3])} · ask ${usd.format(x.ask)}${x.cond?' '+esc(x.cond):''} → <b>${usd.format(x.eff)}</b> after credit · market ${usd.format(x.m)}</small></li>`).join('')}</ol></details>`:''}</div>`}).join('')+(D.t?`<p class="note">Last checked ${dhWhen(D.t)}.</p>`:'')}
+{const tg=document.getElementById('dhToggle'),body=document.getElementById('dhBody');
+ const open=o=>{tg.setAttribute('aria-expanded',o);body.hidden=!o;try{localStorage.setItem('binder-dhOpen',o?'1':'0')}catch(e){}renderDH()};
+ try{if(localStorage.getItem('binder-dhOpen')==='1'||location.hash==='#dh')open(true);else renderDH()}catch(e){renderDH()}
+ tg.addEventListener('click',()=>open(tg.getAttribute('aria-expanded')!=='true'));
+ document.getElementById('dhPrem').addEventListener('change',e=>{cfg.dhPrem=e.target.checked?1:0;cache();renderDH()})}
 let SF=null;
 function sfLoad(){if(SF)return Promise.resolve(SF);return fetch('data/stores.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>SF=j||{s:[],c:{}}).catch(()=>SF={s:[],c:{}})}
 const sfDom=s=>String(s).trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,'');
@@ -1731,7 +1764,7 @@ function liveCount(){const lo=pc('liveMin'),hi=pc('liveMax'),n=C.filter(c=>c[5]!
 // sets released in the last few months (cfg.newMo, default 3) swing too much to buy into: their cards stay off the buy lists
 function setMonths(sid){const d=S[sid]&&S[sid][2];if(!d)return 99;return (Date.now()-new Date(d.replace(/\//g,'-')+'T12:00:00'))/(30.4*864e5)}
 function tooNew(c){return !isSealed(c)&&setMonths(c[2])<(+pc('newMo')||0)}
-function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15,cheapN:3,cheapMax:50,liveMin:10,liveMax:80,newMo:3}[k]}   // plan setting, or its default
+function pc(k){return cfg[k]??{budget:100,reserve:25,roll:1,scope:'missing',etb:0,goal:'',lowMin:150,lowPct:35,lpOn:1,lpMin:100,lpPct:20,alertOn:1,alertPct:15,cheapN:3,cheapMax:50,liveMin:10,liveMax:80,newMo:3,dhPrem:1}[k]}   // plan setting, or its default
 // supply events (reprints/restocks): from data/events.json, plus sets Taylor adds (cfg.rpAdd) or turns off (cfg.rpOff)
 let EVENTS={};fetch('data/events.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.sets){EVENTS=j.sets;if(window.__planReady)renderPlan()}}).catch(()=>{});
 const idsOf=k=>String(cfg[k]||'').split(',').filter(Boolean);
