@@ -88,7 +88,7 @@ async function asks(list) {
       const n = chunk[j], hits = r.hits || []; setNames.set(n, hits.length);
       const idx = new Map(); for (const h of hits) idx.set(numN(h.number), [...(idx.get(numN(h.number)) || []), h]);
       for (const c of bySet.get(n)) {
-        const cand = (idx.get(numN(c[3])) || []).filter(h => h.lowest_ask > 0 && h.has_raw_listings !== false && (h.available_conditions || []).length && h.available_conditions.every(x => OKC.has(x)));
+        const cand = (idx.get(numN(c[3])) || []).filter(h => h.lowest_ask > 0 && h.has_raw_listings !== false && (h.available_conditions || []).some(x => OKC.has(x)));
         const words = c[1].toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(w => w.length >= 3);
         const h = cand.filter(h => words.every(w => String(h.name).toLowerCase().includes(w)))[0] || (cand.length === 1 ? cand[0] : null);
                 if (h) out.set(c[0], { ask: h.lowest_ask, n: h.active_asks_count || 1, slug: h.slug || '', id: h.objectID, cond: (h.available_conditions || []).join('/') });
@@ -114,15 +114,29 @@ for (const p of promos) {
       if (eff <= m * 1.02) P.deals.push([c[0], a.ask, eff, r2(m), '', a.n, a.cond, a.id]);
     }
     P.deals.sort((x, y) => (y[3] - y[2]) - (x[3] - x[2]));   // biggest dollar savings first
-    P.deals = P.deals.slice(0, 150);
-    // the card page link (and a check that it's the same TCGplayer product) for each find
+    P.deals = P.deals.slice(0, 250);
+    // each find's actual listings (Near Mint / Lightly Played, raw, English) with seller and shipping, so the app can build a cart;
+    // plus the card page link and a check that it's the same TCGplayer product
+    for (const d of P.deals) {
+      const c = byIdAll.get(d[0]), m = d[3];
+      try {
+        const j = await (await fetch(`https://api.doubleholo.com/api/v1/market/order_book/${d[7]}/detailed_asks`, { headers: H })).json();
+        const L = (j.detailed_asks || []).filter(a => !a.grading_company && OKC.has(a.condition) && /english/i.test(a.language || 'English') && (a.remaining_quantity ?? a.quantity ?? 1) > 0)
+          .sort((a, b) => a.price - b.price).slice(0, 6)
+          .map(a => [a.id, a.price, a.condition, a.username, a.shipping_price ?? null, (a.seller_minimum_order_amount_cents || 0) / 100]);
+        if (!L.length || r2(L[0][1] * (1 - rate)) > m * 1.02) { d[0] = null; await sleep(250); continue; }
+        d[1] = L[0][1]; d[2] = r2(L[0][1] * (1 - rate)); d[6] = [...new Set(L.map(a => a[2]))].join('/'); d[8] = L;
+      } catch (e) { d[0] = null; continue; }
+      await sleep(250);
+    }
+    P.deals = P.deals.filter(d => d[0]).sort((x, y) => (y[3] - y[2]) - (x[3] - x[2])).slice(0, 150);
     for (const d of P.deals) {
       try { const j = await (await fetch('https://api.doubleholo.com/api/v1/cards/' + d[7], { headers: H })).json(); const k = j.card || {};
         const c = byIdAll.get(d[0]); if (k.tcgplayer_product_id && c[6] && Number(k.tcgplayer_product_id) !== Number(c[6])) { d[0] = null; continue; }
         if (k.slug) d[4] = `/card/${k.id}/${k.slug}`; } catch (e) {}
       await sleep(250);
     }
-    P.deals = P.deals.filter(d => d[0]).map(d => d.slice(0, 7));
+    P.deals = P.deals.filter(d => d[0]).map(d => [...d.slice(0, 7), d[8]]);
     P.listed = A.size;
     log(`${p.name}: ${list.length} wanted cards covered, ${A.size} listed on Double Holo, ${P.deals.length} at or under market after ${Math.round(rate * 100)}% back.`);
   } else log(`${p.name}: ${list.length} wanted cards covered${live_ || soon ? '' : ' (starts later; prices checked closer to the start)'}.`);
