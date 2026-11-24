@@ -1041,7 +1041,7 @@ function cmpFor(k){if(k==='lp'){const v=c=>{const d=lpDeal(c);return d?c[5]-d.pr
 function numKey(c){const m=String(c[3]).match(/^([A-Za-z]*)(\d+)(.*)$/);return m?[m[1],+m[2],m[3]]:[String(c[3]),0,'']}
 function withinSort(a){const w=f.within||'num',mv=c=>Math.abs(chgOver(c,7)??0),own=c=>state[c[0]]==='owned'?1:0,num=(x,y)=>{const p=numKey(x),q=numKey(y);return p[0].localeCompare(q[0])||p[1]-q[1]||p[2].localeCompare(q[2])};
   const by={psa10:cmpFor('psa10'),upside:cmpFor('upside'),price:(x,y)=>(y[5]??-1)-(x[5]??-1),priceasc:(x,y)=>(x[5]??Infinity)-(y[5]??Infinity),move:(x,y)=>mv(y)-mv(x),active:(x,y)=>((activity(y)||{}).r30??-1)-((activity(x)||{}).r30??-1),missing:(x,y)=>own(x)-own(y),owned:(x,y)=>own(y)-own(x),name:(x,y)=>x[1].localeCompare(y[1])}[w];
-  return w==='num'||!by?a:a.slice().sort((x,y)=>by(x,y)||num(x,y))}
+  return a.slice().sort(w==='num'||!by?num:(x,y)=>by(x,y)||num(x,y))}   // card number order even when a set's cards were added in batches
 // Big lists are slow on a phone, so only the rows near the screen are built; the rest fill in as they scroll close.
 const LAZY_FIRST=60,lazyCards=new Map();let lazyIO=null,lazyRowH=58;
 function lazyFill(el){const id=el.dataset.lazy;if(!id)return;const a=lazyCards.get(id)||[];el.innerHTML=a.map(c=>row(c,false)).join('');el.style.minHeight='';delete el.dataset.lazy;if(lazyIO)lazyIO.unobserve(el)}
