@@ -1052,7 +1052,16 @@ function numKey(c){const m=String(c[3]).match(/^([A-Za-z]*)(\d+)(.*)$/);return m
 function withinSort(a){const w=f.within||'num',mv=c=>Math.abs(chgOver(c,7)??0),own=c=>state[c[0]]==='owned'?1:0,num=(x,y)=>{const p=numKey(x),q=numKey(y);return p[0].localeCompare(q[0])||p[1]-q[1]||p[2].localeCompare(q[2])};
   const by={psa10:cmpFor('psa10'),upside:cmpFor('upside'),price:(x,y)=>(y[5]??-1)-(x[5]??-1),priceasc:(x,y)=>(x[5]??Infinity)-(y[5]??Infinity),move:(x,y)=>mv(y)-mv(x),active:(x,y)=>((activity(y)||{}).r30??-1)-((activity(x)||{}).r30??-1),missing:(x,y)=>own(x)-own(y),owned:(x,y)=>own(y)-own(x),name:(x,y)=>x[1].localeCompare(y[1])}[w];
   return w==='num'||!by?a:a.slice().sort((x,y)=>by(x,y)||num(x,y))}
+// Big lists are slow on a phone, so only the rows near the screen are built; the rest fill in as they scroll close.
+const LAZY_FIRST=60,lazyCards=new Map();let lazyIO=null,lazyRowH=58;
+function lazyFill(el){const id=el.dataset.lazy;if(!id)return;const a=lazyCards.get(id)||[];el.innerHTML=a.map(c=>row(c,false)).join('');el.style.minHeight='';delete el.dataset.lazy;if(lazyIO)lazyIO.unobserve(el)}
+function lazyWatch(root){if(!('IntersectionObserver' in window)){root.querySelectorAll('.list[data-lazy]').forEach(lazyFill);return}
+  if(!lazyIO)lazyIO=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting)lazyFill(e.target)},{rootMargin:'1500px 0px'});
+  root.querySelectorAll('.list[data-lazy]').forEach(el=>{if(el.hidden||el.closest('[hidden]'))return;el.style.minHeight=((lazyCards.get(el.dataset.lazy)||[]).length*lazyRowH)+'px';lazyIO.observe(el)})}
+function lazyMore(all){const m=document.querySelector('#binder .lazymore');if(!m)return;let n=LAZY_FIRST;
+  const io=new IntersectionObserver(es=>{if(!es.some(e=>e.isIntersecting))return;const list=m.previousElementSibling;list.insertAdjacentHTML('beforeend',all.slice(n,n+200).map(c=>row(c,true)).join(''));n+=200;if(n>=all.length){io.disconnect();m.remove()}},{rootMargin:'1500px 0px'});io.observe(m)}
 function render(){
+  if(lazyIO){lazyIO.disconnect();lazyIO=null}lazyCards.clear();
   if(view==='etb'){renderEtb();return}
   const q=f.q.trim().toLowerCase();
   const groups=new Map();
@@ -1076,18 +1085,18 @@ function render(){
   if(f.sort==='price'||f.sort==='priceasc'||f.sort==='move'||f.sort==='active'||f.sort==='heat'||f.sort==='psa10'||f.sort==='upside'||f.sort==='slab'||f.sort==='lp'){
     const mv=c=>Math.abs(chgOver(c,7)??0);
     const all=[].concat(...groups.values()).sort(cmpFor(f.sort)||(f.sort==='active'?(a,b)=>((activity(b)||{}).r30??-1)-((activity(a)||{}).r30??-1)||(b[5]??0)-(a[5]??0):f.sort==='heat'?(a,b)=>((activity(b)||{}).heat??-9)-((activity(a)||{}).heat??-9)||(b[5]??0)-(a[5]??0):f.sort==='move'?(a,b)=>mv(b)-mv(a):f.sort==='priceasc'?(a,b)=>(a[5]??Infinity)-(b[5]??Infinity):(a,b)=>(b[5]??-1)-(a[5]??-1)));
-    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='lp'?'Lightly Played well under Near Mint, biggest savings first':f.sort==='slab'?'graded copies selling at or below raw Near Mint, biggest savings first':f.sort==='psa10'?'by PSA 10 value (recent graded sales)':f.sort==='upside'?'by PSA 10 price ÷ raw Near Mint price':f.sort==='active'?'by sales activity, last 30 days':f.sort==='heat'?'by how much sales picked up this week':f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.map(c=>row(c,true)).join('')+'</div></section>';
-    document.getElementById('binder').innerHTML=etbExtra()+h;return;
+    h='<section class="set"><h2>'+all.length+' cards<small>'+(f.sort==='lp'?'Lightly Played well under Near Mint, biggest savings first':f.sort==='slab'?'graded copies selling at or below raw Near Mint, biggest savings first':f.sort==='psa10'?'by PSA 10 value (recent graded sales)':f.sort==='upside'?'by PSA 10 price ÷ raw Near Mint price':f.sort==='active'?'by sales activity, last 30 days':f.sort==='heat'?'by how much sales picked up this week':f.sort==='move'?'by 7-day price change':f.sort==='priceasc'?'by market price, lowest first':'by market price')+'</small></h2><div class="list">'+all.slice(0,LAZY_FIRST).map(c=>row(c,true)).join('')+'</div>'+(all.length>LAZY_FIRST?'<div class="lazymore" style="height:1px"></div>':'')+'</section>';
+    document.getElementById('binder').innerHTML=etbExtra()+h;lazyMore(all);return;
   }
   // sets grouped under a collapsible header per era (newest era first)
   const eraOf=new Map();for(const id of ids){const e=S[id][1];if(!eraOf.has(e))eraOf.set(e,[]);eraOf.get(e).push(id)}
-  let curEra=null;const sumV=a=>a.reduce((x,c)=>x+(c[5]||0),0);
+  let curEra=null,built=0;const sumV=a=>a.reduce((x,c)=>x+(c[5]||0),0);let eopen=true;
   for(const id of ids){
     const s=S[id],cards=groups.get(id);
     if(s[1]!==curEra){
       if(curEra!==null)h+='</div></section>';
       curEra=s[1];const eids=eraOf.get(curEra),inEra=C.filter(c=>eids.includes(c[2])&&keep(c)),ownE=inEra.filter(c=>state[c[0]]==='owned'),shown=eids.reduce((n,x)=>n+groups.get(x).length,0);
-      const eopen=!!f.q.trim()||!collapsed.has('era:'+curEra);
+      eopen=!!f.q.trim()||!collapsed.has('era:'+curEra);
       h+=`<section class="era${eopen?'':' closed'}" data-era="${esc(curEra)}"><h2><button class="erahd" type="button" aria-expanded="${eopen}"><span class="chev" aria-hidden="true"></span>${esc(curEra)}<small>${eids.length} set${eids.length===1?'':'s'} · ${shown} card${shown===1?'':'s'}</small><span class="prog">${ownE.length}/${inEra.length} owned</span><span class="setval"><span><em>Owned</em> ${money(sumV(ownE))}</span><span><em>Unowned</em> ${money(sumV(inEra)-sumV(ownE))}</span></span></button></h2><div class="erabody"${eopen?'':' hidden'}>`}
     const inSet=C.filter(c=>c[2]===id&&keep(c)),owned=inSet.filter(c=>state[c[0]]==='owned');
     const own=owned.length,tot=inSet.length,sum=a=>a.reduce((x,c)=>x+(c[5]||0),0);
@@ -1095,11 +1104,14 @@ function render(){
     const vals=`<span class="setval"><span><em>Owned</em> ${money(vOwn)}</span><span><em>Unowned</em> ${money(vNot)}</span><span><em>Set</em> ${money(vAll)}</span></span>`;
     const open=!!f.q.trim()||!collapsed.has(id);
     h+=`<section class="set${open?'':' closed'}" data-set="${id}"><h2><button class="sethd" type="button" aria-expanded="${open}"><span class="chev" aria-hidden="true"></span>${esc(s[0])}<small>${esc(s[1])} · ${s[2].slice(0,7).replace('/','-')} · ${cards.length} card${cards.length===1?'':'s'}</small><span class="prog">${own}/${tot} owned</span>${vals}</button></h2><div class="list"${open?'':' hidden'}>`;
-    for(const c of withinSort(cards))h+=row(c,false);
-    h+='</div></section>';
+    const sorted=withinSort(cards);
+    if(open&&eopen&&built<LAZY_FIRST){for(const c of sorted)h+=row(c,false);built+=sorted.length;h+='</div></section>'}
+    else{lazyCards.set(id,sorted);h=h.slice(0,h.lastIndexOf('<div class="list"'))+`<div class="list" data-lazy="${id}"${open?'':' hidden'}></div></section>`}
   }
   if(curEra!==null)h+='</div></section>';
-  document.getElementById('binder').innerHTML=etbExtra()+h;
+  const B=document.getElementById('binder');B.innerHTML=etbExtra()+h;
+  const r1=B.querySelector('.list .row');if(r1&&r1.offsetHeight)lazyRowH=r1.offsetHeight;
+  lazyWatch(B);
 }
 function row(c,showSet){
   const s=S[c[2]],st=state[c[0]]||'';
@@ -1167,12 +1179,12 @@ document.getElementById('within').addEventListener('change',e=>{f.within=e.targe
 document.getElementById('binder').addEventListener('click',e=>{
   const eh=e.target.closest('.erahd');
   if(eh){const sec=eh.closest('.era'),key='era:'+sec.dataset.era,open=eh.getAttribute('aria-expanded')!=='true';
-    eh.setAttribute('aria-expanded',open);sec.classList.toggle('closed',!open);sec.querySelector('.erabody').hidden=!open;
+    eh.setAttribute('aria-expanded',open);sec.classList.toggle('closed',!open);sec.querySelector('.erabody').hidden=!open;if(open)lazyWatch(sec);
     if(open)collapsed.delete(key);else collapsed.add(key);saveCollapsed();return}
   const hd=e.target.closest('.sethd');if(!hd)return;
   const sec=hd.closest('.set'),id=sec.dataset.set;if(!id)return;
   const open=hd.getAttribute('aria-expanded')!=='true';
-  hd.setAttribute('aria-expanded',open);sec.classList.toggle('closed',!open);sec.querySelector('.list').hidden=!open;
+  hd.setAttribute('aria-expanded',open);sec.classList.toggle('closed',!open);sec.querySelector('.list').hidden=!open;if(open)lazyFill(sec.querySelector('.list'));
   if(open)collapsed.delete(id);else collapsed.add(id);saveCollapsed();
 });
 function setAll(close){collapsed=new Set(close?Object.keys(S).concat([...new Set(Object.values(S).map(s=>'era:'+s[1]))]):[]);saveCollapsed();render()}
@@ -1524,8 +1536,12 @@ let HERO=HEROES[0];
   function draw(t){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.globalCompositeOperation='source-over';
     fx(t,w*0.62,h*0.52,Math.max(w,h)*0.75,pal);ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0}
   size();draw(still?4000:0);window.addEventListener('resize',()=>{size();draw(performance.now())});
-  if(still)return;let on=true;document.addEventListener('visibilitychange',()=>{on=!document.hidden;if(on)requestAnimationFrame(loop)});
-  function loop(t){if(!on)return;draw(t);requestAnimationFrame(loop)}requestAnimationFrame(loop)})();
+  // the swirl only animates while it's on screen, at about 30 frames a second, so scrolling the binder stays smooth
+  if(still)return;let seen=true,run=false,last=0;const on=()=>seen&&!document.hidden;
+  const go=()=>{if(on()&&!run){run=true;requestAnimationFrame(loop)}};
+  document.addEventListener('visibilitychange',go);
+  if('IntersectionObserver' in window)new IntersectionObserver(es=>{seen=es[es.length-1].isIntersecting;go()}).observe(cv);
+  function loop(t){if(!on()){run=false;return}if(t-last>=33){last=t;draw(t)}requestAnimationFrame(loop)}go()})();
 function showTab(name){if(name==='binder')name='all';if(!['owned','want','all','etb','movers'].includes(name))name='owned';
   const mv=name==='movers';document.getElementById('tabBinder').hidden=mv;document.getElementById('tabMovers').hidden=!mv;
   document.querySelectorAll('.tabs button[data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===name));
