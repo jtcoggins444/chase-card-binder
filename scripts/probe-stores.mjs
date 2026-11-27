@@ -1,13 +1,13 @@
-// One-off: Paldean Fates products (shiny rares #092-211) with market prices, from tcgcsv.
+// One-off: Black Friday / Cyber Monday announcements on the shops the Store finder checks (homepage and announcement bar text).
 import { writeFileSync, mkdirSync } from 'node:fs';
 mkdirSync('probe', { recursive: true });
-const get = async u => { try { return await (await fetch(u, { headers: { 'User-Agent': 'binder-bot' } })).json(); } catch (e) { return { results: [], err: String(e) }; } };
-const groups = (await get('https://tcgcsv.com/tcgplayer/3/groups')).results || [];
-const g = groups.filter(x => /paldean fates/i.test(x.name));
-const out = { groups: g.map(x => [x.groupId, x.name]), cards: [] };
-for (const x of g) {
-  const P = (await get(`https://tcgcsv.com/tcgplayer/3/${x.groupId}/products`)).results || [];
-  const pr = new Map(); for (const y of ((await get(`https://tcgcsv.com/tcgplayer/3/${x.groupId}/prices`)).results || [])) { const o = pr.get(y.productId); if (!o || y.subTypeName === 'Holofoil') pr.set(y.productId, y.marketPrice); }
-  for (const p of P) { const e = Object.fromEntries((p.extendedData || []).map(z => [z.name, z.value])); if (e.Number) out.cards.push([x.groupId, p.productId, p.name, e.Number, e.Rarity, e.HP ? 1 : 0, pr.get(p.productId) ?? null]); }
+const SHOPS = ['common-lands.com', 'magicandmonsters.com', 'eternalgameschesterfield.com', 'levelupgamesmd.com', 'sparkysgaming.com', 'tradingcardworld.store', 'onestoptcg.com', 'zulusgames.com', 'retrogamingofdenver.com', 'blackswampgames.com', 'poke-collect.com', 'trollandtoad.com', 'cardmarketplace.com', 'collectorscache.com'];
+const out = {};
+for (const d of SHOPS) {
+  try {
+    const r = await fetch('https://' + d + '/', { headers: { 'User-Agent': 'Mozilla/5.0 (personal collection tool)' }, signal: AbortSignal.timeout(20000) });
+    const t = (await r.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&amp;/g, ' ').replace(/\s+/g, ' ');
+    out[d] = [r.status, [...new Set((t.match(/.{0,120}(black friday|cyber monday|bfcm|% off|percent off|sale|promo code|use code|discount|store credit|cash ?back).{0,160}/gi) || []))].slice(0, 12)];
+  } catch (e) { out[d] = String(e); }
 }
-writeFileSync('probe/stores.json', JSON.stringify(out));
+writeFileSync('probe/stores.json', JSON.stringify(out, null, 1));
